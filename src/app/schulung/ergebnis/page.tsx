@@ -2,12 +2,19 @@
 
 import { useEffect, useState } from "react";
 import {
-  Button,
   ButtonLink,
   Card,
   EmployeeHeader,
   PageMain,
 } from "@/components/ui";
+
+interface ExamQuestionReview {
+  questionId: number;
+  question: string;
+  isCorrect: boolean;
+  userAnswerLabel: string;
+  correctAnswerLabel: string;
+}
 
 interface ExamResult {
   correct: number;
@@ -16,6 +23,7 @@ interface ExamResult {
   passed: boolean;
   passingScore: number;
   minRequired: number;
+  incorrectReview?: ExamQuestionReview[];
   certificate: {
     id: number;
     certificateNumber: string;
@@ -42,6 +50,7 @@ export default function ErgebnisPage() {
     );
   }
 
+  const incorrect = result.incorrectReview ?? [];
   const resultSummary = result.passed
     ? `Bestanden. ${result.correct} von ${result.total} Fragen richtig, ${result.scorePercent} Prozent.`
     : `Nicht bestanden. ${result.correct} von ${result.total} Fragen richtig, ${result.scorePercent} Prozent. Erforderlich waren mindestens ${result.minRequired} richtige Antworten bei ${result.passingScore} Prozent.`;
@@ -49,7 +58,7 @@ export default function ErgebnisPage() {
   return (
     <div className="min-h-screen pb-12">
       <EmployeeHeader pageTitle="Prüfungsergebnis" />
-      <PageMain className="mx-auto max-w-lg px-4 py-8">
+      <PageMain className="mx-auto max-w-2xl px-4 py-8">
         <div role="status" aria-live="polite" aria-atomic="true" className="live-region">
           {resultSummary}
         </div>
@@ -75,6 +84,36 @@ export default function ErgebnisPage() {
             Erforderlich: mindestens {result.minRequired} richtig ({result.passingScore} %)
           </p>
         </Card>
+
+        {incorrect.length > 0 && (
+          <section className="mt-8" aria-labelledby="review-heading">
+            <h2 id="review-heading" className="mb-4 text-lg font-bold">
+              Falsch beantwortete Fragen ({incorrect.length})
+            </h2>
+            <ul className="space-y-4">
+              {incorrect.map((item, index) => (
+                <li key={item.questionId}>
+                  <Card className="border-amber-200 bg-white">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                      Frage {index + 1}
+                    </p>
+                    <p className="mt-2 font-medium">{item.question}</p>
+                    <dl className="mt-3 space-y-2 text-sm">
+                      <div>
+                        <dt className="font-semibold text-red-700">Ihre Antwort</dt>
+                        <dd>{item.userAnswerLabel}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-semibold text-emerald-700">Richtige Antwort</dt>
+                        <dd>{item.correctAnswerLabel}</dd>
+                      </div>
+                    </dl>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <nav className="mt-8 space-y-3" aria-label="Nächste Schritte">
           {result.passed && result.certificate && (

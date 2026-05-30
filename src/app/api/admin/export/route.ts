@@ -12,7 +12,7 @@ export async function GET() {
     const sql = getSql();
 
     const rows = await sql`
-      SELECT id, first_name, last_name, email, birth_date, location, active
+      SELECT id, first_name, last_name, email, birth_date, birth_place, place_of_residence, location, active
       FROM users WHERE role = 'employee'
     `;
 
@@ -21,6 +21,8 @@ export async function GET() {
       "Nachname",
       "E-Mail",
       "Geburtsdatum",
+      "Geburtsort",
+      "Wohnort",
       "Spielhalle",
       "Aktiv",
       "Status",
@@ -42,6 +44,8 @@ export async function GET() {
           u.lastName,
           u.email,
           u.birthDate ?? "",
+          u.birthPlace ?? "",
+          u.placeOfResidence ?? "",
           u.location ?? "",
           u.active ? "Ja" : "Nein",
           statusLabel(status),

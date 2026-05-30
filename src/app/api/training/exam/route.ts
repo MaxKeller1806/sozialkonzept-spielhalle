@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { getCourse } from "@/lib/course";
 import { createCertificate, getLatestCertificate } from "@/lib/certificate";
 import { getCertificateStatus } from "@/lib/status";
-import { scoreExam, type AnswerValue } from "@/lib/exam";
+import { scoreExam, buildExamReview, getIncorrectReview, type AnswerValue } from "@/lib/exam";
 import { ensureSeeded, getSql } from "@/lib/db";
 import { questionsByIds } from "@/lib/exam-select";
 import {
@@ -63,6 +63,9 @@ export async function POST(request: Request) {
       parsedAnswers,
       course.passingScore
     );
+    const incorrectReview = getIncorrectReview(
+      buildExamReview(examQuestions, parsedAnswers)
+    );
 
     await ensureSeeded();
     const sql = getSql();
@@ -84,6 +87,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ...result,
       minRequired: course.minCorrectAnswers,
+      incorrectReview,
       certificate: certificate
         ? {
             id: certificate.id,

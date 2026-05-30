@@ -15,6 +15,8 @@ async function mapUserRow(row: User) {
     lastName: row.lastName,
     email: row.email,
     birthDate: row.birthDate,
+    birthPlace: row.birthPlace,
+    placeOfResidence: row.placeOfResidence,
     role: row.role as "admin" | "employee",
     location: row.location,
     active: !!row.active,
@@ -38,7 +40,7 @@ export async function GET() {
     await ensureSeeded();
     const sql = getSql();
     const rows = await sql`
-      SELECT id, first_name, last_name, email, birth_date, role, location, active, created_at
+      SELECT id, first_name, last_name, email, birth_date, birth_place, place_of_residence, role, location, active, created_at
       FROM users ORDER BY last_name, first_name
     `;
     const users = rows.map((row) => mapUser(row as Record<string, unknown>));
@@ -64,6 +66,8 @@ export async function POST(request: Request) {
       email,
       password,
       birthDate,
+      birthPlace,
+      placeOfResidence,
       location,
       role = "employee",
     } = body;
@@ -92,16 +96,18 @@ export async function POST(request: Request) {
 
     const rows = await sql`
       INSERT INTO users (
-        first_name, last_name, email, password_hash, birth_date, role, location, active
+        first_name, last_name, email, password_hash, birth_date, birth_place, place_of_residence, role, location, active
       )
       VALUES (
         ${firstName}, ${lastName}, ${normalizedEmail}, ${hashPassword(password)},
         ${birthDate || null},
+        ${birthPlace || null},
+        ${placeOfResidence || null},
         ${role === "admin" ? "admin" : "employee"},
         ${location || null},
         TRUE
       )
-      RETURNING id, first_name, last_name, email, birth_date, role, location, active, created_at
+      RETURNING id, first_name, last_name, email, birth_date, birth_place, place_of_residence, role, location, active, created_at
     `;
 
     const user = mapUser(rows[0] as Record<string, unknown>);

@@ -3,7 +3,7 @@ import Link from "next/link";
 export function AdminNav({
   active,
 }: {
-  active: "mitarbeiter" | "inhalte" | "feedback";
+  active: "mitarbeiter" | "inhalte" | "feedback" | "konto";
 }) {
   const linkClass = (key: typeof active) =>
     `rounded-lg px-4 py-2 text-sm font-semibold transition min-h-[44px] inline-flex items-center ${
@@ -34,6 +34,13 @@ export function AdminNav({
         aria-current={active === "feedback" ? "page" : undefined}
       >
         Rückmeldungen
+      </Link>
+      <Link
+        href="/dashboard/konto"
+        className={linkClass("konto")}
+        aria-current={active === "konto" ? "page" : undefined}
+      >
+        Mein Konto
       </Link>
     </nav>
   );

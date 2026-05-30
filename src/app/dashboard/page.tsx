@@ -19,6 +19,8 @@ interface AdminUser {
   email: string;
   role: string;
   birthDate: string | null;
+  birthPlace: string | null;
+  placeOfResidence: string | null;
   location: string | null;
   active: boolean;
   status: TrainingStatus;
@@ -43,6 +45,8 @@ export default function DashboardPage() {
     email: "",
     password: "",
     birthDate: "",
+    birthPlace: "",
+    placeOfResidence: "",
     location: "",
   });
   const [message, setMessage] = useState("");
@@ -81,6 +85,8 @@ export default function DashboardPage() {
       email: "",
       password: "",
       birthDate: "",
+      birthPlace: "",
+      placeOfResidence: "",
       location: "",
     });
     setEditId(null);
@@ -95,6 +101,8 @@ export default function DashboardPage() {
       email: u.email,
       password: "",
       birthDate: u.birthDate ?? "",
+      birthPlace: u.birthPlace ?? "",
+      placeOfResidence: u.placeOfResidence ?? "",
       location: u.location ?? "",
     });
     setShowForm(true);
@@ -110,6 +118,8 @@ export default function DashboardPage() {
         lastName: form.lastName,
         email: form.email,
         birthDate: form.birthDate || null,
+        birthPlace: form.birthPlace || null,
+        placeOfResidence: form.placeOfResidence || null,
         location: form.location || null,
       };
       if (form.password) body.password = form.password;
@@ -248,6 +258,20 @@ export default function DashboardPage() {
                 value={form.birthDate}
                 onChange={(e) =>
                   setForm({ ...form, birthDate: e.target.value })
+                }
+              />
+              <Input
+                label="Geburtsort"
+                value={form.birthPlace}
+                onChange={(e) =>
+                  setForm({ ...form, birthPlace: e.target.value })
+                }
+              />
+              <Input
+                label="Wohnort"
+                value={form.placeOfResidence}
+                onChange={(e) =>
+                  setForm({ ...form, placeOfResidence: e.target.value })
                 }
               />
               <Input

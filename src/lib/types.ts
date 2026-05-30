@@ -6,6 +6,8 @@ export interface User {
   lastName: string;
   email: string;
   birthDate: string | null;
+  birthPlace: string | null;
+  placeOfResidence: string | null;
   role: UserRole;
   location: string | null;
   active: number;

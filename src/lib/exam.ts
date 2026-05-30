@@ -2,6 +2,14 @@ import type { ExamQuestion } from "./types";
 
 export type AnswerValue = number | number[] | boolean | null;
 
+export interface ExamQuestionReview {
+  questionId: number;
+  question: string;
+  isCorrect: boolean;
+  userAnswerLabel: string;
+  correctAnswerLabel: string;
+}
+
 export function scoreExam(
   questions: ExamQuestion[],
   answers: Record<number, AnswerValue>,
@@ -23,7 +31,64 @@ export function scoreExam(
   return { correct, total, scorePercent, passed, passingScore };
 }
 
-function isAnswerCorrect(question: ExamQuestion, userAnswer: AnswerValue): boolean {
+export function buildExamReview(
+  questions: ExamQuestion[],
+  answers: Record<number, AnswerValue>
+): ExamQuestionReview[] {
+  return questions.map((q) => ({
+    questionId: q.id,
+    question: q.question,
+    isCorrect: isAnswerCorrect(q, answers[q.id]),
+    userAnswerLabel: formatUserAnswer(q, answers[q.id]),
+    correctAnswerLabel: formatCorrectAnswer(q),
+  }));
+}
+
+export function getIncorrectReview(review: ExamQuestionReview[]): ExamQuestionReview[] {
+  return review.filter((r) => !r.isCorrect);
+}
+
+function formatUserAnswer(question: ExamQuestion, userAnswer: AnswerValue): string {
+  if (userAnswer === null || userAnswer === undefined) {
+    return "Keine Antwort";
+  }
+  if (question.type === "boolean") {
+    return userAnswer === true ? "Richtig" : "Falsch";
+  }
+  if (question.type === "single") {
+    const idx = userAnswer as number;
+    return question.answers?.[idx] ?? "—";
+  }
+  if (question.type === "multiple") {
+    const indices = Array.isArray(userAnswer) ? userAnswer : [];
+    if (indices.length === 0) return "Keine Antwort";
+    return indices
+      .map((i) => question.answers?.[i])
+      .filter(Boolean)
+      .join(", ");
+  }
+  return "—";
+}
+
+function formatCorrectAnswer(question: ExamQuestion): string {
+  if (question.type === "boolean") {
+    return question.correct === true ? "Richtig" : "Falsch";
+  }
+  if (question.type === "single") {
+    const idx = question.correct as number;
+    return question.answers?.[idx] ?? "—";
+  }
+  if (question.type === "multiple") {
+    const indices = question.correct as number[];
+    return indices
+      .map((i) => question.answers?.[i])
+      .filter(Boolean)
+      .join(", ");
+  }
+  return "—";
+}
+
+export function isAnswerCorrect(question: ExamQuestion, userAnswer: AnswerValue): boolean {
   if (userAnswer === null || userAnswer === undefined) return false;
 
   if (question.type === "boolean") {

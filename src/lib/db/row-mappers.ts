@@ -9,6 +9,9 @@ export function mapUser(row: Record<string, unknown>): User {
     birthDate: row.birth_date
       ? new Date(String(row.birth_date)).toISOString().slice(0, 10)
       : null,
+    birthPlace: row.birth_place != null ? String(row.birth_place) : null,
+    placeOfResidence:
+      row.place_of_residence != null ? String(row.place_of_residence) : null,
     role: row.role as User["role"],
     location: row.location != null ? String(row.location) : null,
     active: row.active ? 1 : 0,

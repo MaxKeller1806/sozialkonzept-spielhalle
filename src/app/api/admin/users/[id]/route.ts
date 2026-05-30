@@ -29,6 +29,8 @@ export async function PATCH(
       email,
       password,
       birthDate,
+      birthPlace,
+      placeOfResidence,
       location,
       role,
       active,
@@ -39,6 +41,8 @@ export async function PATCH(
     if (lastName !== undefined) patch.last_name = lastName;
     if (email !== undefined) patch.email = String(email).trim().toLowerCase();
     if (birthDate !== undefined) patch.birth_date = birthDate || null;
+    if (birthPlace !== undefined) patch.birth_place = birthPlace || null;
+    if (placeOfResidence !== undefined) patch.place_of_residence = placeOfResidence || null;
     if (location !== undefined) patch.location = location || null;
     if (role !== undefined) patch.role = role === "admin" ? "admin" : "employee";
     if (active !== undefined) patch.active = Boolean(active);
