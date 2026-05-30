@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Schulung und Unterweisung – Sozialkonzept",
   description:
-    "Interne Schulung nach Einstellung: Unterweisung in das betriebliche Sozialkonzept",
+    "Interne 222 Schulung nach Einstellung: Unterweisung in das betriebliche Sozialkonzept",
 };
 
 export default function RootLayout({
