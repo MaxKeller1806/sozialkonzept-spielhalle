@@ -1,0 +1,373 @@
+[
+  {
+    "id": 1,
+    "moduleId": 1,
+    "question": "Welches Hauptziel verfolgt das Sozialkonzept?",
+    "type": "single",
+    "answers": [
+      "Umsatzsteigerung",
+      "Spielerschutz",
+      "Marketing",
+      "Kundenbindung"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 2,
+    "moduleId": 1,
+    "question": "Welche drei Säulen umfasst das Sozialkonzept?",
+    "type": "multiple",
+    "answers": [
+      "Prävention",
+      "Früherkennung",
+      "Hilfevermittlung",
+      "Werbung"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "id": 3,
+    "moduleId": 1,
+    "question": "Spielerschutz ist ausschließlich Aufgabe der Geschäftsführung.",
+    "type": "boolean",
+    "correct": false
+  },
+  {
+    "id": 4,
+    "moduleId": 1,
+    "question": "Praxisfall: Ein Gast spielt täglich mehrere Stunden und stört niemanden. Was ist richtig?",
+    "type": "single",
+    "answers": [
+      "Ignorieren, da kein Ärgernis",
+      "Als Warnsignal wahrnehmen und bei Bedarf ansprechen",
+      "Sofort Hausverbot",
+      "Nur Führungskraft informieren ohne Beobachtung"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 5,
+    "moduleId": 2,
+    "question": "Wann muss ein Ausweis kontrolliert werden?",
+    "type": "single",
+    "answers": [
+      "Nur bei Verdacht",
+      "Vor jedem Spielbeginn",
+      "Beim Verlassen",
+      "Gar nicht"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 6,
+    "moduleId": 2,
+    "question": "Ist ein Führerschein als Altersnachweis in der Spielhalle zulässig?",
+    "type": "boolean",
+    "correct": false
+  },
+  {
+    "id": 7,
+    "moduleId": 2,
+    "question": "Welche Dokumente sind als Identitätsnachweis grundsätzlich zulässig?",
+    "type": "multiple",
+    "answers": [
+      "Personalausweis",
+      "Reisepass",
+      "Führerschein",
+      "Vorläufiger Personalausweis mit Foto"
+    ],
+    "correct": [
+      0,
+      1,
+      3
+    ]
+  },
+  {
+    "id": 8,
+    "moduleId": 2,
+    "question": "Darf ein Stammgast ohne Ausweis spielen?",
+    "type": "single",
+    "answers": [
+      "Ja",
+      "Nein"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 9,
+    "moduleId": 2,
+    "question": "Praxisfall: Gast zeigt Foto des Ausweises auf dem Handy. Wie handeln?",
+    "type": "single",
+    "answers": [
+      "Akzeptieren",
+      "Zutritt verweigern – Originalausweis erforderlich",
+      "Nur OASIS prüfen",
+      "Führungskraft entscheiden lassen ohne Prüfung"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 10,
+    "moduleId": 2,
+    "question": "Darf das Alter von Gästen geschätzt werden, wenn sie erwachsen wirken?",
+    "type": "boolean",
+    "correct": false
+  },
+  {
+    "id": 11,
+    "moduleId": 3,
+    "question": "Wann erfolgt die OASIS-Abfrage?",
+    "type": "single",
+    "answers": [
+      "Vor Spielbeginn",
+      "Nach Spielende",
+      "Nur bei Stammgästen",
+      "Nur bei Verdacht"
+    ],
+    "correct": 0
+  },
+  {
+    "id": 12,
+    "moduleId": 3,
+    "question": "Darf ein gesperrter Gast ausnahmsweise spielen?",
+    "type": "boolean",
+    "correct": false
+  },
+  {
+    "id": 13,
+    "moduleId": 3,
+    "question": "Was tun bei aktiver OASIS-Sperre?",
+    "type": "single",
+    "answers": [
+      "Einlass erlauben",
+      "Einlass verweigern",
+      "Gast unterschreiben lassen",
+      "Nur Führungskraft informieren und spielen lassen"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 14,
+    "moduleId": 3,
+    "question": "Praxisfall: Gast behauptet, Sperre sei aufgehoben, OASIS zeigt Sperre. Was tun?",
+    "type": "single",
+    "answers": [
+      "Spielen erlauben",
+      "Kein Spiel – Systemstatus maßgeblich",
+      "Nur eine Stunde spielen lassen",
+      "Ausweis reicht"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 15,
+    "moduleId": 3,
+    "question": "Gibt es bei OASIS Ermessensspielraum für die Aufsicht vor Ort?",
+    "type": "boolean",
+    "correct": false
+  },
+  {
+    "id": 16,
+    "moduleId": 4,
+    "question": "Welche Verhaltensweisen können Warnsignale sein?",
+    "type": "multiple",
+    "answers": [
+      "Lange Spielzeiten",
+      "Häufige Geldabhebungen",
+      "Verlustjagd",
+      "Pünktliches Verlassen nach kurzer Zeit"
+    ],
+    "correct": [
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "id": 17,
+    "moduleId": 4,
+    "question": "Ein einzelnes Merkmal beweist automatisch eine Spielsucht.",
+    "type": "boolean",
+    "correct": false
+  },
+  {
+    "id": 18,
+    "moduleId": 4,
+    "question": "Zu welchen Bereichen gehören Warnsignale?",
+    "type": "multiple",
+    "answers": [
+      "Finanzielle Signale",
+      "Emotionale Signale",
+      "Soziale Signale",
+      "Verhaltensbezogene Signale"
+    ],
+    "correct": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "id": 19,
+    "moduleId": 4,
+    "question": "Praxisfall: Gast spielt 6 Std., hebt viermal Geld ab, wirkt gereizt. Wie reagieren?",
+    "type": "single",
+    "answers": [
+      "Ignorieren",
+      "Gespräch anbieten und dokumentieren",
+      "Gerät abschalten",
+      "Hausverbot sofort"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 20,
+    "moduleId": 4,
+    "question": "Soll die Aufsicht Diagnosen wie „spielsüchtig“ stellen?",
+    "type": "boolean",
+    "correct": false
+  },
+  {
+    "id": 21,
+    "moduleId": 5,
+    "question": "Informationsmaterial soll auffälligen Gästen angeboten werden.",
+    "type": "boolean",
+    "correct": true
+  },
+  {
+    "id": 22,
+    "moduleId": 5,
+    "question": "Darf ein Gast direkt als spielsüchtig bezeichnet werden?",
+    "type": "single",
+    "answers": [
+      "Ja",
+      "Nein"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 23,
+    "moduleId": 5,
+    "question": "Gast sagt: „Das geht Sie nichts an!“ Wie reagieren Sie am besten?",
+    "type": "single",
+    "answers": [
+      "Laut zurückargumentieren",
+      "Sachlich erklären und freiwilliges Informationsangebot machen",
+      "Gast sofort des Hauses verweisen",
+      "Thema ignorieren"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 24,
+    "moduleId": 5,
+    "question": "Gast sagt: „Ich habe alles unter Kontrolle.“ Professionelle Reaktion?",
+    "type": "single",
+    "answers": [
+      "„Nein, das glaube ich nicht.“",
+      "Trotzdem Hilfsangebot und Flyer anbieten",
+      "Gespräch abbrechen und Spot anmachen",
+      "Polizei rufen"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 25,
+    "moduleId": 5,
+    "question": "Gast sagt: „Ich brauche keine Hilfe.“ Wie reagieren?",
+    "type": "single",
+    "answers": [
+      "Druck ausüben bis Gast zustimmt",
+      "Material anbieten und Gast nicht bedrängen",
+      "Laut vor anderen warnen",
+      "Spiel sofort unterbrechen"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 26,
+    "moduleId": 6,
+    "question": "Wer kann eine Selbstsperre beantragen?",
+    "type": "single",
+    "answers": [
+      "Nur die Behörde",
+      "Der betroffene Gast",
+      "Nur der Betreiber",
+      "Niemand"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 27,
+    "moduleId": 6,
+    "question": "Was tun Sie bei Sperrwunsch eines Gastes?",
+    "type": "single",
+    "answers": [
+      "Selbst eintragen und weiterarbeiten",
+      "Ernst nehmen und an zuständige Person weiterleiten",
+      "Ignorieren",
+      "Nur Flyer geben"
+    ],
+    "correct": 1
+  },
+  {
+    "id": 28,
+    "moduleId": 6,
+    "question": "Selbst- und Fremdsperre wirken über OASIS bundesweit.",
+    "type": "boolean",
+    "correct": true
+  },
+  {
+    "id": 29,
+    "moduleId": 7,
+    "question": "Müssen relevante Gespräche und Maßnahmen dokumentiert werden?",
+    "type": "single",
+    "answers": [
+      "Ja",
+      "Nein"
+    ],
+    "correct": 0
+  },
+  {
+    "id": 30,
+    "moduleId": 7,
+    "question": "Was gehört in gute Dokumentation?",
+    "type": "multiple",
+    "answers": [
+      "Datum und Uhrzeit",
+      "Konkrete Beobachtungen",
+      "Persönliche Vermutungen",
+      "Durchgeführte Maßnahmen"
+    ],
+    "correct": [
+      0,
+      1,
+      3
+    ]
+  },
+  {
+    "id": 31,
+    "moduleId": 7,
+    "question": "„Der Gast ist sicher spielsüchtig“ ist eine sachliche Dokumentation.",
+    "type": "boolean",
+    "correct": false
+  },
+  {
+    "id": 32,
+    "moduleId": 7,
+    "question": "Praxisfall: Nach OASIS-Verweigerung und Gespräch – was dokumentieren?",
+    "type": "single",
+    "answers": [
+      "Nichts, war ja harmlos",
+      "Zeit, Beobachtungen, Maßnahmen und Reaktion des Gastes",
+      "Nur den Namen",
+      "Gerüchte der Kollegen"
+    ],
+    "correct": 1
+  }
+]

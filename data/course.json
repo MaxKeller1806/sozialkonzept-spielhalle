@@ -1,0 +1,1112 @@
+{
+  "courseId": "sozialkonzept-spielhalle-v1",
+  "courseName": "Spielerschutz und Sozialkonzept",
+  "version": "2.0",
+  "examQuestionsPerTest": 15,
+  "durationMinutes": 35,
+  "maxDurationMinutes": 45,
+  "recommendedMinutes": "35-40",
+  "passingScore": 65,
+  "minCorrectAnswers": 10,
+  "totalQuestions": 15,
+  "certificateValidityMonths": 24,
+  "certificateTitle": "Zertifikat Spielerschutz und Sozialkonzept",
+  "modules": [
+    {
+      "id": 1,
+      "title": "Warum gibt es Spielerschutz?",
+      "duration": 4,
+      "lessons": [
+        {
+          "id": 1,
+          "title": "Glücksspielstaatsvertrag und Ziele des Sozialkonzepts",
+          "content": "Der Glücksspielstaatsvertrag (GlüStV) vereinheitlicht den Spielerschutz in Deutschland. Das Sozialkonzept konkretisiert Prävention, Früherkennung und Hilfevermittlung vor Ort.",
+          "blocks": [
+            {
+              "type": "info",
+              "title": "Lernziele",
+              "body": "Nach dieser Lektion kennen Sie die rechtlichen Grundlagen des Glücksspielstaatsvertrags, verstehen die Ziele des Sozialkonzepts und können erläutern, warum Spielerschutz für Spielhallen verbindlich ist."
+            },
+            {
+              "type": "text",
+              "body": "Seit dem Glücksspielstaatsvertrag 2021 gelten bundesweit einheitliche Anforderungen an den Spielerschutz. Spielhallen dürfen nur betrieben werden, wenn ein von der zuständigen Behörde anerkanntes Sozialkonzept vorliegt. Dieses Konzept ist kein Formalismus, sondern ein prüfbares Regelwerk: Es beschreibt, wie Betreiber und Mitarbeiter konkret dazu beitragen, dass Glücksspiel nicht zu finanziellen, sozialen oder gesundheitlichen Schäden führt.\n\nDas Sozialkonzept verfolgt drei miteinander verbundene Ziele: Prävention – also das Verhindern problematischen Spielverhaltens, bevor es entsteht; Früherkennung – das Erkennen von Warnsignalen im Betriebsalltag; und Hilfevermittlung – das Ansprechen betroffener Gäste und das Weiterleiten zu Beratungsstellen. Für Aufsichtspersonen bedeutet dies: Jede Schicht ist Teil eines behördlich überprüfbaren Schutzsystems."
+            },
+            {
+              "type": "info",
+              "title": "Rechtlicher Rahmen",
+              "body": "Der Betrieb einer Spielhalle ohne wirksames Sozialkonzept oder ohne geschultes Personal kann zu Auflagen, Bußgeldern oder zum Entzug der Erlaubnis führen. Schulungen wie diese dienen dem Nachweis, dass Mitarbeiter ihre Pflichten kennen und anwenden können."
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Warum Spielerschutz und welche Konsequenzen drohen",
+          "content": "Spielerschutz schützt Gäste vor Schäden und Betreiber vor rechtlichen und wirtschaftlichen Folgen. Verstöße haben ernste Konsequenzen für alle Beteiligten.",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "Glücksspiel kann für manche Menschen süchtig machend wirken. Betroffene verlieren nicht selten die Kontrolle über Zeit, Geld und Prioritäten. Der Gesetzgeber hat erkannt, dass Spielhallen an der Schnittstelle zwischen Angebot und Gast besondere Verantwortung tragen. Spielerschutz bedeutet daher nicht, Gäste zu bevormunden, sondern einen Rahmen zu schaffen, in dem gefährdete Personen frühzeitig erkannt und unterstützt werden.\n\nFür Gäste können die Folgen problematischen Spielens gravierend sein: Verschuldung, Zerfall sozialer Beziehungen, gesundheitliche Belastungen und berufliche Probleme. Für Betreiber und Mitarbeiter drohen bei Verstößen gegen Jugendschutz, OASIS-Pflichten oder Dokumentationsvorgaben behördliche Sanktionen, Schadensersatzforderungen und erheblicher Reputationsschaden."
+            },
+            {
+              "type": "hinweis",
+              "title": "Behördliche Kontrollen",
+              "body": "Bei Audits prüfen Behörden nicht nur Papier, sondern stellen auch Wissensfragen an anwesendes Personal. Unsicherheit oder falsche Antworten werden als Mangel im Spielerschutz gewertet. Diese Schulung bereitet Sie gezielt auf solche Situationen vor."
+            },
+            {
+              "type": "fehler",
+              "title": "Typischer Fehler",
+              "body": "„Spielerschutz ist Sache der Geschäftsführung – ich bin nur Aufsicht.“ Falsch: Jede anwesende Aufsichtsperson trägt Mitverantwortung für die Umsetzung des Sozialkonzepts und kann bei Pflichtverletzungen persönlich haftbar gemacht werden."
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Verantwortung von Betreiber und Mitarbeitern",
+          "content": "Betreiber schaffen Strukturen, Mitarbeiter setzen Spielerschutz im Alltag um – durch Prävention und Früherkennung.",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "Der Betreiber muss ein wirksames Sozialkonzept vorlegen, Mitarbeiter regelmäßig schulen, Arbeitsanweisungen bereitstellen und die Einhaltung kontrollieren. Die Aufsicht vor Ort ist das sichtbare Gesicht des Spielerschutzes: Sie kontrolliert Zutritt und Alter, führt OASIS-Abfragen durch, beobachtet Spielverhalten, spricht Gäste bei Auffälligkeiten an und dokumentiert Maßnahmen.\n\nPrävention umfasst alle Maßnahmen, die problematisches Spielen verhindern sollen – etwa Einhaltung von Öffnungszeiten, Werbebeschränkungen und konsequente Zutrittskontrolle. Früherkennung bedeutet, Verhaltens- und Finanzsignale wahrzunehmen, bevor es zu einer akuten Krise kommt. Beides erfordert Aufmerksamkeit, nicht nur in Ausnahmesituationen, sondern kontinuierlich während der gesamten Schicht."
+            },
+            {
+              "type": "summary",
+              "title": "Ihre Kernaufgaben",
+              "items": [
+                "Zutrittskontrolle und Jugendschutz konsequent durchführen",
+                "OASIS-Abfrage vor jedem Spielbeginn",
+                "Spielverhalten aufmerksam beobachten",
+                "Betroffene Gäste respektvoll ansprechen und Hilfsangebote unterbreiten",
+                "Alle relevanten Vorgänge sachlich dokumentieren"
+              ]
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Praxisfall und Merksatz",
+          "content": "Im Alltag entscheidet konsequentes Handeln – auch bei vermeintlich harmlosen Situationen wie zu langen Spielzeiten.",
+          "blocks": [
+            {
+              "type": "praxis",
+              "title": "Praxisfall: Tägliche lange Spielzeiten",
+              "body": "Ein Gast kommt seit zwei Wochen täglich in die Spielhalle und spielt jeweils vier bis sechs Stunden am Stück. Er ist höflich, zahlt pünktlich und beschwert sich nie. Kollegen sagen: „Der stört niemanden – lass ihn in Ruhe.“",
+              "solution": "Lange Spielzeiten sind ein Warnsignal und dürfen nicht ignoriert werden. Beobachten Sie das Verhalten weiter, führen Sie bei Bedarf ein kurzes, respektvolles Gespräch und bieten Sie Informationsmaterial an. Dokumentieren Sie Ihre Beobachtungen und die durchgeführten Maßnahmen. Informieren Sie die verantwortliche Führungskraft, wenn sich das Muster fortsetzt."
+            },
+            {
+              "type": "merksatz",
+              "body": "Achtung ist der Beginn des Spielerschutzes – wer nicht hinschaut, kann nicht schützen."
+            },
+            {
+              "type": "quiz",
+              "question": "Welche drei Säulen umfasst das Sozialkonzept?",
+              "answers": [
+                "Marketing, Umsatz, Kundenbindung",
+                "Prävention, Früherkennung, Hilfevermittlung",
+                "Öffnungszeiten, Reinigung, Kassenführung",
+                "Werbung, Events, Stammgastprogramme"
+              ],
+              "correct": 1,
+              "explanation": "Das Sozialkonzept basiert auf Prävention, Früherkennung und Hilfevermittlung – nicht auf wirtschaftlichen Zielen."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Jugendschutz und Zutrittskontrolle",
+      "duration": 7,
+      "lessons": [
+        {
+          "id": 1,
+          "title": "Bedeutung und rechtliche Pflichten",
+          "content": "Jugendschutz ist eine zentrale Pflicht im Glücksspielrecht. Minderjährige dürfen weder eintreten noch spielen.",
+          "blocks": [
+            {
+              "type": "info",
+              "title": "Lernziele",
+              "body": "Sie kennen die rechtliche Bedeutung des Jugendschutzes, wissen, wann und wie Ausweise zu prüfen sind, und können bei Zweifeln oder fehlendem Ausweis korrekt handeln."
+            },
+            {
+              "type": "text",
+              "body": "Glücksspiel ist für Personen unter 18 Jahren verboten. Dieses Verbot gilt uneingeschränkt – unabhängig davon, ob der junge Mensch groß wirkt, bekannt ist oder von Erwachsenen begleitet wird. Für Spielhallenaufsichten ist der Jugendschutz keine Nebenaufgabe, sondern eine der wichtigsten Kontrollpflichten. Verstöße werden von Behörden besonders streng geahndet, da Minderjährige besonderen gesetzlichen Schutz genießen.\n\nDie Alterskontrolle muss vor dem ersten Spiel und bei jedem erneuten Spielbeginn erfolgen. Das Alter darf niemals geschätzt werden. Nur ein gültiger amtlicher Lichtbildausweis, der das Geburtsdatum eindeutig erkennen lässt, ist ausreichend."
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Gültige Ausweisdokumente",
+          "content": "Nur bestimmte amtliche Dokumente sind als Identitätsnachweis zulässig. Kenntnis der gültigen Ausweisarten ist prüfungsrelevant.",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "Als gültige Identitätsnachweise gelten in der Regel: Personalausweis, Reisepass, vorläufiger Personalausweis sowie anerkannte ausländische Ausweisdokumente mit Lichtbild und Geburtsdatum. Der Ausweis muss original vorgelegt werden, gut lesbar sein und dem Erscheinungsbild der Person entsprechen.\n\nKopien, Screenshots oder abgelaufene Dokumente sind nicht zulässig. Bei ausländischen Dokumenten sollten Sie im Zweifel Rücksprache mit der Führungskraft halten, wenn Sie die Gültigkeit nicht sicher beurteilen können."
+            },
+            {
+              "type": "summary",
+              "title": "Zulässige Nachweise",
+              "items": [
+                "Personalausweis (gültig, original, mit Lichtbild)",
+                "Reisepass (gültig, original, mit Lichtbild)",
+                "Vorläufiger Personalausweis mit Foto",
+                "Anerkannte ausländische Ausweisdokumente mit Geburtsdatum"
+              ]
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Identitätsprüfung, Zweifel und kein Ausweis",
+          "content": "Bei Zweifeln ist der Zutritt zu verweigern. Ohne gültigen Ausweis kein Spiel – auch für Stammgäste.",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "Die Identitätsprüfung umfasst mehr als einen kurzen Blick: Vergleichen Sie Lichtbild und Erscheinungsbild, prüfen Sie Gültigkeitsdatum und Geburtsdatum. Wirkt die Person deutlich jünger als der Ausweis angibt, oder stimmen Merkmale nicht überein, dürfen Sie den Zutritt verweigern.\n\nHat ein Gast keinen Ausweis dabei, ist kein Spiel möglich – auch dann nicht, wenn Sie die Person kennen oder sie regelmäßig kommt. Bitten Sie den Gast, den Ausweis zu holen. Spielbeginn ist erst nach erfolgreicher Kontrolle erlaubt."
+            },
+            {
+              "type": "hinweis",
+              "title": "Führerschein ist kein gültiger Ausweis",
+              "body": "Ein Führerschein ist als Identitätsnachweis im Spielhallenumfeld nicht zulässig. Er ist leichter missbrauchbar, enthält teils veraltete Adressdaten und bei Namensänderungen (z. B. nach Heirat) stimmen Name und Erscheinungsbild oft nicht mehr überein. Verlassen Sie sich ausschließlich auf amtliche Lichtbildausweise mit Geburtsdatum."
+            },
+            {
+              "type": "fehler",
+              "title": "Typischer Fehler",
+              "body": "„Der Stammgast kenne ich doch – der ist sicher über 18.“ Stammgaststatus befreit nicht von der Ausweispflicht. Behörden prüfen genau diese Ausnahmen."
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Praxisfälle Jugendschutz",
+          "content": "Typische Alltagssituationen erfordern konsequentes, höfliches Handeln ohne Ausnahmen.",
+          "blocks": [
+            {
+              "type": "praxis",
+              "title": "Stammgast ohne Ausweis",
+              "body": "Ein seit Jahren bekannter Gast kommt ohne Ausweis und möchte sofort spielen. Er sagt: „Ihr wisst doch, wie alt ich bin.“",
+              "solution": "Freundlich, aber bestimmt erklären, dass ohne gültigen amtlichen Lichtbildausweis kein Spielbeginn möglich ist. Angebot: Ausweis holen und erneut vorstellen. Keine Ausnahme für Stammgäste."
+            },
+            {
+              "type": "praxis",
+              "title": "Foto des Ausweises auf dem Handy",
+              "body": "Ein junger Gast zeigt ein Foto seines Personalausweises auf dem Smartphone und möchte spielen.",
+              "solution": "Ein Foto ist kein Originalausweis und nicht zulässig. Zutritt bzw. Spielbeginn verweigern. Den Gast bitten, das Original mitzubringen."
+            },
+            {
+              "type": "praxis",
+              "title": "Verweigerte Alterskontrolle",
+              "body": "Ein Gast weigert sich, den Ausweis vorzuzeigen, und wird laut: „Das geht Sie nichts an!“",
+              "solution": "Ruhig bleiben, sachlich erklären, dass die Kontrolle gesetzlich vorgeschrieben ist. Ohne Ausweis kein Zutritt. Bei Aggression die Führungskraft hinzuziehen. Vorgang dokumentieren."
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Merksatz und Zusammenfassung",
+          "content": "Ohne gültigen Identitätsnachweis kein Zutritt – keine Ausnahmen, keine Schätzungen.",
+          "blocks": [
+            {
+              "type": "merksatz",
+              "body": "Ohne gültigen Identitätsnachweis kein Zutritt – auch nicht für Stammgäste, auch nicht bei Zeitdruck."
+            },
+            {
+              "type": "summary",
+              "title": "Kernaussagen Jugendschutz",
+              "items": [
+                "Alterskontrolle vor jedem Spielbeginn",
+                "Nur gültige amtliche Lichtbildausweise akzeptieren",
+                "Führerschein ist nicht zulässig",
+                "Alter niemals schätzen",
+                "Bei Zweifel: Zutritt verweigern"
+              ]
+            },
+            {
+              "type": "quiz",
+              "question": "Darf ein Führerschein als Altersnachweis akzeptiert werden?",
+              "answers": [
+                "Ja, wenn ein Foto vorhanden ist",
+                "Ja, für Stammgäste",
+                "Nein",
+                "Ja, wenn über 21"
+              ],
+              "correct": 2,
+              "explanation": "Der Führerschein ist kein zulässiger Identitätsnachweis im Spielhallenumfeld."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "OASIS-Sperrsystem",
+      "duration": 5,
+      "lessons": [
+        {
+          "id": 1,
+          "title": "Zweck von OASIS und Schutzgedanke",
+          "content": "OASIS ist das bundesweite Sperrsystem für Glücksspiel. Es schützt gesperrte Personen vor weiterem Spiel.",
+          "blocks": [
+            {
+              "type": "info",
+              "title": "Lernziele",
+              "body": "Sie verstehen den Zweck von OASIS, kennen den Unterschied zwischen Selbst- und Fremdsperre und wissen, wie die Abfrage vor Spielbeginn durchzuführen ist."
+            },
+            {
+              "type": "text",
+              "body": "OASIS (Online-Abfrage Spielerstatus) ist ein zentrales Register, in dem Spielsperren gespeichert werden. Der Schutzgedanke steht im Vordergrund: Personen, die sich selbst sperren ließen oder denen eine Fremdsperre auferlegt wurde, sollen nicht in der Lage sein, Geldspielgeräte zu nutzen. Für Aufsichtspersonen ist OASIS das wichtigste technische Werkzeug der Zutrittskontrolle neben der Altersprüfung.\n\nEine Abfrage ist vor jedem Spielbeginn verpflichtend – nicht nur bei neuen Gästen, nicht nur einmal pro Tag. Liegt eine aktive Sperre vor, ist das Spielen ausgeschlossen. Diese Regel ist absolut und lässt keinen Ermessensspielraum zu."
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Selbstsperre, Fremdsperre und Abfrageablauf",
+          "content": "Selbst- und Fremdsperre unterscheiden sich in der Anstoßperson, wirken aber gleich: kein Spiel bei aktiver Sperre.",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "Bei einer Selbstsperre beantragt die betroffene Person selbst den Eintrag – etwa über das OASIS-Portal oder mit Unterstützung des Betreibers. Eine Fremdsperre kann unter gesetzlich definierten Voraussetzungen von Angehörigen oder Behörden veranlasst werden. Für die Aufsicht ist der Unterschied im Alltag weniger relevant als das Ergebnis der Abfrage: „Sperre aktiv“ bedeutet kein Zutritt zum Spiel.\n\nDer Abfrageablauf ist im Betrieb schriftlich geregelt. Typischerweise werden Name, Geburtsdatum und ggf. weitere Daten eingegeben. Das System zeigt an, ob eine Sperre besteht. Dokumentieren Sie jede Abfrage und jedes Ergebnis gemäß den internen Vorgaben."
+            },
+            {
+              "type": "info",
+              "title": "Abfrage vor Spielbeginn",
+              "body": "Die OASIS-Abfrage erfolgt nach erfolgreicher Alterskontrolle und unmittelbar vor dem ersten Spiel und bei jedem erneuten Spielbeginn. Technische Fehlermeldungen sind nach interner Anweisung zu behandeln – in der Regel kein Spiel bis zur Klärung."
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Aktive Sperre und Diskussionen",
+          "content": "Bei aktiver Sperre ist das Spielen ausgeschlossen. Diskussionen ändern daran nichts.",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "Zeigt OASIS eine aktive Sperre an, dürfen Sie den Gast nicht an die Geräte lassen. Informieren Sie sachlich, dass eine Sperre vorliegt, ohne medizinische oder persönliche Details preiszugeben. Bieten Sie bei Bedarf Informationsmaterial zu Beratungsstellen an.\n\nGäste diskutieren mitunter die Sperre ab – sie behaupten, der Eintrag sei ein Fehler, sei bereits aufgehoben oder gelte nur für Casinos. Ihre Antwort bleibt konsequent: Solange das System eine aktive Sperre anzeigt, ist kein Spiel möglich. Änderungen können nur über die zuständigen Stellen erfolgen, nicht vor Ort durch Aufsichtspersonal."
+            },
+            {
+              "type": "fehler",
+              "title": "Typischer Fehler",
+              "body": "„Der Gast wirkt verzweifelt – ich lasse ihn ausnahmsweise spielen.“ Eine aktive OASIS-Sperre erlaubt keine Ausnahme. Mitspielen wäre ein schwerer Verstoß gegen den Spielerschutz."
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Praxisfälle OASIS",
+          "content": "Konsequentes Handeln bei Fehlerbehauptungen, Ausnahmewünschen und aggressivem Verhalten.",
+          "blocks": [
+            {
+              "type": "praxis",
+              "title": "Gast behauptet Systemfehler",
+              "body": "OASIS zeigt eine aktive Sperre. Der Gast besteht darauf, er habe die Sperre vor Monaten aufheben lassen. Er fordert, trotzdem spielen zu dürfen.",
+              "solution": "Sachlich erklären, dass nur der aktuelle Systemstatus maßgeblich ist. Kein Spiel bei aktiver Anzeige. Auf Möglichkeit hinweisen, die Sperre über offizielle Kanäle klären zu lassen. Vorgang dokumentieren."
+            },
+            {
+              "type": "praxis",
+              "title": "Bitte um Ausnahme",
+              "body": "Ein Gast mit aktiver Sperre bittet: „Nur heute, nur eine halbe Stunde – morgen kläre ich alles.“",
+              "solution": "Freundlich, aber klar ablehnen. Keine zeitlich begrenzten Ausnahmen. Angebot von Informationsmaterial und Hinweis auf Beratungsstellen."
+            },
+            {
+              "type": "praxis",
+              "title": "Aggressives Verhalten",
+              "body": "Nach Anzeige einer Sperre wird ein Gast laut, schlägt auf den Tresen und droht mit Anwalt.",
+              "solution": "Ruhe bewahren, Grenzen setzen, Führungskraft hinzuziehen. Bei Bedarf Polizei. Kein Spiel trotz Druck. Vorgang vollständig dokumentieren."
+            },
+            {
+              "type": "merksatz",
+              "body": "Bei OASIS gibt es keinen Ermessensspielraum – aktive Sperre bedeutet kein Spiel, ohne Ausnahme."
+            },
+            {
+              "type": "quiz",
+              "question": "Darf bei aktiver OASIS-Sperre ausnahmsweise gespielt werden?",
+              "answers": [
+                "Ja, wenn der Gast es verspricht",
+                "Ja, für Stammgäste",
+                "Nein, niemals",
+                "Ja, wenn die Führungskraft zustimmt"
+              ],
+              "correct": 2,
+              "explanation": "Eine aktive Sperre schließt das Spielen absolut aus – es gibt keine Ausnahmen vor Ort."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Problematisches Spielverhalten erkennen",
+      "duration": 7,
+      "lessons": [
+        {
+          "id": 1,
+          "title": "Warnsignale in vier Bereichen",
+          "content": "Finanzielle, emotionale, soziale und verhaltensbezogene Signale können auf problematisches Spielen hinweisen.",
+          "blocks": [
+            {
+              "type": "info",
+              "title": "Lernziele",
+              "body": "Sie können Warnsignale in finanziellen, emotionalen, sozialen und verhaltensbezogenen Bereichen benennen, verstehen, dass Einzelzeichen nicht ausreichen, und wissen, wann ein Gespräch angezeigt ist."
+            },
+            {
+              "type": "text",
+              "body": "Problematisches Spielverhalten äußert sich selten in einem einzigen Moment. Häufig zeigen sich schleichende Veränderungen über Wochen oder Monate. Als Aufsicht sollten Sie vier Bereiche im Blick behalten:\n\nFinanzielle Signale: häufige oder steigende Geldabhebungen am Automaten, Wechseln großer Scheine, Bitte um Zeit zum „Geld holen“, sichtbare Nervosität bei Verlusten, Spielen bis zur Erschöpfung des verfügbaren Geldes.\n\nEmotionale Signale: starke Stimmungsschwankungen am Gerät, Aggression bei Verlust, Euphorie bei kleinen Gewinnen, Weinen oder sichtbarer Verzweiflung, Unfähigkeit, das Spiel zu beenden.\n\nSoziale Signale: Vernachlässigung von Begleitpersonen, Telefonate mit Streit über Geld oder Zeit, Hinweise auf familiäre oder berufliche Probleme im Gespräch, Isolation – der Gast kommt zunehmend allein und zu unregelmäßigen Zeiten.\n\nVerhaltensbezogene Signale: sehr lange Spielzeiten, tägliches Erscheinen, Wechsel zwischen mehreren Geräten, „Verlustjagd“ – also sofortiges Weiterspielen nach Verlusten, um Verluste auszugleichen."
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Einzelzeichen reichen nicht aus",
+          "content": "Ein einzelnes Merkmal beweist keine Spielsucht. Entscheidend ist das Gesamtbild mehrerer Signale.",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "Es ist wichtig, Warnsignale nicht zu überinterpretieren, aber auch nicht zu ignorieren. Ein Gast, der einmal länger spielt oder einmal gereizt reagiert, ist nicht automatisch spielgefährdet. Gelegentliche längere Besuche können harmlos sein. Entscheidend ist das Muster: Treten mehrere Signale wiederholt oder in Kombination auf?\n\nDie Aufgabe der Aufsicht ist nicht, Diagnosen zu stellen. Sie sollen Auffälligkeiten wahrnehmen, einordnen und bei Bedarf ein Gespräch anbieten. Formulierungen wie „Sie sind spielsüchtig“ sind tabu. Stattdessen: „Mir ist aufgefallen, dass Sie heute schon längere Zeit spielen – darf ich Ihnen Informationen zu Spielerschutz anbieten?“"
+            },
+            {
+              "type": "hinweis",
+              "title": "Keine Diagnose stellen",
+              "body": "Nur Fachkräfte stellen Diagnosen. Ihre Rolle ist Beobachtung, Ansprache und Dokumentation – nicht Bewertung oder Stigmatisierung."
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Praxisfälle – Finanzielle und emotionale Signale",
+          "content": "Typische Situationen aus dem Spielhallenalltag mit empfohlener Reaktion.",
+          "blocks": [
+            {
+              "type": "praxis",
+              "title": "Häufige Geldabhebungen",
+              "body": "Ein Gast hebt innerhalb von zwei Stunden dreimal Geld am Automaten ab und kehrt jedes Mal sofort zum Gerät zurück.",
+              "solution": "Als auffällig einstufen. Beobachten und bei Fortsetzung ein kurzes, respektvolles Gespräch anbieten. Informationsmaterial bereithalten. Beobachtungen dokumentieren."
+            },
+            {
+              "type": "praxis",
+              "title": "Verlustjagd",
+              "body": "Nach jedem Verlust spielt der Gast sofort weiter, erhöht scheinbar den Einsatz und wirkt zunehmend angespannt.",
+              "solution": "Verlustjagd ist ein klassisches Warnsignal. Freundlich ansprechen, Pause vorschlagen, Hilfsangebote unterbreiten. Bei Weigerung beobachten und dokumentieren."
+            },
+            {
+              "type": "praxis",
+              "title": "Emotionale Reaktionen",
+              "body": "Ein Gast schlägt nach einem Verlust auf das Gerät, atmet schwer und sagt: „Das kann nicht wahr sein – ich muss das zurückgewinnen.“",
+              "solution": "Ruhe bewahren, deeskalierend sprechen, Pause anregen. Informationsmaterial anbieten. Bei Aggression Führungskraft einschalten. Vorgang dokumentieren."
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Praxisfälle – Soziale und verhaltensbezogene Signale",
+          "content": "Weitere Alltagssituationen, in denen mehrere Signale zusammentreffen können.",
+          "blocks": [
+            {
+              "type": "praxis",
+              "title": "Tägliches Erscheinen",
+              "body": "Ein Gast kommt seit zehn Tagen täglich, meist zu denselben Zeiten, und spielt durchgehend drei bis fünf Stunden.",
+              "solution": "Wiederholtes Muster als Warnsignal werten. Gespräch anbieten, Informationsmaterial überreichen. Führungskraft informieren. Dokumentation mit Datum, Dauer, beobachtetem Verhalten."
+            },
+            {
+              "type": "praxis",
+              "title": "Vernachlässigung von Terminen",
+              "body": "Ein Gast telefoniert mehrfach laut: „Ich komme gleich, ich bin noch unterwegs“ – und spielt weiter.",
+              "solution": "Soziales Signal erkennen. Beim Verlassen dezent ansprechen, ob alles in Ordnung sei. Informationsmaterial anbieten. Nicht mithören oder kommentieren, aber Beobachtung dokumentieren."
+            },
+            {
+              "type": "praxis",
+              "title": "Kombination mehrerer Signale",
+              "body": "Gast spielt seit sechs Stunden, hat viermal Geld abgehoben, wirkte zunehmend gereizt und hat ein Hilfsflyer zuvor weggeworfen.",
+              "solution": "Mehrere Signale im Gesamtbild: Gespräch jetzt angezeigt. Ruhig ansprechen, Hilfsangebote erneut unterbreiten, Führungskraft informieren, ausführlich dokumentieren."
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Merksatz und Gesamtbild",
+          "content": "Entscheidend ist das Gesamtbild – nicht ein einzelnes Merkmal isoliert betrachten.",
+          "blocks": [
+            {
+              "type": "merksatz",
+              "body": "Nicht das Einzelzeichen entscheidet – das Gesamtbild aus wiederholten und kombinierten Warnsignalen gibt Orientierung."
+            },
+            {
+              "type": "summary",
+              "title": "Vier Bereiche im Überblick",
+              "items": [
+                "Finanzielle Signale: Abhebungen, Verlustjagd, Geldmangel",
+                "Emotionale Signale: Aggression, Verzweiflung, Euphorie",
+                "Soziale Signale: Isolation, Konflikte, Vernachlässigung",
+                "Verhaltensbezogene Signale: lange Zeiten, tägliches Kommen, Wechsel der Geräte"
+              ]
+            },
+            {
+              "type": "quiz",
+              "question": "Beweist ein einzelnes Warnsignal automatisch eine Spielsucht?",
+              "answers": [
+                "Ja",
+                "Nein",
+                "Nur bei Stammgästen",
+                "Nur bei hohen Einsätzen"
+              ],
+              "correct": 1,
+              "explanation": "Einzelne Merkmale reichen nicht aus. Entscheidend ist das Gesamtbild mehrerer wiederholter Signale."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Gäste ansprechen",
+      "duration": 5,
+      "lessons": [
+        {
+          "id": 1,
+          "title": "Gesprächsziele und Vorbereitung",
+          "content": "Gespräche dienen der Unterstützung, nicht der Verurteilung. Gute Vorbereitung erhöht die Erfolgschancen.",
+          "blocks": [
+            {
+              "type": "info",
+              "title": "Lernziele",
+              "body": "Sie kennen die Ziele eines Spielerschutzgesprächs, wissen, wie Sie sich vorbereiten, und können auf typische Abwehrreaktionen professionell reagieren."
+            },
+            {
+              "type": "text",
+              "body": "Ein Spielerschutzgespräch verfolgt klare Ziele: den Gast wahrnehmen, ohne zu beschämen; auf beobachtete Auffälligkeiten sachlich hinweisen; Informationsmaterial und Hilfsangebote unterbreiten; und den Gast in die Lage versetzen, selbst eine Entscheidung zu treffen. Sie sollen nicht überzeugen oder Druck ausüben.\n\nBereiten Sie sich vor: Wählen Sie einen ruhigen Moment, nicht mitten in einer Spielrunde. Halten Sie Informationsmaterial bereit. Wissen Sie, an wen Sie im Haus weiterleiten (Führungskraft, zuständige Ansprechperson). Planen Sie kurze, klare Formulierungen – lange Vorträge wirken bevormundend."
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Struktur, Körpersprache und Konfliktvermeidung",
+          "content": "Ruhige, respektvolle Gesprächsführung reduziert Abwehr und erhöht die Bereitschaft, Informationen anzunehmen.",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "Eine bewährte Struktur: (1) Anknüpfung – „Mir ist aufgefallen …“; (2) Beobachtung sachlich benennen – ohne Bewertung; (3) Angebot – Informationsmaterial, Beratungsstellen; (4) Offenes Ende – „Wenn Sie möchten, können Sie jederzeit …“\n\nKörpersprache: offene Haltung, angemessener Abstand, ruhiger Ton, Blickkontakt ohne Starren. Vermeiden Sie Zeigefinger, verschränkte Arme oder lautes Sprechen.\n\nKonfliktvermeidung: nicht widersprechen, nicht persönlich werden, nicht diskutieren. Bei Aggression Gespräch beenden, Führungskraft hinzuziehen. Ziel ist nicht der Sieg im Gespräch, sondern das Angebot von Hilfe."
+            },
+            {
+              "type": "fehler",
+              "title": "Typischer Fehler",
+              "body": "„Sie spielen viel zu viel – so geht das nicht weiter!“ Vorwurfsvolle Formulierungen führen fast immer zu Abwehr. Beobachtungen sachlich benennen, nicht verurteilen."
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Dialogbeispiele",
+          "content": "Professionelle Antworten auf typische Abwehrreaktionen von Gästen.",
+          "blocks": [
+            {
+              "type": "dialog",
+              "title": "„Das geht Sie nichts an!“",
+              "lines": [
+                {
+                  "speaker": "Gast",
+                  "text": "Das geht Sie doch gar nichts an!"
+                },
+                {
+                  "speaker": "Aufsicht",
+                  "text": "Ich verstehe, dass das persönlich wirkt. Mir geht es nicht um Ihre privaten Angelegenheiten, sondern um unseren Spielerschutz. Mir ist aufgefallen, dass Sie heute schon längere Zeit spielen. Ich möchte Ihnen nur dieses Informationsmaterial anbieten – völlig freiwillig."
+                }
+              ]
+            },
+            {
+              "type": "dialog",
+              "title": "„Ich habe alles unter Kontrolle.“",
+              "lines": [
+                {
+                  "speaker": "Gast",
+                  "text": "Machen Sie sich keine Sorgen, ich habe alles unter Kontrolle."
+                },
+                {
+                  "speaker": "Aufsicht",
+                  "text": "Das freut mich zu hören. Trotzdem ist es unsere Aufgabe, Gäste auf Hilfsangebote hinzuweisen, wenn uns etwas auffällt. Nehmen Sie dieses Flyer mit – falls Sie es doch einmal brauchen, stehen dort kostenlose Beratungsstellen."
+                }
+              ]
+            },
+            {
+              "type": "dialog",
+              "title": "„Ich brauche keine Hilfe.“",
+              "lines": [
+                {
+                  "speaker": "Gast",
+                  "text": "Ich brauche keine Hilfe, lassen Sie mich in Ruhe."
+                },
+                {
+                  "speaker": "Aufsicht",
+                  "text": "Natürlich, ich möchte Sie nicht bedrängen. Ich lasse Ihnen das Material einfach hier – Sie entscheiden selbst. Wenn Sie Fragen haben, bin ich gerne da."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Hilfsangebote und Merksatz",
+          "content": "Unterstützen statt verurteilen – Hilfsangebote klar und respektvoll vermitteln.",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "Unterbreiten Sie konkrete Hilfsangebote: Flyer mit Beratungsstellen, BZgA-Hotline, lokale Suchtberatung, OASIS-Informationen zur Selbstsperre. Erklären Sie, dass Beratung vertraulich und kostenlos sein kann. Bieten Sie an, die zuständige Ansprechperson im Haus zu holen, wenn der Gast das wünscht.\n\nDokumentieren Sie jedes Gespräch: Datum, Uhrzeit, beobachtete Auffälligkeiten, Inhalt des Gesprächs, übergebenes Material, Reaktion des Gastes."
+            },
+            {
+              "type": "merksatz",
+              "body": "Unterstützen, nicht verurteilen – Ihre Aufgabe ist das Angebot von Hilfe, nicht das Urteil über den Gast."
+            },
+            {
+              "type": "quiz",
+              "question": "Wie sollten Sie einen Gast ansprechen?",
+              "answers": [
+                "Direkt als spielsüchtig bezeichnen",
+                "Sachlich Beobachtungen benennen und Hilfsangebote unterbreiten",
+                "Laut vor anderen Gästen warnen",
+                "Spiel sofort unterbrechen und Hausverbot aussprechen"
+              ],
+              "correct": 1,
+              "explanation": "Gespräche sollen ruhig, sachlich und respektvoll sein – ohne Stigmatisierung."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Selbst- und Fremdsperre",
+      "duration": 4,
+      "lessons": [
+        {
+          "id": 1,
+          "title": "Selbstsperre und Fremdsperre im Überblick",
+          "content": "Selbst- und Fremdsperre schützen Betroffene auf unterschiedlichen Wegen – die Aufsicht leitet weiter und setzt Sperren vor Ort nicht in Frage.",
+          "blocks": [
+            {
+              "type": "info",
+              "title": "Lernziele",
+              "body": "Sie unterscheiden Selbst- und Fremdsperre, kennen Ihre Rolle als Aufsicht und wissen, wann und an wen Sie weiterleiten."
+            },
+            {
+              "type": "text",
+              "body": "Eine Selbstsperre beantragt die betroffene Person selbst – sie erkennt, dass sie Unterstützung braucht, oder möchte sich schützen. Antragstellung erfolgt über OASIS (online oder mit Unterstützung). Die Sperre gilt bundesweit für alle teilnehmenden Anbieter.\n\nEine Fremdsperre wird von Dritten (Angehörige, Behörden) unter strengen Voraussetzungen angestoßen, wenn eine Selbstsperre nicht greift und Gefährdung vorliegt. Für die Aufsicht gilt in beiden Fällen: Liegt eine aktive Sperre in OASIS vor, kein Spiel.\n\nIhre Rolle bei Sperrwünschen: Sie nehmen den Wunsch ernst, leiten umgehend an die verantwortliche Person weiter und spielen selbst keine Beratungsrolle. Sie kennen den Ablauf im Haus und können Informationsmaterial aushändigen."
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Weiterleitung und Praxisfälle",
+          "content": "Bei Sperrwünschen und Rückfragen zu Sperren ist die richtige Weiterleitung entscheidend.",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "Wenn ein Gast eine Selbstsperre wünscht, informieren Sie sofort die zuständige Führungskraft oder Ansprechperson für Spielerschutz. Der Gast soll nicht allein gelassen werden, aber die formale Antragstellung obliegt den dafür vorgesehenen Stellen. Halten Sie Informationsmaterial bereit und erklären Sie kurz, dass eine Selbstsperre bundesweit wirkt.\n\nBei Fragen zu Fremdsperren (z. B. Angehörige möchten jemanden sperren lassen): Nicht selbst beurteilen. An Führungskraft oder Beratungsstelle verweisen. Dokumentieren Sie Anfragen."
+            },
+            {
+              "type": "praxis",
+              "title": "Gast wünscht Selbstsperre",
+              "body": "Ein Gast sagt sichtbar angespannt: „Ich kann nicht mehr aufhören – sperren Sie mich bitte sofort.“",
+              "solution": "Ernst nehmen, beruhigend reagieren, sofort Führungskraft/Ansprechperson holen. Informationsmaterial geben. Gast nicht allein lassen. Vorgang dokumentieren."
+            },
+            {
+              "type": "praxis",
+              "title": "Angehöriger fragt nach Fremdsperre",
+              "body": "Eine Person am Tresen fragt: „Können Sie meinen Partner sperren? Er spielt unser ganzes Geld weg.“",
+              "solution": "Mitfühlend antworten, aber keine Fremdsperre vor Ort veranlassen. An Führungskraft und Beratungsstelle verweisen. Datenschutz beachten – keine Auskunft über Spielverhalten Dritter."
+            },
+            {
+              "type": "praxis",
+              "title": "Gast fragt, ob Sperre schon aktiv ist",
+              "body": "Ein Gast hat gestern eine Selbstsperre beantragt und fragt heute, ob er schon spielen darf.",
+              "solution": "OASIS-Abfrage durchführen. Nur wenn keine Sperre angezeigt wird, ist Spielen möglich – sonst verweigern. Bei Unklarheit Führungskraft einschalten."
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Zusammenfassung",
+          "content": "Aufsicht leitet weiter, setzt Sperren nicht außer Kraft und dokumentiert Sperrwünsche.",
+          "blocks": [
+            {
+              "type": "summary",
+              "title": "Kernaussagen Selbst- und Fremdsperre",
+              "items": [
+                "Selbstsperre: Antrag durch betroffene Person",
+                "Fremdsperre: Antrag durch Dritte unter Voraussetzungen",
+                "Beide wirken über OASIS bundesweit",
+                "Aufsicht leitet Sperrwünsche weiter, berät nicht umfassend",
+                "Aktive Sperre in OASIS = kein Spiel"
+              ]
+            },
+            {
+              "type": "quiz",
+              "question": "Was tun Sie, wenn ein Gast eine Selbstsperre wünscht?",
+              "answers": [
+                "Selbst die Sperre im System eintragen",
+                "Ernst nehmen und an zuständige Person weiterleiten",
+                "Abwarten bis Schichtende",
+                "Nur Informationsmaterial geben und Gast allein lassen"
+              ],
+              "correct": 1,
+              "explanation": "Sperrwünsche sind ernst zu nehmen und umgehend an die verantwortliche Stelle weiterzuleiten."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Dokumentation",
+      "duration": 3,
+      "lessons": [
+        {
+          "id": 1,
+          "title": "Warum und was dokumentieren",
+          "content": "Dokumentation schützt Gäste, Mitarbeiter und Betreiber. Sie muss nachvollziehbar und sachlich sein.",
+          "blocks": [
+            {
+              "type": "info",
+              "title": "Lernziele",
+              "body": "Sie wissen, warum und was zu dokumentieren ist, können sachliche Formulierungen von Vermutungen unterscheiden und beachten Datenschutz und Nachvollziehbarkeit."
+            },
+            {
+              "type": "text",
+              "body": "Dokumentation ist ein zentraler Bestandteil des Spielerschutzes und dient mehreren Zwecken: Sie belegt gegenüber Behörden, dass Maßnahmen ergriffen wurden; sie schafft Kontinuität zwischen Schichten; und sie schützt Mitarbeiter vor dem Vorwurf, untätig gewesen zu sein.\n\nZu dokumentieren sind insbesondere: Auffälligkeiten im Spielverhalten (mit Datum, Uhrzeit, konkreten Beobachtungen); durchgeführte Alters- und OASIS-Kontrollen bei relevanten Vorfällen; Gespräche mit Gästen (Inhalt, Angebot von Material, Reaktion); verweigerte Zutritte und deren Gründe; Weiterleitungen an Führungskräfte oder Behörden."
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Sachlichkeit, Datenschutz und Beispiele",
+          "content": "Gute Dokumentation beschreibt Beobachtungen, keine Vermutungen. Datenschutz ist zu wahren.",
+          "blocks": [
+            {
+              "type": "text",
+              "body": "Formulieren Sie sachlich und objektiv: Was haben Sie wann gesehen oder gehört? Was haben Sie getan? Vermeiden Sie wertende Begriffe wie „spielsüchtig“, „Aggressor“ oder „Lügner“. Schreiben Sie so, dass eine dritte Person den Ablauf nachvollziehen kann.\n\nDatenschutz: Dokumentation nur im vorgesehenen System, keine privaten Notizen, keine Weitergabe an Unbefugte. Personenbezogene Daten nur so detailliert wie nötig."
+            },
+            {
+              "type": "fehler",
+              "title": "Schlechtes Beispiel",
+              "body": "„Der Typ ist total spielsüchtig und lügt bestimmt. Hab ihn rausgeschmissen.“ – Wertend, ungenau, nicht nachvollziehbar, datenschutzrechtlich problematisch."
+            },
+            {
+              "type": "info",
+              "title": "Gutes Beispiel",
+              "body": "„05.03.2025, 19:40 Uhr: Gast (männlich, ca. 45 J.) spielte seit ca. 5 Std. am GSG. Dreimal Geld am Automaten abgehoben. Wirkt zunehmend gereizt nach Verlusten. Gespräch angeboten, Flyer übergeben (BZgA). Gast lehnt Pause ab, nimmt Flyer mit. Führungskraft Frau M. informiert.“"
+            },
+            {
+              "type": "hinweis",
+              "title": "Nachvollziehbarkeit",
+              "body": "Behörden prüfen bei Audits nicht nur, ob dokumentiert wurde, sondern ob die Dokumentation den Tatsachen entspricht und Maßnahmen plausibel nachvollziehbar sind."
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Merksatz und Zusammenfassung",
+          "content": "Beobachtungen dokumentieren, nicht Vermutungen – sachlich, vollständig, datenschutzkonform.",
+          "blocks": [
+            {
+              "type": "merksatz",
+              "body": "Dokumentieren Sie Beobachtungen, nicht Vermutungen – sachlich, zeitnah und nachvollziehbar."
+            },
+            {
+              "type": "summary",
+              "title": "Dokumentations-Checkliste",
+              "items": [
+                "Datum und Uhrzeit angeben",
+                "Konkrete Beobachtungen beschreiben",
+                "Durchgeführte Maßnahmen festhalten",
+                "Wertungen und Diagnosen vermeiden",
+                "Datenschutz und internes System beachten"
+              ]
+            },
+            {
+              "type": "quiz",
+              "question": "Was gehört in eine sachliche Dokumentation?",
+              "answers": [
+                "Persönliche Meinungen und Diagnosen",
+                "Konkrete Beobachtungen mit Zeitangabe und durchgeführte Maßnahmen",
+                "Nur der Name des Gastes",
+                "Gerüchte von Kollegen"
+              ],
+              "correct": 1,
+              "explanation": "Dokumentation soll Beobachtungen und Maßnahmen nachvollziehbar festhalten – ohne Vermutungen oder Wertungen."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "exam": [
+    {
+      "id": 1,
+      "moduleId": 1,
+      "question": "Welches Hauptziel verfolgt das Sozialkonzept?",
+      "type": "single",
+      "answers": [
+        "Umsatzsteigerung",
+        "Spielerschutz",
+        "Marketing",
+        "Kundenbindung"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 2,
+      "moduleId": 1,
+      "question": "Welche drei Säulen umfasst das Sozialkonzept?",
+      "type": "multiple",
+      "answers": [
+        "Prävention",
+        "Früherkennung",
+        "Hilfevermittlung",
+        "Werbung"
+      ],
+      "correct": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": 3,
+      "moduleId": 1,
+      "question": "Spielerschutz ist ausschließlich Aufgabe der Geschäftsführung.",
+      "type": "boolean",
+      "correct": false
+    },
+    {
+      "id": 4,
+      "moduleId": 1,
+      "question": "Praxisfall: Ein Gast spielt täglich mehrere Stunden und stört niemanden. Was ist richtig?",
+      "type": "single",
+      "answers": [
+        "Ignorieren, da kein Ärgernis",
+        "Als Warnsignal wahrnehmen und bei Bedarf ansprechen",
+        "Sofort Hausverbot",
+        "Nur Führungskraft informieren ohne Beobachtung"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 5,
+      "moduleId": 2,
+      "question": "Wann muss ein Ausweis kontrolliert werden?",
+      "type": "single",
+      "answers": [
+        "Nur bei Verdacht",
+        "Vor jedem Spielbeginn",
+        "Beim Verlassen",
+        "Gar nicht"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 6,
+      "moduleId": 2,
+      "question": "Ist ein Führerschein als Altersnachweis in der Spielhalle zulässig?",
+      "type": "boolean",
+      "correct": false
+    },
+    {
+      "id": 7,
+      "moduleId": 2,
+      "question": "Welche Dokumente sind als Identitätsnachweis grundsätzlich zulässig?",
+      "type": "multiple",
+      "answers": [
+        "Personalausweis",
+        "Reisepass",
+        "Führerschein",
+        "Vorläufiger Personalausweis mit Foto"
+      ],
+      "correct": [
+        0,
+        1,
+        3
+      ]
+    },
+    {
+      "id": 8,
+      "moduleId": 2,
+      "question": "Darf ein Stammgast ohne Ausweis spielen?",
+      "type": "single",
+      "answers": [
+        "Ja",
+        "Nein"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 9,
+      "moduleId": 2,
+      "question": "Praxisfall: Gast zeigt Foto des Ausweises auf dem Handy. Wie handeln?",
+      "type": "single",
+      "answers": [
+        "Akzeptieren",
+        "Zutritt verweigern – Originalausweis erforderlich",
+        "Nur OASIS prüfen",
+        "Führungskraft entscheiden lassen ohne Prüfung"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 10,
+      "moduleId": 2,
+      "question": "Darf das Alter von Gästen geschätzt werden, wenn sie erwachsen wirken?",
+      "type": "boolean",
+      "correct": false
+    },
+    {
+      "id": 11,
+      "moduleId": 3,
+      "question": "Wann erfolgt die OASIS-Abfrage?",
+      "type": "single",
+      "answers": [
+        "Vor Spielbeginn",
+        "Nach Spielende",
+        "Nur bei Stammgästen",
+        "Nur bei Verdacht"
+      ],
+      "correct": 0
+    },
+    {
+      "id": 12,
+      "moduleId": 3,
+      "question": "Darf ein gesperrter Gast ausnahmsweise spielen?",
+      "type": "boolean",
+      "correct": false
+    },
+    {
+      "id": 13,
+      "moduleId": 3,
+      "question": "Was tun bei aktiver OASIS-Sperre?",
+      "type": "single",
+      "answers": [
+        "Einlass erlauben",
+        "Einlass verweigern",
+        "Gast unterschreiben lassen",
+        "Nur Führungskraft informieren und spielen lassen"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 14,
+      "moduleId": 3,
+      "question": "Praxisfall: Gast behauptet, Sperre sei aufgehoben, OASIS zeigt Sperre. Was tun?",
+      "type": "single",
+      "answers": [
+        "Spielen erlauben",
+        "Kein Spiel – Systemstatus maßgeblich",
+        "Nur eine Stunde spielen lassen",
+        "Ausweis reicht"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 15,
+      "moduleId": 3,
+      "question": "Gibt es bei OASIS Ermessensspielraum für die Aufsicht vor Ort?",
+      "type": "boolean",
+      "correct": false
+    },
+    {
+      "id": 16,
+      "moduleId": 4,
+      "question": "Welche Verhaltensweisen können Warnsignale sein?",
+      "type": "multiple",
+      "answers": [
+        "Lange Spielzeiten",
+        "Häufige Geldabhebungen",
+        "Verlustjagd",
+        "Pünktliches Verlassen nach kurzer Zeit"
+      ],
+      "correct": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": 17,
+      "moduleId": 4,
+      "question": "Ein einzelnes Merkmal beweist automatisch eine Spielsucht.",
+      "type": "boolean",
+      "correct": false
+    },
+    {
+      "id": 18,
+      "moduleId": 4,
+      "question": "Zu welchen Bereichen gehören Warnsignale?",
+      "type": "multiple",
+      "answers": [
+        "Finanzielle Signale",
+        "Emotionale Signale",
+        "Soziale Signale",
+        "Verhaltensbezogene Signale"
+      ],
+      "correct": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": 19,
+      "moduleId": 4,
+      "question": "Praxisfall: Gast spielt 6 Std., hebt viermal Geld ab, wirkt gereizt. Wie reagieren?",
+      "type": "single",
+      "answers": [
+        "Ignorieren",
+        "Gespräch anbieten und dokumentieren",
+        "Gerät abschalten",
+        "Hausverbot sofort"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 20,
+      "moduleId": 4,
+      "question": "Soll die Aufsicht Diagnosen wie „spielsüchtig“ stellen?",
+      "type": "boolean",
+      "correct": false
+    },
+    {
+      "id": 21,
+      "moduleId": 5,
+      "question": "Informationsmaterial soll auffälligen Gästen angeboten werden.",
+      "type": "boolean",
+      "correct": true
+    },
+    {
+      "id": 22,
+      "moduleId": 5,
+      "question": "Darf ein Gast direkt als spielsüchtig bezeichnet werden?",
+      "type": "single",
+      "answers": [
+        "Ja",
+        "Nein"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 23,
+      "moduleId": 5,
+      "question": "Gast sagt: „Das geht Sie nichts an!“ Wie reagieren Sie am besten?",
+      "type": "single",
+      "answers": [
+        "Laut zurückargumentieren",
+        "Sachlich erklären und freiwilliges Informationsangebot machen",
+        "Gast sofort des Hauses verweisen",
+        "Thema ignorieren"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 24,
+      "moduleId": 5,
+      "question": "Gast sagt: „Ich habe alles unter Kontrolle.“ Professionelle Reaktion?",
+      "type": "single",
+      "answers": [
+        "„Nein, das glaube ich nicht.“",
+        "Trotzdem Hilfsangebot und Flyer anbieten",
+        "Gespräch abbrechen und Spot anmachen",
+        "Polizei rufen"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 25,
+      "moduleId": 5,
+      "question": "Gast sagt: „Ich brauche keine Hilfe.“ Wie reagieren?",
+      "type": "single",
+      "answers": [
+        "Druck ausüben bis Gast zustimmt",
+        "Material anbieten und Gast nicht bedrängen",
+        "Laut vor anderen warnen",
+        "Spiel sofort unterbrechen"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 26,
+      "moduleId": 6,
+      "question": "Wer kann eine Selbstsperre beantragen?",
+      "type": "single",
+      "answers": [
+        "Nur die Behörde",
+        "Der betroffene Gast",
+        "Nur der Betreiber",
+        "Niemand"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 27,
+      "moduleId": 6,
+      "question": "Was tun Sie bei Sperrwunsch eines Gastes?",
+      "type": "single",
+      "answers": [
+        "Selbst eintragen und weiterarbeiten",
+        "Ernst nehmen und an zuständige Person weiterleiten",
+        "Ignorieren",
+        "Nur Flyer geben"
+      ],
+      "correct": 1
+    },
+    {
+      "id": 28,
+      "moduleId": 6,
+      "question": "Selbst- und Fremdsperre wirken über OASIS bundesweit.",
+      "type": "boolean",
+      "correct": true
+    },
+    {
+      "id": 29,
+      "moduleId": 7,
+      "question": "Müssen relevante Gespräche und Maßnahmen dokumentiert werden?",
+      "type": "single",
+      "answers": [
+        "Ja",
+        "Nein"
+      ],
+      "correct": 0
+    },
+    {
+      "id": 30,
+      "moduleId": 7,
+      "question": "Was gehört in gute Dokumentation?",
+      "type": "multiple",
+      "answers": [
+        "Datum und Uhrzeit",
+        "Konkrete Beobachtungen",
+        "Persönliche Vermutungen",
+        "Durchgeführte Maßnahmen"
+      ],
+      "correct": [
+        0,
+        1,
+        3
+      ]
+    },
+    {
+      "id": 31,
+      "moduleId": 7,
+      "question": "„Der Gast ist sicher spielsüchtig“ ist eine sachliche Dokumentation.",
+      "type": "boolean",
+      "correct": false
+    },
+    {
+      "id": 32,
+      "moduleId": 7,
+      "question": "Praxisfall: Nach OASIS-Verweigerung und Gespräch – was dokumentieren?",
+      "type": "single",
+      "answers": [
+        "Nichts, war ja harmlos",
+        "Zeit, Beobachtungen, Maßnahmen und Reaktion des Gastes",
+        "Nur den Namen",
+        "Gerüchte der Kollegen"
+      ],
+      "correct": 1
+    }
+  ],
+  "examPoolSize": 32
+}
