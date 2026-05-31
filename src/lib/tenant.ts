@@ -1,4 +1,4 @@
-import { ensureSeeded, getSql } from "./db";
+import { getSql } from "./db";
 import type { Company, CompanyBranding, PrivacyPolicyVersion, SessionUser } from "./types";
 
 export function mapCompany(row: Record<string, unknown>): Company {
@@ -35,14 +35,12 @@ export function mapCompany(row: Record<string, unknown>): Company {
 }
 
 export async function getCompanyById(id: number): Promise<Company | undefined> {
-  await ensureSeeded();
   const sql = getSql();
   const rows = await sql`SELECT * FROM companies WHERE id = ${id} LIMIT 1`;
   return rows[0] ? mapCompany(rows[0] as Record<string, unknown>) : undefined;
 }
 
 export async function getCompanyBySlug(slug: string): Promise<Company | undefined> {
-  await ensureSeeded();
   const sql = getSql();
   const rows = await sql`SELECT * FROM companies WHERE slug = ${slug} LIMIT 1`;
   return rows[0] ? mapCompany(rows[0] as Record<string, unknown>) : undefined;
@@ -87,7 +85,6 @@ export async function getCompanySummaries(): Promise<
     adminName: string | null;
   }>
 > {
-  await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
     SELECT
@@ -128,7 +125,6 @@ export async function getCompanySummaries(): Promise<
 }
 
 export async function deleteCompanyUser(userId: number, companyId: number): Promise<boolean> {
-  await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
     DELETE FROM users

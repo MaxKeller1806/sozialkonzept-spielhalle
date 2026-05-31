@@ -19,7 +19,7 @@ export function getSql(): postgres.Sql {
     sql = postgres(getDatabaseUrl(), {
       ssl: process.env.NODE_ENV === "production" ? "require" : "prefer",
       prepare: false,
-      max: 10,
+      max: process.env.NODE_ENV === "production" ? 1 : 10,
       idle_timeout: 20,
       connect_timeout: 10,
     });
@@ -27,8 +27,11 @@ export function getSql(): postgres.Sql {
   return sql;
 }
 
-/** Ensures demo users and course metadata exist (idempotent). */
+/** Ensures demo users and course metadata exist (idempotent). Nur lokal – nicht in Produktion. */
 export async function ensureSeeded(): Promise<void> {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
   if (!seedPromise) {
     seedPromise = seedDatabase(getSql()).catch((err) => {
       seedPromise = null;

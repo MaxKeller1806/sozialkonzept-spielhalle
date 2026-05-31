@@ -1,7 +1,7 @@
 import { getIronSession, SessionOptions } from "iron-session";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
-import { ensureSeeded, getSql } from "./db";
+import { getSql } from "./db";
 import { mapUserWithPassword } from "./db/row-mappers";
 import { getCompanyById } from "./tenant";
 import { isLicenseValid } from "./license";
@@ -73,7 +73,6 @@ export function validatePassword(password: string): string | null {
 export async function getUserByEmail(
   email: string
 ): Promise<(User & { passwordHash: string }) | undefined> {
-  await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
     SELECT * FROM users WHERE LOWER(email) = ${email.trim().toLowerCase()} LIMIT 1
@@ -85,7 +84,6 @@ export async function getUserByEmail(
 export async function getUserById(
   id: number
 ): Promise<(User & { passwordHash: string }) | undefined> {
-  await ensureSeeded();
   const sql = getSql();
   const rows = await sql`SELECT * FROM users WHERE id = ${id} LIMIT 1`;
   const row = rows[0];

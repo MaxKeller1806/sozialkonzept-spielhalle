@@ -1,4 +1,4 @@
-import { ensureSeeded, getSql } from "./db";
+import { getSql } from "./db";
 import type { PrivacyPolicyVersion } from "./types";
 
 function mapVersion(row: Record<string, unknown>): PrivacyPolicyVersion {
@@ -14,7 +14,6 @@ function mapVersion(row: Record<string, unknown>): PrivacyPolicyVersion {
 }
 
 export async function getActivePrivacyPolicy(): Promise<PrivacyPolicyVersion | undefined> {
-  await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
     SELECT * FROM privacy_policy_versions
@@ -26,17 +25,20 @@ export async function getActivePrivacyPolicy(): Promise<PrivacyPolicyVersion | u
 }
 
 export async function hasAcceptedCurrentPolicy(userId: number): Promise<boolean> {
-  const policy = await getActivePrivacyPolicy();
-  if (!policy) return true;
-
-  await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
-    SELECT id FROM privacy_policy_acceptances
-    WHERE user_id = ${userId} AND version_id = ${policy.id}
+    SELECT p.id
+    FROM privacy_policy_acceptances p
+    JOIN privacy_policy_versions v ON v.id = p.version_id AND v.active = TRUE
+    WHERE p.user_id = ${userId}
     LIMIT 1
   `;
-  return rows.length > 0;
+  if (rows.length > 0) return true;
+
+  const policyRows = await sql`
+    SELECT id FROM privacy_policy_versions WHERE active = TRUE LIMIT 1
+  `;
+  return policyRows.length === 0;
 }
 
 export async function recordPrivacyAcceptance(
@@ -45,7 +47,6 @@ export async function recordPrivacyAcceptance(
   versionId: number,
   meta: { ipAddress?: string | null; userAgent?: string | null }
 ): Promise<void> {
-  await ensureSeeded();
   const sql = getSql();
   await sql`
     INSERT INTO privacy_policy_acceptances (
@@ -69,7 +70,6 @@ export async function getUserPrivacyStatus(userId: number): Promise<{
     return { accepted: true, currentVersion: null, acceptedAt: null };
   }
 
-  await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
     SELECT accepted_at FROM privacy_policy_acceptances
@@ -92,7 +92,6 @@ export async function getCompanyPrivacyStats(companyId: number): Promise<{
   currentVersion: string | null;
 }> {
   const policy = await getActivePrivacyPolicy();
-  await ensureSeeded();
   const sql = getSql();
 
   const totalRows = await sql`
