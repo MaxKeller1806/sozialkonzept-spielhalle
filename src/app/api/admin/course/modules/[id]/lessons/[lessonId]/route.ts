@@ -1,17 +1,27 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { validateLesson } from "@/lib/course-validation";
-import { deleteLesson, getLesson, getModule, saveLesson } from "@/lib/course-store";
+import { deleteLesson, getLesson, getModule, saveLesson } from "@/lib/course-db";
+import { resolveAdminCourse, courseIdFromRequest } from "@/lib/course-context";
 import type { Lesson } from "@/lib/types";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string; lessonId: string }> }
 ) {
   try {
-    await requireUser("admin");
+    const user = await requireAdmin();
+    const { companyId, courseId } = await resolveAdminCourse(
+      user,
+      courseIdFromRequest(request)
+    );
     const { id, lessonId } = await params;
-    const lesson = getLesson(Number(id), Number(lessonId));
+    const lesson = await getLesson(
+      companyId,
+      courseId,
+      Number(id),
+      Number(lessonId)
+    );
     if (!lesson) {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }
@@ -30,11 +40,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string; lessonId: string }> }
 ) {
   try {
-    await requireUser("admin");
+    const user = await requireAdmin();
+    const { companyId, courseId } = await resolveAdminCourse(
+      user,
+      courseIdFromRequest(request)
+    );
     const { id, lessonId } = await params;
     const moduleId = Number(id);
 
-    if (!getModule(moduleId)) {
+    if (!(await getModule(companyId, courseId, moduleId))) {
       return NextResponse.json({ error: "Modul nicht gefunden." }, { status: 404 });
     }
 
@@ -43,6 +57,7 @@ export async function PUT(
       id: Number(lessonId),
       title: String(body.title ?? "").trim(),
       content: String(body.content ?? "").trim(),
+      blocks: body.blocks,
     };
 
     const error = validateLesson(lesson);
@@ -50,11 +65,11 @@ export async function PUT(
       return NextResponse.json({ error }, { status: 400 });
     }
 
-    if (!getLesson(moduleId, lesson.id)) {
+    if (!(await getLesson(companyId, courseId, moduleId, lesson.id))) {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }
 
-    saveLesson(moduleId, lesson);
+    await saveLesson(companyId, courseId, moduleId, lesson);
     return NextResponse.json({ lesson });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
@@ -66,13 +81,22 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string; lessonId: string }> }
 ) {
   try {
-    await requireUser("admin");
+    const user = await requireAdmin();
+    const { companyId, courseId } = await resolveAdminCourse(
+      user,
+      courseIdFromRequest(request)
+    );
     const { id, lessonId } = await params;
-    const ok = deleteLesson(Number(id), Number(lessonId));
+    const ok = await deleteLesson(
+      companyId,
+      courseId,
+      Number(id),
+      Number(lessonId)
+    );
     if (!ok) {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useId, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useId, useState } from "react";
 import {
   Button,
   ButtonLink,
@@ -27,7 +27,17 @@ interface ExamSection {
 }
 
 export default function PruefungPage() {
+  return (
+    <Suspense fallback={<LoadingStatus />}>
+      <PruefungContent />
+    </Suspense>
+  );
+}
+
+function PruefungContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get("courseId") ?? "";
   const formId = useId();
   const [sections, setSections] = useState<ExamSection[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -40,7 +50,7 @@ export default function PruefungPage() {
   const [passingScore, setPassingScore] = useState(80);
 
   useEffect(() => {
-    fetch("/api/training/exam/questions")
+    fetch(`/api/training/exam/questions?courseId=${encodeURIComponent(courseId)}`)
       .then((r) => {
         if (r.status === 401) {
           router.push("/login");
@@ -69,7 +79,7 @@ export default function PruefungPage() {
         }
         setLoading(false);
       });
-  }, [router]);
+  }, [router, courseId]);
 
   function setSingle(id: number, index: number) {
     setAnswers((a) => ({ ...a, [id]: index }));
@@ -95,7 +105,7 @@ export default function PruefungPage() {
     const res = await fetch("/api/training/exam", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ answers, courseId }),
     });
     const data = await res.json();
     setSubmitting(false);

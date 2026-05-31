@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { AdminNav } from "@/components/admin-nav";
 import { AppHeader, Button, Card } from "@/components/ui";
 
@@ -18,7 +18,18 @@ interface CourseOverview {
 }
 
 export default function InhaltePage() {
+  return (
+    <Suspense fallback={<div className="p-8">Lädt…</div>}>
+      <InhalteContent />
+    </Suspense>
+  );
+}
+
+function InhalteContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get("courseId");
+  const courseQuery = courseId ? `?courseId=${encodeURIComponent(courseId)}` : "";
   const [course, setCourse] = useState<CourseOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [passingScoreInput, setPassingScoreInput] = useState("80");
@@ -26,7 +37,7 @@ export default function InhaltePage() {
   const [scoreMessage, setScoreMessage] = useState("");
 
   const load = useCallback(() => {
-    fetch("/api/admin/course")
+    fetch(`/api/admin/course${courseQuery}`)
       .then((r) => {
         if (r.status === 401 || r.status === 403) {
           router.push("/login");
@@ -41,7 +52,7 @@ export default function InhaltePage() {
         }
         setLoading(false);
       });
-  }, [router]);
+  }, [router, courseQuery]);
 
   useEffect(() => {
     load();
@@ -73,7 +84,7 @@ export default function InhaltePage() {
     setSavingScore(true);
     setScoreMessage("");
 
-    const res = await fetch("/api/admin/course", {
+    const res = await fetch(`/api/admin/course${courseQuery}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passingScore: Number(passingScoreInput) }),
@@ -174,10 +185,10 @@ export default function InhaltePage() {
             herunterladen und archivieren.
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <a href="/api/admin/export/lerninhalte/pdf" className="flex-1">
+            <a href={`/api/admin/export/lerninhalte/pdf${courseQuery}`} className="flex-1">
               <Button className="w-full">Lerninhalte als PDF</Button>
             </a>
-            <a href="/api/admin/export/pruefung/pdf" className="flex-1">
+            <a href={`/api/admin/export/pruefung/pdf${courseQuery}`} className="flex-1">
               <Button variant="secondary" className="w-full">
                 Abschlusstest als PDF
               </Button>

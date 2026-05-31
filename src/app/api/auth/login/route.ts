@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { getSession, getUserByEmail, toSessionUser, verifyPassword } from "@/lib/auth";
+import {
+  getSession,
+  getUserByEmail,
+  toSessionUser,
+  verifyPassword,
+  getAuthState,
+  defaultRedirectForRole,
+} from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
@@ -27,13 +34,17 @@ export async function POST(request: Request) {
       );
     }
 
+    const sessionUser = toSessionUser(user);
     const session = await getSession();
-    session.user = toSessionUser(user);
+    session.user = sessionUser;
     await session.save();
 
+    const authState = await getAuthState(sessionUser);
+
     return NextResponse.json({
-      user: session.user,
-      redirect: user.role === "admin" ? "/dashboard" : "/schulung",
+      user: sessionUser,
+      authState,
+      redirect: authState.redirect ?? defaultRedirectForRole(user.role),
     });
   } catch {
     return NextResponse.json({ error: "Anmeldung fehlgeschlagen." }, { status: 500 });

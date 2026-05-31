@@ -1,6 +1,5 @@
 import PDFDocument from "pdfkit";
-import { getCourse } from "./course";
-import type { ExamQuestion } from "./types";
+import type { CompanyBranding, CourseData, ExamQuestion } from "./types";
 
 function createPdfBuffer(
   build: (doc: InstanceType<typeof PDFDocument>) => void
@@ -31,15 +30,22 @@ function formatCorrectAnswer(q: ExamQuestion): string {
   return "—";
 }
 
-export async function generateLearningContentPdf(): Promise<Buffer> {
-  const course = getCourse();
+export async function generateLearningContentPdf(
+  course: CourseData,
+  opts?: { companyName?: string; branding?: CompanyBranding }
+): Promise<Buffer> {
   const exportedAt = new Date().toLocaleString("de-DE");
+  const primary = opts?.branding?.primaryColor ?? "#000080";
 
   return createPdfBuffer((doc) => {
+    if (opts?.companyName) {
+      doc.fontSize(11).fillColor("#666").text(opts.companyName, { align: "center" });
+      doc.moveDown(0.3);
+    }
     doc
       .fontSize(20)
-      .fillColor("#000080")
-      .text("Lerninhalte – Spielerschutz und Sozialkonzept", { align: "center" });
+      .fillColor(primary)
+      .text(`Lerninhalte – ${course.courseName}`, { align: "center" });
     doc.moveDown(0.3);
     doc
       .fontSize(10)
@@ -59,7 +65,7 @@ export async function generateLearningContentPdf(): Promise<Buffer> {
     for (let i = 0; i < course.modules.length; i++) {
       const mod = course.modules[i];
       if (i > 0) doc.addPage();
-      doc.fontSize(16).fillColor("#000080").text(`Modul ${mod.id}: ${mod.title}`);
+      doc.fontSize(16).fillColor(primary).text(`Modul ${mod.id}: ${mod.title}`);
       doc
         .fontSize(10)
         .fillColor("#666")
@@ -79,15 +85,21 @@ export async function generateLearningContentPdf(): Promise<Buffer> {
   });
 }
 
-export async function generateExamDocumentationPdf(): Promise<Buffer> {
-  const course = getCourse();
+export async function generateExamDocumentationPdf(
+  course: CourseData,
+  opts?: { companyName?: string; branding?: CompanyBranding }
+): Promise<Buffer> {
   const exportedAt = new Date().toLocaleString("de-DE");
+  const primary = opts?.branding?.primaryColor ?? "#000080";
 
   return createPdfBuffer((doc) => {
-    doc
-      .fontSize(20)
-      .fillColor("#000080")
-      .text("Abschlusstest – Fragenkatalog", { align: "center" });
+    if (opts?.companyName) {
+      doc.fontSize(11).fillColor("#666").text(opts.companyName, { align: "center" });
+      doc.moveDown(0.3);
+    }
+    doc.fontSize(20).fillColor(primary).text("Abschlusstest – Fragenkatalog", {
+      align: "center",
+    });
     doc.moveDown(0.3);
     doc
       .fontSize(10)
@@ -116,7 +128,7 @@ export async function generateExamDocumentationPdf(): Promise<Buffer> {
 
       if (questions.length === 0) continue;
 
-      doc.fontSize(14).fillColor("#000080").text(`Modul ${mod.id}: ${mod.title}`);
+      doc.fontSize(14).fillColor(primary).text(`Modul ${mod.id}: ${mod.title}`);
       doc.moveDown(0.5);
 
       for (const q of questions) {
@@ -142,7 +154,7 @@ export async function generateExamDocumentationPdf(): Promise<Buffer> {
 
         doc
           .fontSize(10)
-          .fillColor("#000080")
+          .fillColor(primary)
           .font("Helvetica-Bold")
           .text(`Richtige Antwort: ${formatCorrectAnswer(q)}`);
         doc.font("Helvetica").fillColor("#000");

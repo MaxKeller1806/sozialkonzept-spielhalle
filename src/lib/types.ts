@@ -1,7 +1,51 @@
-export type UserRole = "admin" | "employee";
+export type UserRole = "superuser" | "admin" | "employee";
+
+export type CompanyStatus = "pending" | "active" | "disabled" | "expired";
+export type LicenseStatus = "unlicensed" | "active" | "expired" | "disabled";
+
+export interface CompanyBranding {
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
+  accentColor: string;
+  logoUrl: string | null;
+  loginBackgroundUrl: string | null;
+}
+
+export interface Company {
+  id: number;
+  slug: string;
+  name: string;
+  street: string | null;
+  postalCode: string | null;
+  city: string | null;
+  country: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  branding: CompanyBranding;
+  status: CompanyStatus;
+  licenseStatus: LicenseStatus;
+  licenseExpiresAt: string | null;
+  licenseActivatedAt: string | null;
+  createdAt: string;
+}
+
+export interface CompanySummary {
+  id: number;
+  name: string;
+  status: CompanyStatus;
+  licenseStatus: LicenseStatus;
+  licenseExpiresAt: string | null;
+  createdAt: string;
+  employeeCount: number;
+  adminCount: number;
+  adminName: string | null;
+}
 
 export interface User {
   id: number;
+  companyId: number | null;
   firstName: string;
   lastName: string;
   email: string;
@@ -11,6 +55,7 @@ export interface User {
   role: UserRole;
   location: string | null;
   active: number;
+  mustChangePassword: number;
   createdAt: string;
 }
 
@@ -83,12 +128,26 @@ export interface CourseData {
   exam: ExamQuestion[];
 }
 
+export interface CourseMeta {
+  id: string;
+  companyId: number;
+  slug: string;
+  title: string;
+  description: string | null;
+  version: string;
+  passingScore: number;
+  validityMonths: number;
+  active: boolean;
+  createdAt: string;
+}
+
 export type TrainingStatus = "green" | "yellow" | "red";
 
 export interface Certificate {
   id: number;
   certificateNumber: string;
   userId: number;
+  companyId: number | null;
   courseId: string;
   issuedAt: string;
   validUntil: string;
@@ -103,6 +162,8 @@ export interface SessionUser {
   firstName: string;
   lastName: string;
   role: UserRole;
+  companyId: number | null;
+  mustChangePassword: boolean;
 }
 
 export type FeedbackCategory = "frage" | "anregung";
@@ -110,6 +171,7 @@ export type FeedbackCategory = "frage" | "anregung";
 export interface FeedbackEntry {
   id: number;
   userId: number;
+  companyId: number | null;
   category: FeedbackCategory;
   message: string;
   createdAt: string;
@@ -122,6 +184,7 @@ export interface FeedbackEntry {
 export interface TrainingAttempt {
   id: number;
   userId: number;
+  companyId: number | null;
   courseId: string;
   startedAt: string;
   completedAt: string | null;
@@ -131,4 +194,30 @@ export interface TrainingAttempt {
   moduleProgressJson: string;
   lessonProgressJson: string | null;
   examQuestionIdsJson: string | null;
+}
+
+export interface PrivacyPolicyVersion {
+  id: number;
+  version: string;
+  title: string;
+  content: string;
+  effectiveFrom: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface PrivacyAcceptance {
+  id: number;
+  userId: number;
+  companyId: number;
+  versionId: number;
+  acceptedAt: string;
+}
+
+export interface AuthState {
+  mustChangePassword: boolean;
+  privacyAccepted: boolean;
+  companyActive: boolean;
+  licenseActive: boolean;
+  redirect?: string;
 }

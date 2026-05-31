@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { validateLesson } from "@/lib/course-validation";
-import { getModule, nextLessonId, saveLesson } from "@/lib/course-store";
+import { getModule, nextLessonId, saveLesson } from "@/lib/course-db";
+import { resolveAdminCourse, courseIdFromRequest } from "@/lib/course-context";
 import type { Lesson } from "@/lib/types";
 
 export async function POST(
@@ -9,19 +10,24 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireUser("admin");
+    const user = await requireAdmin();
+    const { companyId, courseId } = await resolveAdminCourse(
+      user,
+      courseIdFromRequest(request)
+    );
     const { id } = await params;
     const moduleId = Number(id);
 
-    if (!getModule(moduleId)) {
+    if (!(await getModule(companyId, courseId, moduleId))) {
       return NextResponse.json({ error: "Modul nicht gefunden." }, { status: 404 });
     }
 
     const body = await request.json();
     const lesson: Lesson = {
-      id: body.id ?? nextLessonId(moduleId),
+      id: body.id ?? (await nextLessonId(companyId, courseId, moduleId)),
       title: String(body.title ?? "").trim(),
       content: String(body.content ?? "").trim(),
+      blocks: body.blocks,
     };
 
     const error = validateLesson(lesson);
@@ -29,7 +35,7 @@ export async function POST(
       return NextResponse.json({ error }, { status: 400 });
     }
 
-    saveLesson(moduleId, lesson);
+    await saveLesson(companyId, courseId, moduleId, lesson);
     return NextResponse.json({ lesson }, { status: 201 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";

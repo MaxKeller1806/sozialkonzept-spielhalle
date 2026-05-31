@@ -1,22 +1,27 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { validateExamQuestion } from "@/lib/course-validation";
 import {
   deleteExamQuestion,
   getCourseData,
   getExamQuestion,
   saveExamQuestion,
-} from "@/lib/course-store";
+} from "@/lib/course-db";
+import { resolveAdminCourse, courseIdFromRequest } from "@/lib/course-context";
 import type { ExamQuestion } from "@/lib/types";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireUser("admin");
+    const user = await requireAdmin();
+    const { companyId, courseId } = await resolveAdminCourse(
+      user,
+      courseIdFromRequest(request)
+    );
     const { id } = await params;
-    const question = getExamQuestion(Number(id));
+    const question = await getExamQuestion(companyId, courseId, Number(id));
     if (!question) {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }
@@ -35,10 +40,18 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireUser("admin");
+    const user = await requireAdmin();
+    const { companyId, courseId } = await resolveAdminCourse(
+      user,
+      courseIdFromRequest(request)
+    );
     const { id } = await params;
     const body = await request.json();
-    const course = getCourseData();
+    const course = await getCourseData(companyId, courseId);
+    if (!course) {
+      return NextResponse.json({ error: "Kurs nicht gefunden." }, { status: 404 });
+    }
+
     const question: ExamQuestion = {
       id: Number(id),
       moduleId: Number(body.moduleId),
@@ -56,11 +69,11 @@ export async function PUT(
       return NextResponse.json({ error }, { status: 400 });
     }
 
-    if (!getExamQuestion(question.id)) {
+    if (!(await getExamQuestion(companyId, courseId, question.id))) {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }
 
-    saveExamQuestion(question);
+    await saveExamQuestion(companyId, courseId, question);
     return NextResponse.json({ question });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
@@ -72,13 +85,17 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireUser("admin");
+    const user = await requireAdmin();
+    const { companyId, courseId } = await resolveAdminCourse(
+      user,
+      courseIdFromRequest(request)
+    );
     const { id } = await params;
-    const ok = deleteExamQuestion(Number(id));
+    const ok = await deleteExamQuestion(companyId, courseId, Number(id));
     if (!ok) {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }

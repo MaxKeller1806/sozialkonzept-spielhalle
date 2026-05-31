@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { getCourse } from "@/lib/course";
 import { getLatestCertificate } from "@/lib/certificate";
 import { getCertificateStatus } from "@/lib/status";
 import {
@@ -13,20 +12,57 @@ import {
   getActiveAttempt,
   getEffectiveLessonProgress,
   startAttempt,
+  assertUserCourseAccess,
 } from "@/lib/training";
+import { getUserAssignedCourses } from "@/lib/course-db";
+import { resolveEmployeeCourse } from "@/lib/course-context";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await requireUser();
-    const course = getCourse();
+    if (!user.companyId) {
+      return NextResponse.json({ error: "Kein Mandant." }, { status: 403 });
+    }
+
+    const courseIdParam = new URL(request.url).searchParams.get("courseId");
+
+    if (!courseIdParam) {
+      const courses = await getUserAssignedCourses(user.id, user.companyId);
+      const enriched = await Promise.all(
+        courses.map(async (c) => {
+          const cert = await getLatestCertificate(user.id, c.id);
+          const attempt = await getActiveAttempt(user.id, c.id);
+          return {
+            id: c.id,
+            title: c.title,
+            slug: c.slug,
+            certificate: cert
+              ? {
+                  id: cert.id,
+                  validUntil: cert.validUntil,
+                  status: getCertificateStatus(cert),
+                }
+              : null,
+            inProgress: !!attempt,
+          };
+        })
+      );
+      return NextResponse.json({ courses: enriched });
+    }
+
+    await assertUserCourseAccess(user.id, user.companyId, courseIdParam);
+    const { courseId, course } = await resolveEmployeeCourse(user, courseIdParam);
+
     const attempt =
-      (await getActiveAttempt(user.id)) ?? (await startAttempt(user.id));
-    const lessonProgress = getEffectiveLessonProgress(attempt);
+      (await getActiveAttempt(user.id, courseId)) ??
+      (await startAttempt(user.id, user.companyId, courseId));
+
+    const lessonProgress = getEffectiveLessonProgress(course, attempt);
     const totalLessons = totalLessonCount(course);
     const completedLessons = lessonProgress.length;
-    const lessonsComplete = allLessonsComplete(lessonProgress);
+    const lessonsComplete = allLessonsComplete(course, lessonProgress);
     const next = getNextLesson(course, lessonProgress);
-    const cert = await getLatestCertificate(user.id);
+    const cert = await getLatestCertificate(user.id, courseId);
 
     return NextResponse.json({
       course: {
@@ -48,7 +84,9 @@ export async function GET() {
         lessonsComplete,
         allModulesComplete: lessonsComplete,
         examAvailable: lessonsComplete,
-        nextLessonUrl: next ? lessonPath(next.moduleId, next.lessonId) : null,
+        nextLessonUrl: next
+          ? `${lessonPath(next.moduleId, next.lessonId)}?courseId=${encodeURIComponent(courseId)}`
+          : null,
         hasStarted: completedLessons > 0,
       },
       certificate: cert
@@ -65,6 +103,9 @@ export async function GET() {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
+    }
+    if (msg === "FORBIDDEN") {
+      return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
     return NextResponse.json({ error: "Fehler beim Laden." }, { status: 500 });
   }

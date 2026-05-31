@@ -1,18 +1,24 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { getCourse } from "@/lib/course";
+import { requireAdmin } from "@/lib/auth";
 import { generateLearningContentPdf } from "@/lib/pdf-export";
+import { resolveAdminCourse, courseIdFromRequest } from "@/lib/course-context";
+import { getCompanyById } from "@/lib/tenant";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    await requireUser("admin");
-    const course = getCourse();
-    const pdf = await generateLearningContentPdf();
+    const user = await requireAdmin();
+    const { course } = await resolveAdminCourse(user, courseIdFromRequest(request));
+    const company = await getCompanyById(user.companyId!);
+    const pdf = await generateLearningContentPdf(course, {
+      companyName: company?.name,
+      branding: company?.branding,
+    });
 
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="lerninhalte-${course.version}.pdf"`,
+        "Cache-Control": "no-store",
       },
     });
   } catch (e) {

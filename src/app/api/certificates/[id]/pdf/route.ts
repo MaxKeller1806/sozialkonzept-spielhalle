@@ -5,10 +5,9 @@ import {
   getCertificateForUser,
   getUserForCertificate,
 } from "@/lib/certificate";
-import { ensureSeeded, getSql } from "@/lib/db";
-import { mapUser } from "@/lib/db/row-mappers";
+import { getCourseForContext } from "@/lib/course";
+import { getCompanyById } from "@/lib/tenant";
 import { generateCertificatePdf } from "@/lib/pdf";
-import type { User } from "@/lib/types";
 
 export async function GET(
   _request: Request,
@@ -24,36 +23,33 @@ export async function GET(
     const certId = Number(id);
 
     let cert;
-    let certUser: User | undefined;
-
     if (user.role === "admin") {
       cert = await getCertificateById(certId);
-      if (cert) certUser = await getUserForCertificate(cert);
+      if (cert && cert.companyId !== user.companyId) {
+        cert = undefined;
+      }
     } else {
       cert = await getCertificateForUser(user.id, certId);
-      if (cert) {
-        await ensureSeeded();
-        const sql = getSql();
-        const rows = await sql`
-          SELECT id, first_name, last_name, email, birth_date, role, location, active, created_at
-          FROM users WHERE id = ${user.id} LIMIT 1
-        `;
-        certUser = rows[0]
-          ? mapUser(rows[0] as Record<string, unknown>)
-          : undefined;
-      }
     }
 
-    if (!cert || cert.revoked || !certUser) {
+    const certUser = cert ? await getUserForCertificate(cert) : undefined;
+
+    if (!cert || cert.revoked || !certUser || !cert.companyId) {
       return NextResponse.json({ error: "Zertifikat nicht gefunden." }, { status: 404 });
     }
 
-    const pdf = await generateCertificatePdf(certUser, cert);
+    const course = await getCourseForContext(cert.companyId, cert.courseId);
+    const company = await getCompanyById(cert.companyId);
+    const pdf = await generateCertificatePdf(certUser, cert, course, {
+      companyName: company?.name,
+      branding: company?.branding,
+    });
 
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${cert.certificateNumber}.pdf"`,
+        "Cache-Control": "no-store",
       },
     });
   } catch {

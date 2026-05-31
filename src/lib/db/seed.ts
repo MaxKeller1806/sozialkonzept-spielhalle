@@ -1,46 +1,82 @@
 import bcrypt from "bcryptjs";
 import type postgres from "postgres";
-import { getCourse } from "../course";
+import { importCourseFromJson, assignUserToCourse } from "../course-db";
+import { getCourseFromFile } from "../course";
+import { hashLicenseKey } from "../license";
 
 export async function seedDatabase(sql: postgres.Sql): Promise<void> {
-  const course = getCourse();
-
-  await sql`
-    INSERT INTO courses (id, title, version, passing_score, validity_months)
-    VALUES (
-      ${course.courseId},
-      ${course.courseName},
-      ${course.version},
-      ${course.passingScore},
-      ${course.certificateValidityMonths}
+  const companyRows = await sql`
+    INSERT INTO companies (
+      slug, name, status, license_status, license_activated_at,
+      primary_color, secondary_color, background_color, accent_color
     )
-    ON CONFLICT (id) DO UPDATE SET
-      title = EXCLUDED.title,
-      version = EXCLUDED.version,
-      passing_score = EXCLUDED.passing_score,
-      validity_months = EXCLUDED.validity_months
+    VALUES (
+      'standard', 'Standard Spielhalle GmbH', 'active', 'active', NOW(),
+      '#000080', '#4040a0', '#f8fafc', '#2563eb'
+    )
+    ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+    RETURNING id
+  `;
+  const companyId = Number(companyRows[0]?.id ?? (
+    await sql`SELECT id FROM companies WHERE slug = 'standard' LIMIT 1`
+  )[0]?.id);
+
+  const course = getCourseFromFile();
+  await importCourseFromJson(companyId, course, "sozialkonzept");
+
+  const superHash = bcrypt.hashSync(
+    process.env.SUPERUSER_PASSWORD ?? "superuser123",
+    10
+  );
+  await sql`
+    INSERT INTO users (
+      first_name, last_name, email, password_hash, role, active, must_change_password
+    )
+    VALUES (
+      'Super', 'User', 'superuser@betreiber.local', ${superHash},
+      'superuser', TRUE, FALSE
+    )
+    ON CONFLICT (email) DO NOTHING
   `;
 
   const adminHash = bcrypt.hashSync("admin123", 10);
   await sql`
-    INSERT INTO users (first_name, last_name, email, password_hash, role, location, active)
+    INSERT INTO users (
+      first_name, last_name, email, password_hash, role, company_id, location, active
+    )
     VALUES (
       'Admin', 'System', 'admin@spielhalle.local', ${adminHash},
-      'admin', 'Zentrale', TRUE
+      'admin', ${companyId}, 'Zentrale', TRUE
     )
-    ON CONFLICT (email) DO NOTHING
+    ON CONFLICT (email) DO UPDATE SET company_id = EXCLUDED.company_id
   `;
 
   const demoHash = bcrypt.hashSync("demo123", 10);
-  await sql`
+  const demoRows = await sql`
     INSERT INTO users (
       first_name, last_name, email, password_hash, birth_date,
-      role, location, active
+      role, company_id, location, active, must_change_password
     )
     VALUES (
       'Max', 'Mustermann', 'mitarbeiter@demo.de', ${demoHash},
-      '1990-05-15', 'employee', 'Spielhalle Nord', TRUE
+      '1990-05-15', 'employee', ${companyId}, 'Spielhalle Nord', TRUE, FALSE
     )
-    ON CONFLICT (email) DO NOTHING
+    ON CONFLICT (email) DO UPDATE SET company_id = EXCLUDED.company_id
+    RETURNING id
+  `;
+
+  const courseId = `${companyId}-sozialkonzept`;
+  const demoUserId = demoRows[0]?.id ?? (
+    await sql`SELECT id FROM users WHERE email = 'mitarbeiter@demo.de' LIMIT 1`
+  )[0]?.id;
+
+  if (demoUserId) {
+    await assignUserToCourse(Number(demoUserId), courseId);
+  }
+
+  await sql`
+    UPDATE companies
+    SET license_key_hash = ${hashLicenseKey(process.env.DEFAULT_LICENSE_KEY ?? "SK-DEMO-LICENSE")}
+    WHERE id = ${companyId} AND license_key_hash IS NULL
   `;
 }

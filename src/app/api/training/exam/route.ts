@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { getCourse } from "@/lib/course";
 import { createCertificate, getLatestCertificate } from "@/lib/certificate";
 import { getCertificateStatus } from "@/lib/status";
-import { scoreExam, buildExamReview, getIncorrectReview, type AnswerValue } from "@/lib/exam";
+import {
+  scoreExam,
+  buildExamReview,
+  getIncorrectReview,
+  type AnswerValue,
+} from "@/lib/exam";
 import { ensureSeeded, getSql } from "@/lib/db";
 import { questionsByIds } from "@/lib/exam-select";
 import {
@@ -11,13 +15,30 @@ import {
   getActiveAttempt,
   getEffectiveLessonProgress,
   getExamQuestionIds,
+  loadCourseForUser,
+  assertUserCourseAccess,
 } from "@/lib/training";
+import { resolveEmployeeCourse } from "@/lib/course-context";
 
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
+    if (!user.companyId) {
+      return NextResponse.json({ error: "Kein Mandant." }, { status: 403 });
+    }
 
-    const existingCert = await getLatestCertificate(user.id);
+    const { answers, courseId } = (await request.json()) as {
+      answers: Record<string, AnswerValue>;
+      courseId: string;
+    };
+
+    if (!courseId) {
+      return NextResponse.json({ error: "Kurs-ID fehlt." }, { status: 400 });
+    }
+
+    await assertUserCourseAccess(user.id, user.companyId, courseId);
+
+    const existingCert = await getLatestCertificate(user.id, courseId);
     if (existingCert && getCertificateStatus(existingCert) !== "red") {
       return NextResponse.json(
         { error: "Sie haben bereits ein gültiges Zertifikat." },
@@ -25,18 +46,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const { answers } = (await request.json()) as {
-      answers: Record<string, AnswerValue>;
-    };
-
-    const course = getCourse();
-    const attempt = await getActiveAttempt(user.id);
+    const { course } = await resolveEmployeeCourse(user, courseId);
+    const attempt = await getActiveAttempt(user.id, courseId);
     if (!attempt) {
       return NextResponse.json({ error: "Keine aktive Schulung." }, { status: 400 });
     }
 
-    const progress = getEffectiveLessonProgress(attempt);
-    if (!allLessonsComplete(progress)) {
+    const progress = getEffectiveLessonProgress(course, attempt);
+    if (!allLessonsComplete(course, progress)) {
       return NextResponse.json(
         { error: "Bitte zuerst alle Module abschließen." },
         { status: 400 }
@@ -58,11 +75,7 @@ export async function POST(request: Request) {
     }
 
     const examQuestions = questionsByIds(course.exam, examIds);
-    const result = scoreExam(
-      examQuestions,
-      parsedAnswers,
-      course.passingScore
-    );
+    const result = scoreExam(examQuestions, parsedAnswers, course.passingScore);
     const incorrectReview = getIncorrectReview(
       buildExamReview(examQuestions, parsedAnswers)
     );
@@ -81,7 +94,12 @@ export async function POST(request: Request) {
 
     let certificate = null;
     if (result.passed) {
-      certificate = await createCertificate(user.id, result.scorePercent);
+      certificate = await createCertificate(
+        user.id,
+        user.companyId,
+        courseId,
+        result.scorePercent
+      );
     }
 
     return NextResponse.json({
@@ -100,6 +118,9 @@ export async function POST(request: Request) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
+    }
+    if (msg === "FORBIDDEN") {
+      return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
     return NextResponse.json({ error: "Fehler bei der Prüfung." }, { status: 500 });
   }

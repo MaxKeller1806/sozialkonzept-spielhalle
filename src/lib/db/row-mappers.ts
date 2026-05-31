@@ -3,6 +3,7 @@ import type { Certificate, FeedbackEntry, TrainingAttempt, User } from "../types
 export function mapUser(row: Record<string, unknown>): User {
   return {
     id: Number(row.id),
+    companyId: row.company_id != null ? Number(row.company_id) : null,
     firstName: String(row.first_name),
     lastName: String(row.last_name),
     email: String(row.email),
@@ -15,6 +16,7 @@ export function mapUser(row: Record<string, unknown>): User {
     role: row.role as User["role"],
     location: row.location != null ? String(row.location) : null,
     active: row.active ? 1 : 0,
+    mustChangePassword: row.must_change_password ? 1 : 0,
     createdAt: new Date(String(row.created_at)).toISOString(),
   };
 }
@@ -33,6 +35,7 @@ export function mapCertificate(row: Record<string, unknown>): Certificate {
     id: Number(row.id),
     certificateNumber: String(row.certificate_number),
     userId: Number(row.user_id),
+    companyId: row.company_id != null ? Number(row.company_id) : null,
     courseId: String(row.course_id),
     issuedAt: new Date(String(row.issued_at)).toISOString(),
     validUntil: new Date(String(row.valid_until)).toISOString(),
@@ -52,6 +55,7 @@ export function mapTrainingAttempt(row: Record<string, unknown>): TrainingAttemp
   return {
     id: Number(row.id),
     userId: Number(row.user_id),
+    companyId: row.company_id != null ? Number(row.company_id) : null,
     courseId: String(row.course_id),
     startedAt: new Date(String(row.started_at)).toISOString(),
     completedAt: row.completed_at
@@ -70,6 +74,7 @@ export function mapFeedback(row: Record<string, unknown>): FeedbackEntry {
   return {
     id: Number(row.id),
     userId: Number(row.user_id),
+    companyId: row.company_id != null ? Number(row.company_id) : null,
     category: row.category as FeedbackEntry["category"],
     message: String(row.message),
     createdAt: new Date(String(row.created_at)).toISOString(),

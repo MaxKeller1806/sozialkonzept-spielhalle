@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hashPassword, requireUser } from "@/lib/auth";
+import { hashPassword, requireAdmin, validatePassword } from "@/lib/auth";
 import { ensureSeeded, getSql } from "@/lib/db";
 
 export async function PATCH(
@@ -7,7 +7,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireUser("admin");
+    const admin = await requireAdmin();
     const { id } = await params;
     const userId = Number(id);
     const body = await request.json();
@@ -16,7 +16,9 @@ export async function PATCH(
     const sql = getSql();
 
     const existing = await sql`
-      SELECT id FROM users WHERE id = ${userId} LIMIT 1
+      SELECT id FROM users
+      WHERE id = ${userId} AND company_id = ${admin.companyId}
+      LIMIT 1
     `;
 
     if (existing.length === 0) {
@@ -46,7 +48,14 @@ export async function PATCH(
     if (location !== undefined) patch.location = location || null;
     if (role !== undefined) patch.role = role === "admin" ? "admin" : "employee";
     if (active !== undefined) patch.active = Boolean(active);
-    if (password) patch.password_hash = hashPassword(password);
+    if (password) {
+      const pwError = validatePassword(password);
+      if (pwError) {
+        return NextResponse.json({ error: pwError }, { status: 400 });
+      }
+      patch.password_hash = hashPassword(password);
+      patch.must_change_password = true;
+    }
 
     const keys = Object.keys(patch) as (keyof typeof patch)[];
     if (keys.length === 0) {
@@ -55,7 +64,7 @@ export async function PATCH(
 
     await sql`
       UPDATE users SET ${sql(patch, ...keys)}
-      WHERE id = ${userId}
+      WHERE id = ${userId} AND company_id = ${admin.companyId}
     `;
 
     return NextResponse.json({ ok: true });

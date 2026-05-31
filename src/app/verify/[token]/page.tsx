@@ -1,5 +1,6 @@
 import { getCertificateByToken, getUserForCertificate } from "@/lib/certificate";
-import { getCourse } from "@/lib/course";
+import { getCourseForContext } from "@/lib/course";
+import { getCompanyById } from "@/lib/tenant";
 import { verificationStatus } from "@/lib/status";
 
 function formatDate(iso: string) {
@@ -23,7 +24,6 @@ export default async function VerifyPage({
 }) {
   const { token } = await params;
   const cert = await getCertificateByToken(token);
-  const course = getCourse();
 
   if (!cert) {
     return (
@@ -44,6 +44,16 @@ export default async function VerifyPage({
 
   const user = await getUserForCertificate(cert);
   const status = verificationStatus(cert);
+  const company = cert.companyId ? await getCompanyById(cert.companyId) : undefined;
+  let courseName = "Schulung";
+  if (cert.companyId) {
+    try {
+      const course = await getCourseForContext(cert.companyId, cert.courseId);
+      courseName = course.courseName;
+    } catch {
+      /* ignore */
+    }
+  }
 
   return (
     <main
@@ -52,12 +62,13 @@ export default async function VerifyPage({
       tabIndex={-1}
     >
       <article className="w-full max-w-md rounded-2xl border bg-white p-8 shadow-sm">
+        {company && (
+          <p className="text-center text-xs text-slate-500">{company.name}</p>
+        )}
         <p className="text-center text-xs font-semibold uppercase tracking-wide text-brand">
           Zertifikatsprüfung
         </p>
-        <h1 className="mt-2 text-center text-xl font-bold">
-          {course.courseName}
-        </h1>
+        <h1 className="mt-2 text-center text-xl font-bold">{courseName}</h1>
 
         <p
           className={`mt-6 rounded-xl px-4 py-3 text-center text-lg font-bold ${statusColors[status]}`}
@@ -79,7 +90,7 @@ export default async function VerifyPage({
           </div>
           <div>
             <dt className="text-slate-500">Kursname</dt>
-            <dd className="font-semibold">{course.courseName}</dd>
+            <dd className="font-semibold">{courseName}</dd>
           </div>
           <div>
             <dt className="text-slate-500">Abschlussdatum</dt>

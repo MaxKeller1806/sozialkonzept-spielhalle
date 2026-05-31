@@ -3,7 +3,8 @@ import {
   getCertificateByToken,
   getUserForCertificate,
 } from "@/lib/certificate";
-import { getCourse } from "@/lib/course";
+import { getCourseForContext } from "@/lib/course";
+import { getCompanyById } from "@/lib/tenant";
 import { verificationStatus } from "@/lib/status";
 
 export async function GET(
@@ -22,7 +23,16 @@ export async function GET(
   }
 
   const user = await getUserForCertificate(cert);
-  const course = getCourse();
+  const company = cert.companyId ? await getCompanyById(cert.companyId) : undefined;
+  let courseName = "Schulung";
+  if (cert.companyId) {
+    try {
+      const course = await getCourseForContext(cert.companyId, cert.courseId);
+      courseName = course.courseName;
+    } catch {
+      /* ignore */
+    }
+  }
   const status = verificationStatus(cert);
 
   return NextResponse.json({
@@ -30,7 +40,8 @@ export async function GET(
     status,
     certificateNumber: cert.certificateNumber,
     name: user ? `${user.firstName} ${user.lastName}` : "—",
-    courseName: course.courseName,
+    courseName,
+    companyName: company?.name ?? null,
     issuedAt: cert.issuedAt,
     validUntil: cert.validUntil,
     revoked: !!cert.revoked,

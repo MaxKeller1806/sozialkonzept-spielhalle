@@ -1,8 +1,7 @@
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
-import { getCourse } from "./course";
 import { getAppUrl } from "./certificate";
-import type { Certificate, User } from "./types";
+import type { Certificate, CompanyBranding, CourseData, User } from "./types";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("de-DE", {
@@ -14,29 +13,32 @@ function formatDate(iso: string): string {
 
 export async function generateCertificatePdf(
   user: User,
-  cert: Certificate
+  cert: Certificate,
+  course: CourseData,
+  opts?: { companyName?: string; branding?: CompanyBranding }
 ): Promise<Buffer> {
-  const course = getCourse();
   const verifyUrl = `${getAppUrl()}/verify/${cert.verificationToken}`;
   const qrBuffer = await QRCode.toBuffer(verifyUrl, { width: 140, margin: 1 });
+  const primary = opts?.branding?.primaryColor ?? "#000080";
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 50 });
     const chunks: Buffer[] = [];
 
     doc.info.Title = course.certificateTitle;
-    doc.info.Author = "Sozialkonzept Schulungsplattform";
-    doc.info.Subject = "Schulungszertifikat Spielerschutz und Sozialkonzept";
-    doc.info.Keywords = "Zertifikat, Schulung, Sozialkonzept, Spielerschutz";
+    doc.info.Author = opts?.companyName ?? "Schulungsplattform";
+    doc.info.Subject = course.certificateTitle;
 
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    doc
-      .fontSize(22)
-      .fillColor("#000080")
-      .text(course.certificateTitle, { align: "center" });
+    if (opts?.companyName) {
+      doc.fontSize(11).fillColor("#666").text(opts.companyName, { align: "center" });
+      doc.moveDown(0.5);
+    }
+
+    doc.fontSize(22).fillColor(primary).text(course.certificateTitle, { align: "center" });
     doc.moveDown(0.5);
     doc
       .fontSize(11)
@@ -67,7 +69,7 @@ export async function generateCertificatePdf(
       .fontSize(10)
       .fillColor("#666")
       .text(
-        "Hiermit wird bestätigt, dass die oben genannte Person die Schulung „Spielerschutz und Sozialkonzept“ erfolgreich abgeschlossen hat.",
+        `Hiermit wird bestätigt, dass die oben genannte Person die Schulung „${course.courseName}“ erfolgreich abgeschlossen hat.`,
         { align: "left" }
       );
 
@@ -81,14 +83,5 @@ export async function generateCertificatePdf(
         width: 110,
         align: "center",
       });
-    doc
-      .fontSize(8)
-      .fillColor("#666")
-      .text(`Verifikations-URL: ${verifyUrl}`, 50, doc.page.height - 60, {
-        width: doc.page.width - 200,
-        align: "left",
-      });
-
-    doc.end();
   });
 }

@@ -1,25 +1,25 @@
 import { ensureSeeded, getSql } from "./db";
 import { mapTrainingAttempt } from "./db/row-mappers";
-import { getCourse } from "./course";
+import { getCourseForContext } from "./course";
 import {
   flattenLessons,
   inferLessonProgressFromModules,
   lessonKey,
   totalLessonCount,
 } from "./course-nav";
-import type { TrainingAttempt } from "./types";
+import type { CourseData, TrainingAttempt } from "./types";
 
 export type { TrainingAttempt };
 
 export async function getActiveAttempt(
-  userId: number
+  userId: number,
+  courseId: string
 ): Promise<TrainingAttempt | undefined> {
-  const course = getCourse();
   await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
     SELECT * FROM training_attempts
-    WHERE user_id = ${userId} AND course_id = ${course.courseId} AND completed_at IS NULL
+    WHERE user_id = ${userId} AND course_id = ${courseId} AND completed_at IS NULL
     ORDER BY started_at DESC
     LIMIT 1
   `;
@@ -28,16 +28,21 @@ export async function getActiveAttempt(
     : undefined;
 }
 
-export async function startAttempt(userId: number): Promise<TrainingAttempt> {
-  const existing = await getActiveAttempt(userId);
+export async function startAttempt(
+  userId: number,
+  companyId: number,
+  courseId: string
+): Promise<TrainingAttempt> {
+  const existing = await getActiveAttempt(userId, courseId);
   if (existing) return existing;
 
-  const course = getCourse();
   await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
-    INSERT INTO training_attempts (user_id, course_id, module_progress_json, lesson_progress_json)
-    VALUES (${userId}, ${course.courseId}, '[]'::jsonb, '[]'::jsonb)
+    INSERT INTO training_attempts (
+      user_id, company_id, course_id, module_progress_json, lesson_progress_json
+    )
+    VALUES (${userId}, ${companyId}, ${courseId}, '[]'::jsonb, '[]'::jsonb)
     RETURNING *
   `;
   return mapTrainingAttempt(rows[0] as Record<string, unknown>);
@@ -60,8 +65,10 @@ export function getLessonProgressRaw(attempt: TrainingAttempt): string[] {
   }
 }
 
-export function getEffectiveLessonProgress(attempt: TrainingAttempt): string[] {
-  const course = getCourse();
+export function getEffectiveLessonProgress(
+  course: CourseData,
+  attempt: TrainingAttempt
+): string[] {
   const lessonProgress = getLessonProgressRaw(attempt);
   if (lessonProgress.length > 0) return lessonProgress;
 
@@ -73,11 +80,11 @@ export function getEffectiveLessonProgress(attempt: TrainingAttempt): string[] {
 }
 
 export async function completeLesson(
+  course: CourseData,
   attemptId: number,
   moduleId: number,
   lessonId: number
 ): Promise<{ lessonProgress: string[]; moduleProgress: number[] }> {
-  const course = getCourse();
   await ensureSeeded();
   const sql = getSql();
 
@@ -89,7 +96,7 @@ export async function completeLesson(
   }
 
   const attempt = mapTrainingAttempt(rows[0] as Record<string, unknown>);
-  const progress = getEffectiveLessonProgress(attempt);
+  const progress = getEffectiveLessonProgress(course, attempt);
   const key = lessonKey(moduleId, lessonId);
   if (!progress.includes(key)) {
     progress.push(key);
@@ -120,14 +127,14 @@ export async function completeLesson(
 }
 
 export async function completeModule(
+  course: CourseData,
   attemptId: number,
   moduleId: number
 ): Promise<number[]> {
-  const course = getCourse();
   const mod = course.modules.find((m) => m.id === moduleId);
   if (mod) {
     for (const lesson of mod.lessons) {
-      await completeLesson(attemptId, moduleId, lesson.id);
+      await completeLesson(course, attemptId, moduleId, lesson.id);
     }
   }
   await ensureSeeded();
@@ -141,13 +148,14 @@ export async function completeModule(
   );
 }
 
-export function allModulesComplete(progress: number[]): boolean {
-  const course = getCourse();
+export function allModulesComplete(course: CourseData, progress: number[]): boolean {
   return course.modules.every((m) => progress.includes(m.id));
 }
 
-export function allLessonsComplete(lessonProgress: string[]): boolean {
-  const course = getCourse();
+export function allLessonsComplete(
+  course: CourseData,
+  lessonProgress: string[]
+): boolean {
   const total = totalLessonCount(course);
   if (total === 0) return false;
   const unique = new Set(lessonProgress);
@@ -176,4 +184,32 @@ export async function setExamQuestionIds(
     SET exam_question_ids_json = ${JSON.stringify(ids)}::jsonb
     WHERE id = ${attemptId}
   `;
+}
+
+export async function assertUserCourseAccess(
+  userId: number,
+  companyId: number,
+  courseId: string
+): Promise<void> {
+  await ensureSeeded();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT 1 FROM user_course_assignments uca
+    JOIN courses c ON c.id = uca.course_id
+    WHERE uca.user_id = ${userId}
+      AND uca.course_id = ${courseId}
+      AND c.company_id = ${companyId}
+      AND c.active = TRUE
+    LIMIT 1
+  `;
+  if (rows.length === 0) {
+    throw new Error("FORBIDDEN");
+  }
+}
+
+export async function loadCourseForUser(
+  companyId: number,
+  courseId: string
+): Promise<CourseData> {
+  return getCourseForContext(companyId, courseId);
 }

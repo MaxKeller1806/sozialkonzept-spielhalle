@@ -1,15 +1,20 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { validateModule } from "@/lib/course-validation";
-import { nextModuleId, saveModule } from "@/lib/course-store";
+import { nextModuleId, saveModule } from "@/lib/course-db";
+import { resolveAdminCourse, courseIdFromRequest } from "@/lib/course-context";
 import type { CourseModule } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
-    await requireUser("admin");
+    const user = await requireAdmin();
+    const { companyId, courseId } = await resolveAdminCourse(
+      user,
+      courseIdFromRequest(request)
+    );
     const body = await request.json();
     const module: CourseModule = {
-      id: body.id ?? nextModuleId(),
+      id: body.id ?? (await nextModuleId(companyId, courseId)),
       title: String(body.title ?? "").trim(),
       duration: Number(body.duration) || 0,
       lessons: [],
@@ -20,7 +25,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error }, { status: 400 });
     }
 
-    saveModule(module);
+    await saveModule(companyId, courseId, module);
     return NextResponse.json({ module }, { status: 201 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";

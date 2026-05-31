@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { getCourse } from "@/lib/course";
 import { questionsByIds, selectExamQuestions } from "@/lib/exam-select";
 import {
   allLessonsComplete,
@@ -8,20 +7,32 @@ import {
   getEffectiveLessonProgress,
   getExamQuestionIds,
   setExamQuestionIds,
+  assertUserCourseAccess,
 } from "@/lib/training";
+import { resolveEmployeeCourse } from "@/lib/course-context";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await requireUser();
-    const course = getCourse();
-    const attempt = await getActiveAttempt(user.id);
+    if (!user.companyId) {
+      return NextResponse.json({ error: "Kein Mandant." }, { status: 403 });
+    }
+
+    const courseId = new URL(request.url).searchParams.get("courseId");
+    if (!courseId) {
+      return NextResponse.json({ error: "Kurs-ID fehlt." }, { status: 400 });
+    }
+
+    await assertUserCourseAccess(user.id, user.companyId, courseId);
+    const { course } = await resolveEmployeeCourse(user, courseId);
+    const attempt = await getActiveAttempt(user.id, courseId);
 
     if (!attempt) {
       return NextResponse.json({ error: "Keine aktive Schulung." }, { status: 400 });
     }
 
-    const progress = getEffectiveLessonProgress(attempt);
-    if (!allLessonsComplete(progress)) {
+    const progress = getEffectiveLessonProgress(course, attempt);
+    if (!allLessonsComplete(course, progress)) {
       return NextResponse.json(
         { error: "Module noch nicht abgeschlossen." },
         { status: 400 }
@@ -63,11 +74,15 @@ export async function GET() {
       poolSize: course.exam.length,
       passingScore: course.passingScore,
       minCorrect: course.minCorrectAnswers,
+      courseId,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
+    }
+    if (msg === "FORBIDDEN") {
+      return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
     return NextResponse.json({ error: "Fehler." }, { status: 500 });
   }

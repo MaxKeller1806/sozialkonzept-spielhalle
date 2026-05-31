@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import {
   ButtonLink,
   Card,
@@ -12,8 +12,21 @@ import {
   StatusDot,
 } from "@/components/ui";
 
+interface CourseListItem {
+  id: string;
+  title: string;
+  slug: string;
+  inProgress: boolean;
+  certificate: {
+    id: number;
+    validUntil: string;
+    status: "green" | "yellow" | "red";
+  } | null;
+}
+
 interface TrainingData {
   course: {
+    id: string;
     name: string;
     version: string;
     passingScore: number;
@@ -39,13 +52,19 @@ interface TrainingData {
   } | null;
 }
 
-export default function SchulungPage() {
+function SchulungContent() {
   const router = useRouter();
+  const params = useSearchParams();
+  const courseId = params.get("courseId");
+  const [courses, setCourses] = useState<CourseListItem[] | null>(null);
   const [data, setData] = useState<TrainingData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/training")
+    const url = courseId
+      ? `/api/training?courseId=${encodeURIComponent(courseId)}`
+      : "/api/training";
+    fetch(url)
       .then((r) => {
         if (r.status === 401) {
           router.push("/login");
@@ -54,28 +73,76 @@ export default function SchulungPage() {
         return r.json();
       })
       .then((d) => {
-        if (d) setData(d);
+        if (!d) return;
+        if (d.courses) {
+          setCourses(d.courses);
+          setData(null);
+        } else {
+          setData(d);
+          setCourses(null);
+        }
         setLoading(false);
       });
-  }, [router]);
+  }, [router, courseId]);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
   }
 
-  if (loading || !data) {
-    return <LoadingStatus />;
+  if (loading) return <LoadingStatus />;
+
+  if (courses && !courseId) {
+    return (
+      <div className="min-h-screen pb-12">
+        <EmployeeHeader pageTitle="Meine Schulungen" />
+        <PageMain className="mx-auto max-w-2xl px-4 py-8">
+          <div className="mb-6 flex justify-end">
+            <button type="button" onClick={logout} className="link-brand text-sm">
+              Abmelden
+            </button>
+          </div>
+          <ul className="space-y-4">
+            {courses.map((c) => (
+              <li key={c.id}>
+                <Card className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{c.title}</p>
+                    {c.certificate && (
+                      <p className="mt-1 flex items-center gap-2 text-sm text-slate-600">
+                        <StatusDot status={c.certificate.status} />
+                        Zertifikat gültig bis{" "}
+                        {new Date(c.certificate.validUntil).toLocaleDateString("de-DE")}
+                      </p>
+                    )}
+                  </div>
+                  <ButtonLink href={`/schulung?courseId=${encodeURIComponent(c.id)}`}>
+                    {c.inProgress ? "Fortsetzen" : "Starten"}
+                  </ButtonLink>
+                </Card>
+              </li>
+            ))}
+          </ul>
+          {courses.length === 0 && (
+            <p className="text-center text-slate-500">Keine Schulungen zugewiesen.</p>
+          )}
+        </PageMain>
+      </div>
+    );
   }
 
+  if (!data) return <LoadingStatus />;
+
   const { course, attempt, certificate } = data;
-  const { completedLessons, totalLessons } = attempt;
 
   return (
     <div className="min-h-screen pb-12">
-      <EmployeeHeader pageTitle="Ihre Schulung" />
+      <EmployeeHeader pageTitle={course.name} />
       <PageMain className="mx-auto max-w-2xl px-4 py-8">
-        <div className="mb-6 flex justify-end">
+        <div className="mb-6 flex justify-between">
+          <ButtonLink href="/schulung" variant="secondary">
+            Alle Schulungen
+          </ButtonLink>
           <button type="button" onClick={logout} className="link-brand text-sm">
             Abmelden
           </button>
@@ -85,14 +152,13 @@ export default function SchulungPage() {
           <p className="readable-text text-base text-slate-600">
             Version {course.version} · max. {course.maxDurationMinutes} Min. inkl.
             Test · Bestehen ab {course.passingScore} % (
-            {course.minCorrectAnswers} von{" "}
-            {course.examQuestionsPerTest ?? 15} Fragen)
+            {course.minCorrectAnswers} von {course.examQuestionsPerTest ?? 15} Fragen)
           </p>
           <div className="mt-4">
-            <ProgressBar value={completedLessons} max={totalLessons} />
+            <ProgressBar value={attempt.completedLessons} max={attempt.totalLessons} />
           </div>
           <p className="mt-2 text-base text-slate-600">
-            {completedLessons} von {totalLessons} Lernschritten abgeschlossen
+            {attempt.completedLessons} von {attempt.totalLessons} Lernschritten abgeschlossen
           </p>
         </Card>
 
@@ -108,10 +174,7 @@ export default function SchulungPage() {
                     {new Date(certificate.validUntil).toLocaleDateString("de-DE")}
                   </time>
                 </p>
-                <a
-                  href={`/api/certificates/${certificate.id}/pdf`}
-                  className="link-brand mt-3 text-base"
-                >
+                <a href={`/api/certificates/${certificate.id}/pdf`} className="link-brand mt-3 text-base">
                   Zertifikat als PDF herunterladen
                 </a>
               </div>
@@ -121,15 +184,15 @@ export default function SchulungPage() {
 
         <nav className="mb-8 space-y-3" aria-label="Schulungsaktionen">
           {!attempt.lessonsComplete && attempt.nextLessonUrl && (
-            <ButtonLink
-              href={attempt.nextLessonUrl}
-              className="w-full text-lg py-4"
-            >
+            <ButtonLink href={attempt.nextLessonUrl} className="w-full text-lg py-4">
               {attempt.hasStarted ? "Schulung fortsetzen" : "Schulung starten"}
             </ButtonLink>
           )}
-          {attempt.examAvailable && (
-            <ButtonLink href="/schulung/pruefung" className="w-full">
+          {attempt.examAvailable && courseId && (
+            <ButtonLink
+              href={`/schulung/pruefung?courseId=${encodeURIComponent(courseId)}`}
+              className="w-full"
+            >
               Zum Abschlusstest
             </ButtonLink>
           )}
@@ -141,10 +204,7 @@ export default function SchulungPage() {
           </summary>
           <ul className="mt-4 space-y-2" role="list">
             {course.modules.map((mod) => (
-              <li
-                key={mod.id}
-                className="rounded-xl border border-slate-100 px-3 py-2 text-base"
-              >
+              <li key={mod.id} className="rounded-xl border border-slate-100 px-3 py-2 text-base">
                 <span className="font-medium">
                   {mod.id}. {mod.title}
                 </span>
@@ -164,5 +224,13 @@ export default function SchulungPage() {
         </div>
       </PageMain>
     </div>
+  );
+}
+
+export default function SchulungPage() {
+  return (
+    <Suspense fallback={<LoadingStatus />}>
+      <SchulungContent />
+    </Suspense>
   );
 }

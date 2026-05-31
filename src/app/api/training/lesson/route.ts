@@ -1,25 +1,37 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { getActiveAttempt, completeLesson } from "@/lib/training";
+import {
+  getActiveAttempt,
+  completeLesson,
+  loadCourseForUser,
+  assertUserCourseAccess,
+} from "@/lib/training";
 
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
-    const { moduleId, lessonId } = await request.json();
+    if (!user.companyId) {
+      return NextResponse.json({ error: "Kein Mandant." }, { status: 403 });
+    }
 
-    if (!moduleId || !lessonId) {
+    const { moduleId, lessonId, courseId } = await request.json();
+
+    if (!moduleId || !lessonId || !courseId) {
       return NextResponse.json(
-        { error: "Modul- und Lektions-ID erforderlich." },
+        { error: "Modul-, Lektions- und Kurs-ID erforderlich." },
         { status: 400 }
       );
     }
 
-    const attempt = await getActiveAttempt(user.id);
+    await assertUserCourseAccess(user.id, user.companyId, courseId);
+    const course = await loadCourseForUser(user.companyId, courseId);
+    const attempt = await getActiveAttempt(user.id, courseId);
     if (!attempt) {
       return NextResponse.json({ error: "Keine aktive Schulung." }, { status: 400 });
     }
 
     const result = await completeLesson(
+      course,
       attempt.id,
       Number(moduleId),
       Number(lessonId)
@@ -30,6 +42,9 @@ export async function POST(request: Request) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
+    }
+    if (msg === "FORBIDDEN") {
+      return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
     return NextResponse.json({ error: "Fehler." }, { status: 500 });
   }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { ensureSeeded, getSql } from "@/lib/db";
 import { mapUser } from "@/lib/db/row-mappers";
 import { getLatestCertificate } from "@/lib/certificate";
@@ -7,13 +7,14 @@ import { getCertificateStatus, statusLabel } from "@/lib/status";
 
 export async function GET() {
   try {
-    await requireUser("admin");
+    const admin = await requireAdmin();
     await ensureSeeded();
     const sql = getSql();
 
     const rows = await sql`
       SELECT id, first_name, last_name, email, birth_date, birth_place, place_of_residence, location, active
-      FROM users WHERE role = 'employee'
+      FROM users
+      WHERE company_id = ${admin.companyId} AND role = 'employee'
     `;
 
     const header = [

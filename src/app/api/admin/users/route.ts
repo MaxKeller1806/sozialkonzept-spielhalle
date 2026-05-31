@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
-import { hashPassword, requireUser } from "@/lib/auth";
+import { hashPassword, requireAdmin } from "@/lib/auth";
 import { ensureSeeded, getSql } from "@/lib/db";
 import { mapUser } from "@/lib/db/row-mappers";
 import { getLatestCertificate } from "@/lib/certificate";
 import { getCertificateStatus, statusLabel } from "@/lib/status";
+import { assignUserToCourse, setUserCourseAssignments } from "@/lib/course-db";
+import { getUserPrivacyStatus } from "@/lib/privacy";
 import type { User } from "@/lib/types";
 
-async function mapUserRow(row: User) {
+async function mapUserRow(row: User, companyId: number) {
   const cert = await getLatestCertificate(row.id);
   const status = getCertificateStatus(cert);
+  const privacy = await getUserPrivacyStatus(row.id);
   return {
     id: row.id,
     firstName: row.firstName,
@@ -20,9 +23,12 @@ async function mapUserRow(row: User) {
     role: row.role as "admin" | "employee",
     location: row.location,
     active: !!row.active,
+    mustChangePassword: !!row.mustChangePassword,
     createdAt: row.createdAt,
     status,
     statusLabel: statusLabel(status),
+    privacyAccepted: privacy.accepted,
+    privacyVersion: privacy.currentVersion,
     certificate: cert
       ? {
           id: cert.id,
@@ -36,15 +42,20 @@ async function mapUserRow(row: User) {
 
 export async function GET() {
   try {
-    await requireUser("admin");
+    const admin = await requireAdmin();
     await ensureSeeded();
     const sql = getSql();
     const rows = await sql`
-      SELECT id, first_name, last_name, email, birth_date, birth_place, place_of_residence, role, location, active, created_at
-      FROM users ORDER BY last_name, first_name
+      SELECT id, first_name, last_name, email, birth_date, birth_place,
+             place_of_residence, role, location, active, must_change_password, created_at
+      FROM users
+      WHERE company_id = ${admin.companyId} AND role = 'employee'
+      ORDER BY last_name, first_name
     `;
     const users = rows.map((row) => mapUser(row as Record<string, unknown>));
-    const mapped = await Promise.all(users.map(mapUserRow));
+    const mapped = await Promise.all(
+      users.map((u) => mapUserRow(u, admin.companyId!))
+    );
 
     return NextResponse.json({ users: mapped });
   } catch (e) {
@@ -58,7 +69,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await requireUser("admin");
+    const admin = await requireAdmin();
     const body = await request.json();
     const {
       firstName,
@@ -69,12 +80,19 @@ export async function POST(request: Request) {
       birthPlace,
       placeOfResidence,
       location,
-      role = "employee",
+      courseIds,
     } = body;
 
     if (!firstName || !lastName || !email || !password) {
       return NextResponse.json(
         { error: "Pflichtfelder fehlen." },
+        { status: 400 }
+      );
+    }
+
+    if (String(password).length < 8) {
+      return NextResponse.json(
+        { error: "Erstpasswort muss mindestens 8 Zeichen haben." },
         { status: 400 }
       );
     }
@@ -96,22 +114,40 @@ export async function POST(request: Request) {
 
     const rows = await sql`
       INSERT INTO users (
-        first_name, last_name, email, password_hash, birth_date, birth_place, place_of_residence, role, location, active
+        first_name, last_name, email, password_hash, birth_date, birth_place,
+        place_of_residence, role, company_id, location, active, must_change_password
       )
       VALUES (
         ${firstName}, ${lastName}, ${normalizedEmail}, ${hashPassword(password)},
         ${birthDate || null},
         ${birthPlace || null},
         ${placeOfResidence || null},
-        ${role === "admin" ? "admin" : "employee"},
+        'employee',
+        ${admin.companyId},
         ${location || null},
+        TRUE,
         TRUE
       )
-      RETURNING id, first_name, last_name, email, birth_date, birth_place, place_of_residence, role, location, active, created_at
+      RETURNING *
     `;
 
     const user = mapUser(rows[0] as Record<string, unknown>);
-    return NextResponse.json({ user: await mapUserRow(user) }, { status: 201 });
+
+    if (Array.isArray(courseIds) && courseIds.length > 0) {
+      await setUserCourseAssignments(user.id, courseIds);
+    } else {
+      const companyCourses = await sql`
+        SELECT id FROM courses WHERE company_id = ${admin.companyId} AND active = TRUE
+      `;
+      for (const c of companyCourses) {
+        await assignUserToCourse(user.id, String(c.id));
+      }
+    }
+
+    return NextResponse.json(
+      { user: await mapUserRow(user, admin.companyId!) },
+      { status: 201 }
+    );
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {

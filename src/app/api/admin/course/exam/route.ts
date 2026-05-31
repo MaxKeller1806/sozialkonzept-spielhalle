@@ -1,16 +1,25 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { validateExamQuestion } from "@/lib/course-validation";
-import { getCourseData, nextExamId, saveExamQuestion } from "@/lib/course-store";
+import { getCourseData, nextExamId, saveExamQuestion } from "@/lib/course-db";
+import { resolveAdminCourse, courseIdFromRequest } from "@/lib/course-context";
 import type { ExamQuestion } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
-    await requireUser("admin");
+    const user = await requireAdmin();
+    const { companyId, courseId } = await resolveAdminCourse(
+      user,
+      courseIdFromRequest(request)
+    );
     const body = await request.json();
-    const course = getCourseData();
+    const course = await getCourseData(companyId, courseId);
+    if (!course) {
+      return NextResponse.json({ error: "Kurs nicht gefunden." }, { status: 404 });
+    }
+
     const question: ExamQuestion = {
-      id: body.id ?? nextExamId(),
+      id: body.id ?? (await nextExamId(companyId, courseId)),
       moduleId: Number(body.moduleId),
       question: String(body.question ?? "").trim(),
       type: body.type,
@@ -26,7 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error }, { status: 400 });
     }
 
-    saveExamQuestion(question);
+    await saveExamQuestion(companyId, courseId, question);
     return NextResponse.json({ question }, { status: 201 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";

@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   EMPLOYEE_SUBTITLE,
-  EMPLOYEE_TITLE,
   ErrorMessage,
   Input,
   PageMain,
@@ -45,17 +44,11 @@ export default function LoginPage() {
   return (
     <PageMain className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
       <header className="mb-8 text-center">
-        <p
-          className="text-brand-muted text-sm font-semibold uppercase tracking-wide"
-          style={{ color: "#4040a0" }}
-        >
+        <p className="text-brand-muted text-sm font-semibold uppercase tracking-wide">
           {EMPLOYEE_SUBTITLE}
         </p>
-        <h1
-          className="text-brand mt-3 text-2xl font-bold leading-snug sm:text-3xl"
-          style={{ color: "#000080" }}
-        >
-          {EMPLOYEE_TITLE}
+        <h1 className="text-brand mt-3 text-2xl font-bold leading-snug sm:text-3xl">
+          Schulungsplattform
         </h1>
       </header>
 
@@ -83,12 +76,6 @@ export default function LoginPage() {
             {loading ? "Wird angemeldet…" : "Anmelden"}
           </Button>
         </form>
-
-        <aside className="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-          <h3 className="font-semibold text-slate-800">Demo-Zugänge (MVP)</h3>
-          <p className="mt-1">Admin: admin@spielhalle.local / admin123</p>
-          <p>Mitarbeiter: mitarbeiter@demo.de / demo123</p>
-        </aside>
       </Card>
     </PageMain>
   );
