@@ -1,11 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, Card, ErrorMessage, Input, PageMain } from "@/components/ui";
 
 export default function PasswortAendernPage() {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -43,8 +41,8 @@ export default function PasswortAendernPage() {
       return;
     }
 
-    router.push(data.redirect ?? "/schulung");
-    router.refresh();
+    const target = data.redirect ?? "/schulung";
+    window.location.assign(target);
   }
 
   return (

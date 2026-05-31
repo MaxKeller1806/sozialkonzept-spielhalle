@@ -36,7 +36,11 @@ export async function seedDatabase(sql: postgres.Sql): Promise<void> {
       'Super', 'User', 'superuser@betreiber.local', ${superHash},
       'superuser', TRUE, FALSE
     )
-    ON CONFLICT (email) DO NOTHING
+    ON CONFLICT (email) DO UPDATE SET
+      password_hash = EXCLUDED.password_hash,
+      role = EXCLUDED.role,
+      active = TRUE,
+      must_change_password = FALSE
   `;
 
   const adminHash = bcrypt.hashSync("admin123", 10);
@@ -48,7 +52,12 @@ export async function seedDatabase(sql: postgres.Sql): Promise<void> {
       'Admin', 'System', 'admin@spielhalle.local', ${adminHash},
       'admin', ${companyId}, 'Zentrale', TRUE
     )
-    ON CONFLICT (email) DO UPDATE SET company_id = EXCLUDED.company_id
+    ON CONFLICT (email) DO UPDATE SET
+      password_hash = EXCLUDED.password_hash,
+      company_id = EXCLUDED.company_id,
+      role = EXCLUDED.role,
+      active = TRUE,
+      must_change_password = FALSE
   `;
 
   const demoHash = bcrypt.hashSync("demo123", 10);
@@ -61,7 +70,12 @@ export async function seedDatabase(sql: postgres.Sql): Promise<void> {
       'Max', 'Mustermann', 'mitarbeiter@demo.de', ${demoHash},
       '1990-05-15', 'employee', ${companyId}, 'Spielhalle Nord', TRUE, FALSE
     )
-    ON CONFLICT (email) DO UPDATE SET company_id = EXCLUDED.company_id
+    ON CONFLICT (email) DO UPDATE SET
+      password_hash = EXCLUDED.password_hash,
+      company_id = EXCLUDED.company_id,
+      role = EXCLUDED.role,
+      active = TRUE,
+      must_change_password = FALSE
     RETURNING id
   `;
 

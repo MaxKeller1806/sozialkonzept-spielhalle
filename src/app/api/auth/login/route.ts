@@ -63,6 +63,17 @@ export async function POST(request: Request) {
 
     const sessionUser = toSessionUser(user);
 
+    if (sessionUser.role !== "superuser" && !sessionUser.companyId) {
+      console.error("[login] Keine company_id für Rolle:", sessionUser.role);
+      return NextResponse.json(
+        {
+          error:
+            "Kein Mandant zugeordnet. Bitte wenden Sie sich an Ihren Administrator.",
+        },
+        { status: 403 }
+      );
+    }
+
     console.time("login:5-set-session");
     const session = await getSession();
     session.user = sessionUser;
@@ -73,11 +84,26 @@ export async function POST(request: Request) {
     const authState = await getAuthState(sessionUser);
     t("4-company-auth-state");
 
+    const redirect =
+      authState.redirect ?? defaultRedirectForRole(user.role);
+    console.log(
+      "[login] rolle:",
+      sessionUser.role,
+      "company_id:",
+      sessionUser.companyId,
+      "must_change_password:",
+      sessionUser.mustChangePassword,
+      "privacy_accepted:",
+      authState.privacyAccepted,
+      "redirect target:",
+      redirect
+    );
+
     console.time("login:6-response");
     const response = NextResponse.json({
       user: sessionUser,
       authState,
-      redirect: authState.redirect ?? defaultRedirectForRole(user.role),
+      redirect,
     });
     t("6-response");
 

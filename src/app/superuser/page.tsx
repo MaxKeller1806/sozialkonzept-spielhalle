@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AppHeader, Button, Card, Input } from "@/components/ui";
@@ -18,7 +17,6 @@ interface CompanySummary {
 }
 
 export default function SuperuserPage() {
-  const router = useRouter();
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -27,19 +25,35 @@ export default function SuperuserPage() {
   const [message, setMessage] = useState("");
 
   const load = useCallback(() => {
+    setLoading(true);
     fetch("/api/superuser/companies")
       .then((r) => {
         if (r.status === 403 || r.status === 401) {
-          router.push("/login");
+          window.location.replace("/login");
           return null;
+        }
+        if (!r.ok) {
+          return r.json().then((d) => {
+            throw new Error(d.error ?? "Laden fehlgeschlagen.");
+          });
         }
         return r.json();
       })
       .then((d) => {
         if (d?.companies) setCompanies(d.companies);
+      })
+      .catch((e) => {
+        setMessage(e instanceof Error ? e.message : "Laden fehlgeschlagen.");
+      })
+      .finally(() => {
         setLoading(false);
       });
-  }, [router]);
+  }, []);
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.replace("/login");
+  }
 
   useEffect(() => {
     load();
@@ -96,7 +110,7 @@ export default function SuperuserPage() {
     <div className="min-h-screen pb-16">
       <AppHeader title="Superuser – Mandantenverwaltung" />
       <div className="mx-auto max-w-6xl px-4 py-8">
-        <nav className="mb-6 flex flex-wrap gap-2" aria-label="Superuser">
+        <nav className="mb-6 flex flex-wrap items-center gap-2" aria-label="Superuser">
           <span className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
             Firmen
           </span>
@@ -106,6 +120,13 @@ export default function SuperuserPage() {
           >
             Branding
           </Link>
+          <button
+            type="button"
+            onClick={logout}
+            className="ml-auto rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:underline"
+          >
+            Abmelden
+          </button>
         </nav>
 
         <div className="mb-6 flex justify-between gap-3">

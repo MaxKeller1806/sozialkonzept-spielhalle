@@ -1,8 +1,6 @@
 import postgres from "postgres";
-import { seedDatabase } from "./db/seed";
 
 let sql: postgres.Sql | null = null;
-let seedPromise: Promise<void> | null = null;
 
 function getDatabaseUrl(): string {
   const url = process.env.DATABASE_URL;
@@ -27,18 +25,9 @@ export function getSql(): postgres.Sql {
   return sql;
 }
 
-/** Ensures demo users and course metadata exist (idempotent). Nur lokal – nicht in Produktion. */
+/** @deprecated Daten per `npm run db:seed` laden – kein Auto-Seed zur Laufzeit. */
 export async function ensureSeeded(): Promise<void> {
-  if (process.env.NODE_ENV === "production") {
-    return;
-  }
-  if (!seedPromise) {
-    seedPromise = seedDatabase(getSql()).catch((err) => {
-      seedPromise = null;
-      throw err;
-    });
-  }
-  await seedPromise;
+  return;
 }
 
 /** @deprecated Use getSql() – kept for gradual migration references */

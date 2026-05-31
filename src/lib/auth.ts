@@ -103,7 +103,17 @@ export function toSessionUser(user: User): SessionUser {
 }
 
 export async function getAuthState(user: SessionUser): Promise<AuthState> {
+  console.log(
+    "[auth] rolle:",
+    user.role,
+    "company_id:",
+    user.companyId,
+    "must_change_password:",
+    user.mustChangePassword
+  );
+
   if (user.role === "superuser") {
+    console.log("[auth] Redirect-Ziel: /superuser");
     return {
       mustChangePassword: user.mustChangePassword,
       privacyAccepted: true,
@@ -114,6 +124,7 @@ export async function getAuthState(user: SessionUser): Promise<AuthState> {
   }
 
   if (user.mustChangePassword) {
+    console.log("[auth] Redirect-Ziel: /passwort-aendern");
     return {
       mustChangePassword: true,
       privacyAccepted: false,
@@ -123,24 +134,32 @@ export async function getAuthState(user: SessionUser): Promise<AuthState> {
     };
   }
 
+  if (!user.companyId) {
+    console.error("[auth] Keine company_id für Rolle:", user.role);
+    return {
+      mustChangePassword: false,
+      privacyAccepted: false,
+      companyActive: false,
+      licenseActive: false,
+      redirect: undefined,
+    };
+  }
+
   const privacyAccepted = await hasAcceptedCurrentPolicy(user.id);
+  console.log(
+    "[auth] privacy_accepted:",
+    privacyAccepted,
+    "redirect target:",
+    privacyAccepted ? "(pending company check)" : "/datenschutz/bestaetigen"
+  );
   if (!privacyAccepted) {
+    console.log("[auth] Redirect-Ziel: /datenschutz/bestaetigen");
     return {
       mustChangePassword: false,
       privacyAccepted: false,
       companyActive: false,
       licenseActive: false,
       redirect: "/datenschutz/bestaetigen",
-    };
-  }
-
-  if (!user.companyId) {
-    return {
-      mustChangePassword: false,
-      privacyAccepted: true,
-      companyActive: false,
-      licenseActive: false,
-      redirect: "/login",
     };
   }
 
@@ -178,6 +197,8 @@ export async function getAuthState(user: SessionUser): Promise<AuthState> {
       redirect = "/schulung";
     }
   }
+
+  console.log("[auth] redirect target:", redirect);
 
   return {
     mustChangePassword: false,

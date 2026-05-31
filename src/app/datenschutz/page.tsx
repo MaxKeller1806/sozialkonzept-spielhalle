@@ -8,16 +8,29 @@ export default function DatenschutzPage() {
   const [content, setContent] = useState<string | null>(null);
   const [title, setTitle] = useState("Datenschutzerklärung");
   const [version, setVersion] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetch("/api/auth/privacy")
-      .then((r) => r.json())
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) {
+          throw new Error(d.error ?? "Laden fehlgeschlagen.");
+        }
+        return d;
+      })
       .then((d) => {
         if (d.policy) {
           setTitle(d.policy.title);
           setContent(d.policy.content);
           setVersion(d.policy.version);
+        } else {
+          setContent("");
         }
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "Laden fehlgeschlagen.");
+        setContent("");
       });
   }, []);
 
@@ -28,7 +41,13 @@ export default function DatenschutzPage() {
         <p className="mt-1 text-sm text-slate-500">Version {version}</p>
       )}
       <div className="prose-readable mt-8 whitespace-pre-wrap text-base leading-relaxed text-slate-700">
-        {content ?? "Wird geladen…"}
+        {error ? (
+          <p className="text-red-600" role="alert">{error}</p>
+        ) : content === null ? (
+          "Wird geladen…"
+        ) : content || (
+          "Keine Datenschutzerklärung hinterlegt."
+        )}
       </div>
       <p className="mt-8">
         <Link href="/login" className="text-brand underline">

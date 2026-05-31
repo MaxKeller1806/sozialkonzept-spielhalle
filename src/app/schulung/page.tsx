@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import {
   ButtonLink,
@@ -53,27 +53,52 @@ interface TrainingData {
 }
 
 function SchulungContent() {
-  const router = useRouter();
   const params = useSearchParams();
   const courseId = params.get("courseId");
   const [courses, setCourses] = useState<CourseListItem[] | null>(null);
   const [data, setData] = useState<TrainingData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const url = courseId
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+
+    const trainingUrl = courseId
       ? `/api/training?courseId=${encodeURIComponent(courseId)}`
       : "/api/training";
-    fetch(url)
-      .then((r) => {
-        if (r.status === 401) {
-          router.push("/login");
+
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((auth) => {
+        if (cancelled) return null;
+        if (!auth.user) {
+          window.location.replace("/login");
           return null;
+        }
+        const redirect = auth.authState?.redirect as string | undefined;
+        const allowed = ["/schulung", "/schulung/gesperrt"];
+        if (redirect && !allowed.includes(redirect)) {
+          window.location.replace(redirect);
+          return null;
+        }
+        return fetch(trainingUrl);
+      })
+      .then(async (r) => {
+        if (cancelled || !r) return null;
+        if (r.status === 401) {
+          window.location.replace("/login");
+          return null;
+        }
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.error ?? "Laden fehlgeschlagen.");
         }
         return r.json();
       })
       .then((d) => {
-        if (!d) return;
+        if (cancelled || !d) return;
         if (d.courses) {
           setCourses(d.courses);
           setData(null);
@@ -81,16 +106,33 @@ function SchulungContent() {
           setData(d);
           setCourses(null);
         }
-        setLoading(false);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : "Laden fehlgeschlagen.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-  }, [router, courseId]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId]);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    window.location.replace("/login");
   }
 
   if (loading) return <LoadingStatus />;
+  if (error) {
+    return (
+      <PageMain className="mx-auto max-w-3xl px-4 py-12">
+        <p className="text-red-600" role="alert">{error}</p>
+      </PageMain>
+    );
+  }
 
   if (courses && !courseId) {
     return (

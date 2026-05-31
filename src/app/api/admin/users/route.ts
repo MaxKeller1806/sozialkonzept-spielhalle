@@ -43,7 +43,6 @@ async function mapUserRow(row: User, companyId: number) {
 export async function GET() {
   try {
     const admin = await requireAdmin();
-    await ensureSeeded();
     const sql = getSql();
     const rows = await sql`
       SELECT id, first_name, last_name, email, birth_date, birth_place,

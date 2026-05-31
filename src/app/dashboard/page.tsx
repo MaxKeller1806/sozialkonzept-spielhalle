@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AdminNav } from "@/components/admin-nav";
 import {
@@ -34,7 +33,6 @@ interface AdminUser {
 }
 
 export default function DashboardPage() {
-  const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -52,22 +50,48 @@ export default function DashboardPage() {
   const [message, setMessage] = useState("");
 
   const loadUsers = useCallback(() => {
-    fetch("/api/admin/users")
-      .then((r) => {
-        if (r.status === 403 || r.status === 401) {
-          router.push("/login");
+    setLoading(true);
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((auth) => {
+        if (!auth.user) {
+          window.location.replace("/login");
           return null;
+        }
+        const redirect = auth.authState?.redirect as string | undefined;
+        const allowed = ["/dashboard", "/dashboard/lizenz", "/dashboard/gesperrt"];
+        if (redirect && !allowed.includes(redirect)) {
+          window.location.replace(redirect);
+          return null;
+        }
+        return fetch("/api/admin/users");
+      })
+      .then((r) => {
+        if (!r) return null;
+        if (r.status === 403 || r.status === 401) {
+          window.location.replace("/login");
+          return null;
+        }
+        if (!r.ok) {
+          return r.json().then((d) => {
+            throw new Error(d.error ?? "Laden fehlgeschlagen.");
+          });
         }
         return r.json();
       })
       .then((d) => {
-        if (d?.users)
-          setUsers(
-            d.users.filter((u: AdminUser) => u.role === "employee")
-          );
+        if (!d) return;
+        if (d.users) {
+          setUsers(d.users.filter((u: AdminUser) => u.role === "employee"));
+        }
+      })
+      .catch((e) => {
+        setMessage(e instanceof Error ? e.message : "Laden fehlgeschlagen.");
+      })
+      .finally(() => {
         setLoading(false);
       });
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     loadUsers();
@@ -75,7 +99,7 @@ export default function DashboardPage() {
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    window.location.replace("/login");
   }
 
   function resetForm() {

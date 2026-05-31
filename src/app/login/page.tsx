@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Button,
   Card,
@@ -12,7 +11,6 @@ import {
 } from "@/components/ui";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -23,22 +21,33 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const data = await res.json();
-    setLoading(false);
+      const data = await res.json();
 
-    if (!res.ok) {
-      setError(data.error ?? "Anmeldung fehlgeschlagen.");
-      return;
+      if (!res.ok) {
+        setError(data.error ?? "Anmeldung fehlgeschlagen.");
+        setLoading(false);
+        return;
+      }
+
+      const target = data.redirect as string | undefined;
+      if (!target) {
+        setError("Kein Weiterleitungsziel erhalten.");
+        setLoading(false);
+        return;
+      }
+
+      window.location.replace(target);
+    } catch {
+      setError("Netzwerkfehler. Bitte erneut versuchen.");
+      setLoading(false);
     }
-
-    router.push(data.redirect ?? "/schulung");
-    router.refresh();
   }
 
   return (
