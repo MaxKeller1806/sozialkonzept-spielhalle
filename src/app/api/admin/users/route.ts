@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 import { hashPassword, requireAdmin } from "@/lib/auth";
-import { ensureSeeded, getSql } from "@/lib/db";
+import { getSql, resetSql } from "@/lib/db";
 import { mapUser } from "@/lib/db/row-mappers";
 import { getLatestCertificate } from "@/lib/certificate";
 import { getCertificateStatus, statusLabel } from "@/lib/status";
 import { assignUserToCourse, setUserCourseAssignments } from "@/lib/course-db";
-import { getUserPrivacyStatus } from "@/lib/privacy";
 import type { User } from "@/lib/types";
 
-async function mapUserRow(row: User, companyId: number) {
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+async function mapUserRow(row: User) {
   const cert = await getLatestCertificate(row.id);
   const status = getCertificateStatus(cert);
-  const privacy = await getUserPrivacyStatus(row.id);
   return {
     id: row.id,
     firstName: row.firstName,
@@ -27,8 +28,6 @@ async function mapUserRow(row: User, companyId: number) {
     createdAt: row.createdAt,
     status,
     statusLabel: statusLabel(status),
-    privacyAccepted: privacy.accepted,
-    privacyVersion: privacy.currentVersion,
     certificate: cert
       ? {
           id: cert.id,
@@ -52,17 +51,20 @@ export async function GET() {
       ORDER BY last_name, first_name
     `;
     const users = rows.map((row) => mapUser(row as Record<string, unknown>));
-    const mapped = await Promise.all(
-      users.map((u) => mapUserRow(u, admin.companyId!))
-    );
+    const mapped: Awaited<ReturnType<typeof mapUserRow>>[] = [];
+    for (const u of users) {
+      mapped.push(await mapUserRow(u));
+    }
 
     return NextResponse.json({ users: mapped });
   } catch (e) {
+    console.error("[admin/users] GET Fehler:", e);
+    await resetSql();
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
-    return NextResponse.json({ error: "Fehler." }, { status: 500 });
+    return NextResponse.json({ error: "Fehler beim Laden." }, { status: 500 });
   }
 }
 
@@ -96,7 +98,6 @@ export async function POST(request: Request) {
       );
     }
 
-    await ensureSeeded();
     const sql = getSql();
     const normalizedEmail = email.trim().toLowerCase();
 
@@ -144,10 +145,12 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { user: await mapUserRow(user, admin.companyId!) },
+      { user: await mapUserRow(user) },
       { status: 201 }
     );
   } catch (e) {
+    console.error("[admin/users] POST Fehler:", e);
+    await resetSql();
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });

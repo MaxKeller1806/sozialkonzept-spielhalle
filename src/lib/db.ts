@@ -17,12 +17,28 @@ export function getSql(): postgres.Sql {
     sql = postgres(getDatabaseUrl(), {
       ssl: process.env.NODE_ENV === "production" ? "require" : "prefer",
       prepare: false,
-      max: process.env.NODE_ENV === "production" ? 1 : 10,
-      idle_timeout: 20,
+      fetch_types: false,
+      max: 1,
+      idle_timeout: 5,
       connect_timeout: 10,
+      max_lifetime: 60 * 5,
+      onclose: () => {
+        sql = null;
+      },
     });
   }
   return sql;
+}
+
+export async function resetSql(): Promise<void> {
+  if (sql) {
+    try {
+      await sql.end({ timeout: 2 });
+    } catch {
+      /* ignore */
+    }
+    sql = null;
+  }
 }
 
 /** @deprecated Daten per `npm run db:seed` laden – kein Auto-Seed zur Laufzeit. */

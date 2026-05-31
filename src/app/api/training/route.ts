@@ -16,6 +16,10 @@ import {
 } from "@/lib/training";
 import { getUserAssignedCourses } from "@/lib/course-db";
 import { resolveEmployeeCourse } from "@/lib/course-context";
+import { resetSql } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   try {
@@ -28,25 +32,24 @@ export async function GET(request: Request) {
 
     if (!courseIdParam) {
       const courses = await getUserAssignedCourses(user.id, user.companyId);
-      const enriched = await Promise.all(
-        courses.map(async (c) => {
-          const cert = await getLatestCertificate(user.id, c.id);
-          const attempt = await getActiveAttempt(user.id, c.id);
-          return {
-            id: c.id,
-            title: c.title,
-            slug: c.slug,
-            certificate: cert
-              ? {
-                  id: cert.id,
-                  validUntil: cert.validUntil,
-                  status: getCertificateStatus(cert),
-                }
-              : null,
-            inProgress: !!attempt,
-          };
-        })
-      );
+      const enriched = [];
+      for (const c of courses) {
+        const cert = await getLatestCertificate(user.id, c.id);
+        const attempt = await getActiveAttempt(user.id, c.id);
+        enriched.push({
+          id: c.id,
+          title: c.title,
+          slug: c.slug,
+          certificate: cert
+            ? {
+                id: cert.id,
+                validUntil: cert.validUntil,
+                status: getCertificateStatus(cert),
+              }
+            : null,
+          inProgress: !!attempt,
+        });
+      }
       return NextResponse.json({ courses: enriched });
     }
 
@@ -100,6 +103,8 @@ export async function GET(request: Request) {
         : null,
     });
   } catch (e) {
+    console.error("[training] GET Fehler:", e);
+    await resetSql();
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
