@@ -1,4 +1,5 @@
 -- Multi-Tenant: Firmen, SUPERUSER, Kurse in DB, Datenschutz, Lizenzen
+-- Idempotent: mehrfach ausführbar auf bestehenden Datenbanken.
 
 -- ---------------------------------------------------------------------------
 -- Firmen / Mandanten
@@ -32,6 +33,17 @@ CREATE TABLE IF NOT EXISTS companies (
 
 CREATE INDEX IF NOT EXISTS idx_companies_slug ON companies (slug);
 CREATE INDEX IF NOT EXISTS idx_companies_status ON companies (status);
+
+-- Standardfirma ZUERST anlegen (wird für Backfill aller company_id benötigt)
+INSERT INTO companies (
+  slug, name, status, license_status, license_activated_at,
+  primary_color, secondary_color, background_color, accent_color
+)
+VALUES (
+  'standard', 'Standard Spielhalle GmbH', 'active', 'active', NOW(),
+  '#000080', '#4040a0', '#f8fafc', '#2563eb'
+)
+ON CONFLICT (slug) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- Nutzer erweitern
@@ -70,33 +82,16 @@ CREATE INDEX IF NOT EXISTS idx_user_course_assignments_user
   ON user_course_assignments (user_id);
 
 -- ---------------------------------------------------------------------------
--- Fortschritt / Zertifikate / Feedback mandantenspezifisch
+-- Fortschritt / Zertifikate / Feedback – company_id nullable hinzufügen
 -- ---------------------------------------------------------------------------
 ALTER TABLE training_attempts ADD COLUMN IF NOT EXISTS company_id BIGINT REFERENCES companies(id);
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS company_id BIGINT REFERENCES companies(id);
 ALTER TABLE feedback ADD COLUMN IF NOT EXISTS company_id BIGINT REFERENCES companies(id);
 
 -- ---------------------------------------------------------------------------
--- Zertifikatszähler pro Firma
+-- Zertifikatszähler pro Firma – zuerst nullable Spalte
 -- ---------------------------------------------------------------------------
 ALTER TABLE certificate_counters ADD COLUMN IF NOT EXISTS company_id BIGINT REFERENCES companies(id);
-
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'certificate_counters_pkey'
-  ) THEN
-    ALTER TABLE certificate_counters DROP CONSTRAINT certificate_counters_pkey;
-  END IF;
-EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
-
-UPDATE certificate_counters SET company_id = (
-  SELECT id FROM companies WHERE slug = 'standard' LIMIT 1
-) WHERE company_id IS NULL;
-
-ALTER TABLE certificate_counters ALTER COLUMN company_id SET NOT NULL;
-ALTER TABLE certificate_counters ADD PRIMARY KEY (company_id, year);
 
 -- ---------------------------------------------------------------------------
 -- Datenschutzerklärung
@@ -125,18 +120,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_privacy_accept_user_version
   ON privacy_policy_acceptances (user_id, version_id);
 
 -- ---------------------------------------------------------------------------
--- Bestehende Daten → Standardfirma
+-- Bestehende Daten → Standardfirma (Backfill vor NOT NULL)
 -- ---------------------------------------------------------------------------
-INSERT INTO companies (
-  slug, name, status, license_status, license_activated_at,
-  primary_color, secondary_color, background_color, accent_color
-)
-VALUES (
-  'standard', 'Standard Spielhalle GmbH', 'active', 'active', NOW(),
-  '#000080', '#4040a0', '#f8fafc', '#2563eb'
-)
-ON CONFLICT (slug) DO NOTHING;
-
 UPDATE users
 SET company_id = (SELECT id FROM companies WHERE slug = 'standard' LIMIT 1)
 WHERE company_id IS NULL AND role IN ('admin', 'employee');
@@ -149,19 +134,53 @@ SET
 WHERE company_id IS NULL;
 
 UPDATE training_attempts ta
-SET company_id = u.company_id
+SET company_id = COALESCE(u.company_id, (SELECT id FROM companies WHERE slug = 'standard' LIMIT 1))
 FROM users u
 WHERE ta.user_id = u.id AND ta.company_id IS NULL;
 
 UPDATE certificates c
-SET company_id = u.company_id
+SET company_id = COALESCE(u.company_id, (SELECT id FROM companies WHERE slug = 'standard' LIMIT 1))
 FROM users u
 WHERE c.user_id = u.id AND c.company_id IS NULL;
 
 UPDATE feedback f
-SET company_id = u.company_id
+SET company_id = COALESCE(u.company_id, (SELECT id FROM companies WHERE slug = 'standard' LIMIT 1))
 FROM users u
 WHERE f.user_id = u.id AND f.company_id IS NULL;
+
+UPDATE certificate_counters
+SET company_id = (SELECT id FROM companies WHERE slug = 'standard' LIMIT 1)
+WHERE company_id IS NULL;
+
+-- certificate_counters: NOT NULL + zusammengesetzter PK (idempotent)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'certificate_counters'
+      AND column_name = 'company_id'
+      AND is_nullable = 'YES'
+  ) THEN
+    UPDATE certificate_counters
+    SET company_id = (SELECT id FROM companies WHERE slug = 'standard' LIMIT 1)
+    WHERE company_id IS NULL;
+
+    ALTER TABLE certificate_counters ALTER COLUMN company_id SET NOT NULL;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+    WHERE c.conrelid = 'public.certificate_counters'::regclass
+      AND c.contype = 'p'
+      AND a.attname = 'company_id'
+  ) THEN
+    ALTER TABLE certificate_counters DROP CONSTRAINT IF EXISTS certificate_counters_pkey;
+    ALTER TABLE certificate_counters ADD PRIMARY KEY (company_id, year);
+  END IF;
+END $$;
 
 INSERT INTO user_course_assignments (user_id, course_id)
 SELECT u.id, c.id
