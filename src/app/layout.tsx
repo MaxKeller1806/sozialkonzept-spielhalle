@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { AccessibilityProvider } from "@/components/accessibility-provider";
+import { APP_NAME, CUSTOMER_LOGIN_TITLE } from "@/lib/branding";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Schulung und Unterweisung – Sozialkonzept",
-  description:
-    "Interne 222 Schulung nach Einstellung: Unterweisung in das betriebliche Sozialkonzept",
+  title: APP_NAME,
+  description: CUSTOMER_LOGIN_TITLE,
 };
 
 export default function RootLayout({

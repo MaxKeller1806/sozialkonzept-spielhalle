@@ -26,7 +26,7 @@ export async function generateCertificatePdf(
     const chunks: Buffer[] = [];
 
     doc.info.Title = course.certificateTitle;
-    doc.info.Author = opts?.companyName ?? "Schulungsplattform";
+    doc.info.Author = opts?.companyName ?? "Certiano Campus";
     doc.info.Subject = course.certificateTitle;
 
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));

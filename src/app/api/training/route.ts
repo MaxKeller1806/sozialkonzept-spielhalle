@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireEmployee } from "@/lib/auth";
 import { getLatestCertificate } from "@/lib/certificate";
 import { getCertificateStatus } from "@/lib/status";
 import {
@@ -23,10 +23,7 @@ export const maxDuration = 60;
 
 export async function GET(request: Request) {
   try {
-    const user = await requireUser();
-    if (!user.companyId) {
-      return NextResponse.json({ error: "Kein Mandant." }, { status: 403 });
-    }
+    const user = await requireEmployee();
 
     const courseIdParam = new URL(request.url).searchParams.get("courseId");
 

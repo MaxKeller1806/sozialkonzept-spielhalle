@@ -22,14 +22,14 @@ export async function POST(request: Request) {
 
   try {
     console.time("login:1-read-request");
-    let body: { email?: string; password?: string };
+    let body: { email?: string; password?: string; portal?: string };
     try {
       body = await request.json();
     } catch {
       t("1-read-request");
       return NextResponse.json({ error: "Ungültige Anfrage." }, { status: 400 });
     }
-    const { email, password } = body;
+    const { email, password, portal } = body;
     t("1-read-request");
 
     if (!email || !password) {
@@ -62,6 +62,20 @@ export async function POST(request: Request) {
     }
 
     const sessionUser = toSessionUser(user);
+
+    if (portal === "certiano") {
+      if (sessionUser.role !== "superuser") {
+        return NextResponse.json(
+          { error: "Nur Certiano-Betreiber können sich hier anmelden. Bitte /login nutzen." },
+          { status: 403 }
+        );
+      }
+    } else if (sessionUser.role === "superuser") {
+      return NextResponse.json(
+        { error: "Superuser melden sich unter /certiano/login an." },
+        { status: 403 }
+      );
+    }
 
     if (sessionUser.role !== "superuser" && !sessionUser.companyId) {
       console.error("[login] Keine company_id für Rolle:", sessionUser.role);

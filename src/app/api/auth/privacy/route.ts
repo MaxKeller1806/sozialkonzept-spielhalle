@@ -23,7 +23,7 @@ export async function GET() {
     }
 
     if (user?.role === "superuser") {
-      const redirect = "/superuser";
+      const redirect = "/certiano";
       console.log("[privacy] Redirect-Ziel:", redirect);
       return NextResponse.json({
         policy: null,
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     console.log("[privacy] Rolle:", user.role, "company_id:", user.companyId);
 
     if (user.role === "superuser") {
-      const redirect = "/superuser";
+      const redirect = "/certiano";
       console.log("[privacy] Redirect-Ziel:", redirect);
       return NextResponse.json({ ok: true, redirect });
     }

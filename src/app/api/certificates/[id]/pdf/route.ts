@@ -18,6 +18,9 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
     }
+    if (user.role === "superuser") {
+      return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
 
     const { id } = await params;
     const certId = Number(id);

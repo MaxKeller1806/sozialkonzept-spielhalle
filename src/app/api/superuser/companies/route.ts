@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
-import { ensureSeeded, getSql } from "@/lib/db";
+import { getSql } from "@/lib/db";
 import { generateLicenseKey, hashLicenseKey } from "@/lib/license";
 import { getCompanySummaries, mapCompany } from "@/lib/tenant";
 
@@ -46,7 +46,6 @@ export async function POST(request: Request) {
     const licenseKey = generateLicenseKey();
     const licenseHash = hashLicenseKey(licenseKey);
 
-    await ensureSeeded();
     const sql = getSql();
 
     const existing = await sql`

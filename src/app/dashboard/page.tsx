@@ -48,6 +48,7 @@ export default function DashboardPage() {
     location: "",
   });
   const [message, setMessage] = useState("");
+  const [companyName, setCompanyName] = useState("");
 
   const loadUsers = useCallback(() => {
     setLoading(true);
@@ -64,7 +65,12 @@ export default function DashboardPage() {
           window.location.replace(redirect);
           return null;
         }
-        return fetch("/api/admin/users");
+        return fetch("/api/admin/company")
+          .then((r) => r.json())
+          .then((c) => {
+            if (c.company?.name) setCompanyName(c.company.name);
+            return fetch("/api/admin/users");
+          });
       })
       .then((r) => {
         if (!r) return null;
@@ -194,7 +200,9 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen pb-16">
-      <AppHeader title="Admin-Dashboard" />
+      <AppHeader
+        title={companyName ? `Admin-Dashboard – ${companyName}` : "Admin-Dashboard"}
+      />
       <div className="mx-auto max-w-6xl px-4 py-8">
         <AdminNav active="mitarbeiter" />
 

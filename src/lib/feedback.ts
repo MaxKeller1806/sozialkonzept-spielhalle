@@ -19,14 +19,14 @@ export async function createFeedback(
   return mapFeedback(rows[0] as Record<string, unknown>);
 }
 
-export async function listFeedback(): Promise<FeedbackEntry[]> {
-  await ensureSeeded();
+export async function listFeedbackForCompany(companyId: number): Promise<FeedbackEntry[]> {
   const sql = getSql();
   const rows = await sql`
     SELECT f.id, f.user_id, f.category, f.message, f.created_at,
            u.first_name, u.last_name, u.email, u.location
     FROM feedback f
     JOIN users u ON u.id = f.user_id
+    WHERE u.company_id = ${companyId}
     ORDER BY f.created_at DESC
   `;
   return rows.map((row) => mapFeedback(row as Record<string, unknown>));

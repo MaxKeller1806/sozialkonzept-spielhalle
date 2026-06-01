@@ -134,7 +134,7 @@ export async function POST(request: Request) {
     const user = mapUser(rows[0] as Record<string, unknown>);
 
     if (Array.isArray(courseIds) && courseIds.length > 0) {
-      await setUserCourseAssignments(user.id, courseIds);
+      await setUserCourseAssignments(user.id, admin.companyId!, courseIds);
     } else {
       const companyCourses = await sql`
         SELECT id FROM courses WHERE company_id = ${admin.companyId} AND active = TRUE

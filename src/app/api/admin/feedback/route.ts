@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { listFeedback } from "@/lib/feedback";
+import { requireAdmin } from "@/lib/auth";
+import { listFeedbackForCompany } from "@/lib/feedback";
 
 export async function GET() {
   try {
-    await requireUser("admin");
-    return NextResponse.json({ feedback: await listFeedback() });
+    const admin = await requireAdmin();
+    const feedback = await listFeedbackForCompany(admin.companyId!);
+    return NextResponse.json({ feedback });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {

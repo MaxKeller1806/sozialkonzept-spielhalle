@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { APP_NAME, CUSTOMER_LOGIN_SUBTITLE } from "@/lib/branding";
 import {
   Button,
   Card,
@@ -9,8 +8,9 @@ import {
   Input,
   PageMain,
 } from "@/components/ui";
+import { APP_NAME, OPERATOR_NAME } from "@/lib/branding";
 
-export default function LoginPage() {
+export default function CertianoLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,9 +25,8 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, portal: "tenant" }),
+        body: JSON.stringify({ email, password, portal: "certiano" }),
       });
-
       const data = await res.json();
 
       if (!res.ok) {
@@ -36,14 +35,7 @@ export default function LoginPage() {
         return;
       }
 
-      const target = data.redirect as string | undefined;
-      if (!target) {
-        setError("Kein Weiterleitungsziel erhalten.");
-        setLoading(false);
-        return;
-      }
-
-      window.location.replace(target);
+      window.location.replace(data.redirect ?? "/certiano");
     } catch {
       setError("Netzwerkfehler. Bitte erneut versuchen.");
       setLoading(false);
@@ -51,18 +43,19 @@ export default function LoginPage() {
   }
 
   return (
-    <PageMain className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
+    <PageMain className="flex min-h-screen flex-col items-center justify-center bg-slate-900 px-4 py-12 text-white">
       <header className="mb-8 text-center">
-        <p className="text-brand-muted text-sm font-semibold uppercase tracking-wide">
-          {CUSTOMER_LOGIN_SUBTITLE}
+        <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+          {OPERATOR_NAME} · Betreiberbereich
         </p>
-        <h1 className="text-brand mt-3 text-2xl font-bold leading-snug sm:text-3xl">
-          {APP_NAME}
-        </h1>
+        <h1 className="mt-3 text-3xl font-bold">{APP_NAME}</h1>
+        <p className="mt-2 text-sm text-slate-400">
+          Mandantenverwaltung für Certiano
+        </p>
       </header>
 
-      <Card className="w-full max-w-md">
-        <h2 className="sr-only">Anmeldung</h2>
+      <Card className="w-full max-w-md text-slate-900">
+        <h2 className="sr-only">Certiano Anmeldung</h2>
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <Input
             label="E-Mail"
@@ -85,6 +78,12 @@ export default function LoginPage() {
             {loading ? "Wird angemeldet…" : "Anmelden"}
           </Button>
         </form>
+        <p className="mt-4 text-center text-xs text-slate-500">
+          Kunden-Login:{" "}
+          <a href="/login" className="text-brand underline">
+            /login
+          </a>
+        </p>
       </Card>
     </PageMain>
   );

@@ -3,17 +3,16 @@ import {
   getSession,
   getUserByEmail,
   hashPassword,
-  requireUser,
+  requireAdmin,
   toSessionUser,
   verifyPassword,
 } from "@/lib/auth";
-import { ensureSeeded, getSql } from "@/lib/db";
+import { getSql } from "@/lib/db";
 import { mapUserWithPassword } from "@/lib/db/row-mappers";
 
 export async function GET() {
   try {
-    const sessionUser = await requireUser("admin");
-    await ensureSeeded();
+    const sessionUser = await requireAdmin();
     const sql = getSql();
     const rows = await sql`
       SELECT * FROM users WHERE id = ${sessionUser.id} LIMIT 1
@@ -41,7 +40,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const sessionUser = await requireUser("admin");
+    const sessionUser = await requireAdmin();
     const body = await request.json();
     const { email, password, currentPassword } = body;
 
@@ -59,7 +58,6 @@ export async function PATCH(request: Request) {
       );
     }
 
-    await ensureSeeded();
     const sql = getSql();
     const rows = await sql`
       SELECT * FROM users WHERE id = ${sessionUser.id} LIMIT 1

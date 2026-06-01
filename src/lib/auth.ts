@@ -49,10 +49,18 @@ export async function requireSuperuser(): Promise<SessionUser> {
   return requireUser("superuser");
 }
 
-export async function requireAdmin(): Promise<SessionUser> {
+export type TenantSessionUser = SessionUser & { companyId: number };
+
+export async function requireAdmin(): Promise<TenantSessionUser> {
   const user = await requireUser("admin");
   if (!user.companyId) throw new Error("FORBIDDEN");
-  return user;
+  return { ...user, companyId: user.companyId };
+}
+
+export async function requireEmployee(): Promise<TenantSessionUser> {
+  const user = await requireUser("employee");
+  if (!user.companyId) throw new Error("FORBIDDEN");
+  return { ...user, companyId: user.companyId };
 }
 
 export function verifyPassword(password: string, hash: string): boolean {
@@ -113,13 +121,13 @@ export async function getAuthState(user: SessionUser): Promise<AuthState> {
   );
 
   if (user.role === "superuser") {
-    console.log("[auth] Redirect-Ziel: /superuser");
+    console.log("[auth] Redirect-Ziel: /certiano");
     return {
       mustChangePassword: user.mustChangePassword,
       privacyAccepted: true,
       companyActive: true,
       licenseActive: true,
-      redirect: "/superuser",
+      redirect: "/certiano",
     };
   }
 
@@ -210,7 +218,7 @@ export async function getAuthState(user: SessionUser): Promise<AuthState> {
 }
 
 export function defaultRedirectForRole(role: UserRole): string {
-  if (role === "superuser") return "/superuser";
+  if (role === "superuser") return "/certiano";
   if (role === "admin") return "/dashboard";
   return "/schulung";
 }

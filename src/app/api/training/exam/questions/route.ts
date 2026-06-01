@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireEmployee } from "@/lib/auth";
 import { questionsByIds, selectExamQuestions } from "@/lib/exam-select";
 import {
   allLessonsComplete,
@@ -13,7 +13,7 @@ import { resolveEmployeeCourse } from "@/lib/course-context";
 
 export async function GET(request: Request) {
   try {
-    const user = await requireUser();
+    const user = await requireEmployee();
     if (!user.companyId) {
       return NextResponse.json({ error: "Kein Mandant." }, { status: 403 });
     }

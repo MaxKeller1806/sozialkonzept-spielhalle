@@ -363,9 +363,19 @@ export async function assignUserToCourse(
 
 export async function setUserCourseAssignments(
   userId: number,
+  companyId: number,
   courseIds: string[]
 ): Promise<void> {
-  await ensureSeeded();
+  if (courseIds.length > 0) {
+    const sql = getSql();
+    const rows = await sql`
+      SELECT id FROM courses
+      WHERE company_id = ${companyId} AND id = ANY(${courseIds})
+    `;
+    if (rows.length !== courseIds.length) {
+      throw new Error("FORBIDDEN");
+    }
+  }
   const sql = getSql();
   await sql`DELETE FROM user_course_assignments WHERE user_id = ${userId}`;
   for (const courseId of courseIds) {

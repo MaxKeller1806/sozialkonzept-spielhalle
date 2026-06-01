@@ -82,7 +82,7 @@ export async function getCompanySummaries(): Promise<
     createdAt: string;
     employeeCount: number;
     adminCount: number;
-    adminName: string | null;
+    adminContacts: Array<{ name: string; email: string }>;
   }>
 > {
   const sql = getSql();
@@ -95,33 +95,40 @@ export async function getCompanySummaries(): Promise<
       c.license_expires_at,
       c.created_at,
       COUNT(*) FILTER (WHERE u.role = 'employee')::int AS employee_count,
-      COUNT(*) FILTER (WHERE u.role = 'admin')::int AS admin_count,
-      (
-        SELECT CONCAT(a.first_name, ' ', a.last_name)
-        FROM users a
-        WHERE a.company_id = c.id AND a.role = 'admin' AND a.active = TRUE
-        ORDER BY a.id ASC
-        LIMIT 1
-      ) AS admin_name
+      COUNT(*) FILTER (WHERE u.role = 'admin')::int AS admin_count
     FROM companies c
     LEFT JOIN users u ON u.company_id = c.id AND u.role IN ('admin', 'employee')
     GROUP BY c.id
     ORDER BY c.created_at DESC
   `;
 
-  return rows.map((row) => ({
-    id: Number(row.id),
-    name: String(row.name),
-    status: String(row.status),
-    licenseStatus: String(row.license_status),
-    licenseExpiresAt: row.license_expires_at
-      ? new Date(String(row.license_expires_at)).toISOString()
-      : null,
-    createdAt: new Date(String(row.created_at)).toISOString(),
-    employeeCount: Number(row.employee_count ?? 0),
-    adminCount: Number(row.admin_count ?? 0),
-    adminName: row.admin_name != null ? String(row.admin_name) : null,
-  }));
+  const summaries = [];
+  for (const row of rows) {
+    const companyId = Number(row.id);
+    const adminRows = await sql`
+      SELECT first_name, last_name, email
+      FROM users
+      WHERE company_id = ${companyId} AND role = 'admin' AND active = TRUE
+      ORDER BY id ASC
+    `;
+    summaries.push({
+      id: companyId,
+      name: String(row.name),
+      status: String(row.status),
+      licenseStatus: String(row.license_status),
+      licenseExpiresAt: row.license_expires_at
+        ? new Date(String(row.license_expires_at)).toISOString()
+        : null,
+      createdAt: new Date(String(row.created_at)).toISOString(),
+      employeeCount: Number(row.employee_count ?? 0),
+      adminCount: Number(row.admin_count ?? 0),
+      adminContacts: adminRows.map((a) => ({
+        name: `${String(a.first_name)} ${String(a.last_name)}`.trim(),
+        email: String(a.email),
+      })),
+    });
+  }
+  return summaries;
 }
 
 export async function deleteCompanyUser(userId: number, companyId: number): Promise<boolean> {
