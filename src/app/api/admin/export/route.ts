@@ -60,7 +60,7 @@ export async function GET() {
           statusLabel(status),
           cert?.certificateNumber ?? "",
           cert ? new Date(cert.issuedAt).toLocaleDateString("de-DE") : "",
-          cert ? new Date(cert.validUntil).toLocaleDateString("de-DE") : "",
+          cert ? (cert.validUntil ? new Date(cert.validUntil).toLocaleDateString("de-DE") : "Unbegrenzt gültig") : "",
           cert ? String(cert.score) : "",
         ]
           .map((v) => `"${String(v).replace(/"/g, '""')}"`)

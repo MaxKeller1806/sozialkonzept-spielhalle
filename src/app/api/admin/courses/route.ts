@@ -8,18 +8,34 @@ import {
   listCompanyProvisions,
   provisionPermissions,
 } from "@/lib/course-provisions";
+import { formatValidityRuleLabel } from "@/lib/course-validity";
+import type { UserListFilter } from "@/lib/tenant";
 
-export async function GET() {
+function parseFilter(value: string | null): UserListFilter {
+  if (value === "active" || value === "archived") return value;
+  return "all";
+}
+
+export async function GET(request: Request) {
   try {
     const user = await requireAdmin();
-    const courses = await listCompanyCourses(user.companyId!);
+    const filter = parseFilter(new URL(request.url).searchParams.get("filter"));
+    const courses = await listCompanyCourses(user.companyId!, filter);
     const provisions = await listCompanyProvisions(user.companyId!);
     const byCourse = new Map(provisions.map((p) => [p.courseId, p]));
     return NextResponse.json({
       courses: courses.map((c) => ({
         ...c,
+        validityLabel: formatValidityRuleLabel({
+          validityType: c.validityType,
+          validityIntervalValue: c.validityIntervalValue,
+          validityIntervalUnit: c.validityIntervalUnit,
+          validityMonths: c.validityMonths,
+        }),
         permissions: provisionPermissions(byCourse.get(c.id)),
       })),
+      filter,
+      total: courses.length,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";

@@ -7,7 +7,7 @@ export interface UserDeleteCertificatePreview {
   certificateNumber: string;
   courseTitle: string;
   issuedAt: string;
-  validUntil: string;
+  validUntil: string | null;
   pdfUrl: string;
 }
 
@@ -39,7 +39,8 @@ interface SuperuserDeleteUserDialogProps {
   onConfirmDelete: () => void;
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string | null): string {
+  if (!iso) return "Unbegrenzt gültig";
   return new Date(iso).toLocaleDateString("de-DE");
 }
 

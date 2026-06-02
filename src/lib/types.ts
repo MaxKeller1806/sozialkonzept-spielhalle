@@ -1,3 +1,5 @@
+import type { ValidityType, ValidityIntervalUnit } from "./course-validity";
+
 export type UserRole = "superuser" | "admin" | "employee";
 
 export type CompanyStatus = "pending" | "active" | "disabled" | "expired";
@@ -144,6 +146,9 @@ export interface CourseMeta {
   version: string;
   passingScore: number;
   validityMonths: number;
+  validityType: ValidityType;
+  validityIntervalValue: number | null;
+  validityIntervalUnit: ValidityIntervalUnit | null;
   active: boolean;
   masterCourseId: string | null;
   createdAt: string;
@@ -160,6 +165,9 @@ export interface MasterCourseMeta {
   version: string;
   passingScore: number;
   validityMonths: number;
+  validityType: ValidityType;
+  validityIntervalValue: number | null;
+  validityIntervalUnit: ValidityIntervalUnit | null;
   status: MasterCourseStatus;
   createdAt: string;
   updatedAt: string;
@@ -204,7 +212,7 @@ export interface Certificate {
   companyId: number | null;
   courseId: string;
   issuedAt: string;
-  validUntil: string;
+  validUntil: string | null;
   score: number;
   verificationToken: string;
   revoked: number;

@@ -1,4 +1,12 @@
+import { parseContentJson } from "./content-json";
 import { migrateCourse } from "./course-migrate";
+import {
+  normalizeValidityType,
+  normalizeIntervalUnit,
+  parseValidityRuleFromRow,
+  type ValidityIntervalUnit,
+  type ValidityType,
+} from "./course-validity";
 import { ensureSeeded, getSql } from "./db";
 import type { CourseData, CourseMeta, CourseModule, ExamQuestion, Lesson } from "./types";
 
@@ -47,6 +55,7 @@ function emptyCourseTemplate(
 }
 
 function mapCourseMeta(row: Record<string, unknown>): CourseMeta {
+  const rule = parseValidityRuleFromRow(row);
   return {
     id: String(row.id),
     companyId: Number(row.company_id),
@@ -56,23 +65,13 @@ function mapCourseMeta(row: Record<string, unknown>): CourseMeta {
     version: String(row.version),
     passingScore: Number(row.passing_score),
     validityMonths: Number(row.validity_months),
+    validityType: rule.validityType,
+    validityIntervalValue: rule.validityIntervalValue ?? null,
+    validityIntervalUnit: rule.validityIntervalUnit ?? null,
     active: Boolean(row.active),
     masterCourseId: row.master_course_id != null ? String(row.master_course_id) : null,
     createdAt: new Date(String(row.created_at ?? row.id)).toISOString(),
   };
-}
-
-function parseContentJson(raw: unknown): CourseData | null {
-  if (raw == null) return null;
-  if (typeof raw === "string") {
-    try {
-      return JSON.parse(raw) as CourseData;
-    } catch {
-      return null;
-    }
-  }
-  if (typeof raw === "object") return raw as CourseData;
-  return null;
 }
 
 function rowToCourseData(row: Record<string, unknown>): CourseData {
@@ -91,13 +90,23 @@ function rowToCourseData(row: Record<string, unknown>): CourseData {
   return emptyCourseTemplate(meta.id, meta.title, meta.slug);
 }
 
-export async function listCompanyCourses(companyId: number): Promise<CourseMeta[]> {
+export async function listCompanyCourses(
+  companyId: number,
+  filter: "active" | "archived" | "all" = "all"
+): Promise<CourseMeta[]> {
   await ensureSeeded();
   const sql = getSql();
+  const activeFilter =
+    filter === "active"
+      ? sql`AND active = TRUE`
+      : filter === "archived"
+        ? sql`AND active = FALSE`
+        : sql``;
   const rows = await sql`
     SELECT * FROM courses
     WHERE company_id = ${companyId}
-    ORDER BY created_at ASC, title ASC
+    ${activeFilter}
+    ORDER BY active DESC, created_at ASC, title ASC
   `;
   return rows.map((r) => mapCourseMeta(r as Record<string, unknown>));
 }
@@ -215,14 +224,114 @@ export async function createCompanyCourse(
 export async function updateCourseSettings(
   companyId: number,
   courseId: string,
-  settings: { passingScore?: number }
+  settings: {
+    passingScore?: number;
+    validityType?: ValidityType;
+    validityIntervalValue?: number | null;
+    validityIntervalUnit?: ValidityIntervalUnit | null;
+  }
 ): Promise<CourseData> {
   const course = await getCourseData(companyId, courseId);
   if (!course) throw new Error("COURSE_NOT_FOUND");
   if (settings.passingScore !== undefined) {
     course.passingScore = Math.min(100, Math.max(50, Math.round(settings.passingScore)));
   }
+  const meta = await getCourseMeta(companyId, courseId);
+  if (!meta) throw new Error("COURSE_NOT_FOUND");
+
+  const validityType = settings.validityType ?? meta.validityType;
+  let intervalValue = settings.validityIntervalValue ?? meta.validityIntervalValue;
+  let intervalUnit = settings.validityIntervalUnit ?? meta.validityIntervalUnit;
+
+  if (validityType === "custom") {
+    if (!intervalValue || intervalValue <= 0) intervalValue = meta.validityMonths || 12;
+    if (!intervalUnit) intervalUnit = "months";
+  } else {
+    intervalValue = null;
+    intervalUnit = null;
+  }
+
+  await ensureSeeded();
+  const sql = getSql();
+  const validityMonths =
+    validityType === "half_yearly"
+      ? 6
+      : validityType === "yearly"
+        ? 12
+        : validityType === "custom"
+          ? intervalUnit === "years"
+            ? (intervalValue ?? 12) * 12
+            : intervalUnit === "days"
+              ? Math.max(1, Math.ceil((intervalValue ?? 365) / 30))
+              : (intervalValue ?? meta.validityMonths)
+          : meta.validityMonths;
+
+  try {
+    await sql`
+      UPDATE courses SET
+        passing_score = ${course.passingScore},
+        validity_type = ${validityType},
+        validity_interval_value = ${intervalValue},
+        validity_interval_unit = ${intervalUnit},
+        validity_months = ${validityMonths}
+      WHERE id = ${courseId} AND company_id = ${companyId}
+    `;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("validity_type") || msg.includes("validity_interval")) {
+      await sql`
+        UPDATE courses SET passing_score = ${course.passingScore}, validity_months = ${validityMonths}
+        WHERE id = ${courseId} AND company_id = ${companyId}
+      `;
+    } else {
+      throw e;
+    }
+  }
+
+  course.certificateValidityMonths = validityMonths;
   return saveCourseData(companyId, course);
+}
+
+export async function setCompanyCourseActive(
+  companyId: number,
+  courseId: string,
+  active: boolean
+): Promise<boolean> {
+  await ensureSeeded();
+  const sql = getSql();
+  const rows = await sql`
+    UPDATE courses SET active = ${active}
+    WHERE id = ${courseId} AND company_id = ${companyId}
+    RETURNING id
+  `;
+  if (rows.length === 0) return false;
+
+  const { updateProvision } = await import("./course-provisions");
+  const provision = await updateProvision(companyId, courseId, {
+    status: active ? "active" : "disabled",
+  });
+  return provision != null;
+}
+
+export async function permanentlyDeleteCompanyCourse(
+  companyId: number,
+  courseId: string
+): Promise<void> {
+  const { assertCourseCanBePermanentlyDeleted } = await import("./course-evidence");
+  await assertCourseCanBePermanentlyDeleted(courseId);
+
+  await ensureSeeded();
+  const sql = getSql();
+  await sql.begin(async (tx) => {
+    await tx`DELETE FROM user_course_assignments WHERE course_id = ${courseId}`;
+    await tx`DELETE FROM company_content_provisions WHERE course_id = ${courseId}`;
+    await tx`DELETE FROM company_course_provisions WHERE course_id = ${courseId} AND company_id = ${companyId}`;
+    const rows = await tx`
+      DELETE FROM courses WHERE id = ${courseId} AND company_id = ${companyId}
+      RETURNING id
+    `;
+    if (rows.length === 0) throw new Error("NOT_FOUND");
+  });
 }
 
 export async function getModule(

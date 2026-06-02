@@ -3,6 +3,10 @@ import { requireEmployee } from "@/lib/auth";
 import { getLatestCertificate } from "@/lib/certificate";
 import { getCertificateStatus } from "@/lib/status";
 import {
+  formatEmployeeSeminarStatus,
+  getEmployeeSeminarStatus,
+} from "@/lib/course-validity";
+import {
   getNextLesson,
   lessonPath,
   totalLessonCount,
@@ -33,6 +37,7 @@ export async function GET(request: Request) {
         for (const c of courses) {
           const cert = await getLatestCertificate(user.id, c.id);
           const attempt = await getActiveAttempt(user.id, c.id);
+          const seminarStatus = getEmployeeSeminarStatus(cert);
           enriched.push({
             id: c.id,
             title: c.title,
@@ -44,6 +49,11 @@ export async function GET(request: Request) {
                   status: getCertificateStatus(cert),
                 }
               : null,
+            seminarStatus,
+            seminarStatusLabel: formatEmployeeSeminarStatus(
+              seminarStatus,
+              cert?.validUntil ?? null
+            ),
             inProgress: !!attempt,
           });
         }

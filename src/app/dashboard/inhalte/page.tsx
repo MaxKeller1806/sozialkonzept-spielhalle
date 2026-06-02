@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { AdminNav } from "@/components/admin-nav";
 import { AppHeader, Button, Card } from "@/components/ui";
+import { isMasterCourseId } from "@/lib/course-editor-id";
 
 interface CourseOverview {
   courseId: string;
@@ -44,7 +45,28 @@ function InhalteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
-  const courseQuery = courseId ? `?courseId=${encodeURIComponent(courseId)}` : "";
+
+  useEffect(() => {
+    if (!courseId) {
+      router.replace("/dashboard/seminare");
+    }
+  }, [courseId, router]);
+
+  if (!courseId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-slate-600">
+        Weiterleitung…
+      </div>
+    );
+  }
+
+  return <InhalteEditor courseId={courseId} />;
+}
+
+function InhalteEditor({ courseId }: { courseId: string }) {
+  const router = useRouter();
+  const isMaster = isMasterCourseId(courseId);
+  const courseQuery = `?courseId=${encodeURIComponent(courseId)}`;
   const [course, setCourse] = useState<CourseOverview | null>(null);
   const [resolvedCourseId, setResolvedCourseId] = useState<string | null>(courseId);
   const [contentStates, setContentStates] = useState<ContentStates | null>(null);
@@ -66,14 +88,23 @@ function InhalteContent() {
     setError("");
     fetch(`/api/admin/course${courseQuery}`)
       .then((r) => {
-        if (r.status === 401 || r.status === 403) {
-          router.push("/login");
+        if (r.status === 401) {
+          router.push(isMaster ? "/certiano/login" : "/login");
           return null;
+        }
+        if (r.status === 403) {
+          return r.json().then((d) => ({ forbidden: true as const, error: d.error }));
         }
         return r.json();
       })
       .then((d) => {
         if (!d) return;
+
+        if ("forbidden" in d && d.forbidden) {
+          setError(d.error ?? "Zugriff verweigert.");
+          setCourse(null);
+          return;
+        }
 
         if (d.error) {
           setError(d.error);
@@ -82,9 +113,6 @@ function InhalteContent() {
         }
 
         const id = d.courseId ?? d.course?.courseId ?? null;
-        if (id && !courseId) {
-          router.replace(`/dashboard/inhalte?courseId=${encodeURIComponent(id)}`);
-        }
 
         if (d.course) {
           setCourse(d.course);
@@ -107,7 +135,7 @@ function InhalteContent() {
         setCourse(null);
       })
       .finally(() => setLoading(false));
-  }, [router, courseQuery, courseId]);
+  }, [router, courseQuery, courseId, isMaster]);
 
   useEffect(() => {
     load();
@@ -172,7 +200,7 @@ function InhalteContent() {
       <div className="min-h-screen pb-16">
         <AppHeader title="Kursinhalte bearbeiten" />
         <div className="mx-auto max-w-4xl px-4 py-8">
-          <AdminNav active="inhalte" />
+          <AdminNav active="seminare" />
           <Card className="border-red-200 bg-red-50">
             <p className="text-sm text-red-800">{error}</p>
           </Card>
@@ -185,9 +213,33 @@ function InhalteContent() {
     <div className="min-h-screen pb-16">
       <AppHeader title="Kursinhalte bearbeiten" />
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <AdminNav active="inhalte" />
+        <AdminNav active="seminare" />
 
-        {permissions.readOnly && (
+        <p className="mb-4 text-sm text-slate-600">
+          {isMaster ? (
+            <Link
+              href={`/certiano/master-courses/${encodeURIComponent(courseId)}`}
+              className="text-brand underline"
+            >
+              ← Zurück zum Master-Seminar
+            </Link>
+          ) : (
+            <>
+              <Link href="/dashboard/seminare" className="text-brand underline">
+                ← Zur Seminarliste
+              </Link>
+              {" · "}
+              <Link
+                href={`/dashboard/seminare/${encodeURIComponent(courseId)}`}
+                className="text-brand underline"
+              >
+                Seminar-Einstellungen
+              </Link>
+            </>
+          )}
+        </p>
+
+        {permissions.readOnly && !isMaster && (
           <Card className="mb-6 border-amber-200 bg-amber-50">
             <p className="text-sm text-amber-900">
               Dieser Kurs wird von Certiano bereitgestellt und kann von Ihrer Firma

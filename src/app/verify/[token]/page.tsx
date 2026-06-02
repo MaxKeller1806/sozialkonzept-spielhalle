@@ -98,7 +98,9 @@ export default async function VerifyPage({
           </div>
           <div>
             <dt className="text-slate-500">Gültig bis</dt>
-            <dd className="font-semibold">{formatDate(cert.validUntil)}</dd>
+            <dd className="font-semibold">
+              {cert.validUntil ? formatDate(cert.validUntil) : "Unbegrenzt gültig"}
+            </dd>
           </div>
         </dl>
 

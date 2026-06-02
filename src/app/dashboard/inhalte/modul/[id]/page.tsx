@@ -121,7 +121,7 @@ function ModulEditContent() {
     <div className="min-h-screen pb-16">
       <AppHeader title={isNew ? "Neues Modul" : `Modul ${idParam}`} />
       <div className="mx-auto max-w-2xl px-4 py-8">
-        <AdminNav active="inhalte" />
+        <AdminNav active="seminare" />
         <Link
           href={`/dashboard/inhalte${courseQuery}`}
           className="mb-4 inline-block text-sm font-medium text-brand hover:underline"

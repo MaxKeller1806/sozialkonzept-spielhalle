@@ -7,6 +7,7 @@ export function getCertificateStatus(
   now = new Date()
 ): TrainingStatus {
   if (!cert || cert.revoked) return "red";
+  if (!cert.validUntil) return "green";
 
   const validUntil = new Date(cert.validUntil);
   if (validUntil < now) return "red";
@@ -33,6 +34,7 @@ export function verificationStatus(
   now = new Date()
 ): "gültig" | "abgelaufen" | "ungültig" {
   if (!cert || cert.revoked) return "ungültig";
+  if (!cert.validUntil) return "gültig";
   const validUntil = new Date(cert.validUntil);
   if (validUntil < now) return "abgelaufen";
   return "gültig";

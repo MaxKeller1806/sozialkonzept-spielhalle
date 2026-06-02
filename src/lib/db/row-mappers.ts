@@ -42,7 +42,9 @@ export function mapCertificate(row: Record<string, unknown>): Certificate {
     companyId: row.company_id != null ? Number(row.company_id) : null,
     courseId: String(row.course_id),
     issuedAt: new Date(String(row.issued_at)).toISOString(),
-    validUntil: new Date(String(row.valid_until)).toISOString(),
+    validUntil: row.valid_until
+      ? new Date(String(row.valid_until)).toISOString()
+      : null,
     score: Number(row.score),
     verificationToken: String(row.verification_token),
     revoked: row.revoked ? 1 : 0,

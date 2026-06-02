@@ -10,6 +10,7 @@ interface MasterCourse {
   title: string;
   description: string | null;
   status: string;
+  validityLabel?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -194,6 +195,7 @@ export default function MasterCoursesPage() {
                 <tr>
                   <th className="p-4">Titel</th>
                   <th className="p-4">Status</th>
+                  <th className="p-4">Gültigkeit</th>
                   <th className="p-4">Erstellt</th>
                   <th className="p-4">Aktualisiert</th>
                   <th className="p-4">Aktionen</th>
@@ -204,6 +206,7 @@ export default function MasterCoursesPage() {
                   <tr key={c.id} className="border-b last:border-0">
                     <td className="p-4 font-medium">{c.title}</td>
                     <td className="p-4">{c.status}</td>
+                    <td className="p-4">{c.validityLabel ?? "—"}</td>
                     <td className="p-4">
                       {new Date(c.createdAt).toLocaleDateString("de-DE")}
                     </td>

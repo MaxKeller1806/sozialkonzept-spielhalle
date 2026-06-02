@@ -5,7 +5,7 @@ export interface UserDeleteCertificatePreview {
   certificateNumber: string;
   courseTitle: string;
   issuedAt: string;
-  validUntil: string;
+  validUntil: string | null;
   pdfUrl: string;
 }
 
@@ -85,7 +85,9 @@ export async function getUserDeletePreview(userId: number): Promise<UserDeletePr
     certificateNumber: String(row.certificate_number),
     courseTitle: String(row.course_title),
     issuedAt: new Date(String(row.issued_at)).toISOString(),
-    validUntil: new Date(String(row.valid_until)).toISOString(),
+    validUntil: row.valid_until
+      ? new Date(String(row.valid_until)).toISOString()
+      : null,
     pdfUrl: `/api/certificates/${Number(row.id)}/pdf`,
   }));
 

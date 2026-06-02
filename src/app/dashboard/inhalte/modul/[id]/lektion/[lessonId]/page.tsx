@@ -141,7 +141,7 @@ function LektionEditContent() {
     <div className="min-h-screen pb-16">
       <AppHeader title={isNew ? "Neuer Lerninhalt" : "Lerninhalt bearbeiten"} />
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <AdminNav active="inhalte" />
+        <AdminNav active="seminare" />
         <Link
           href={`/dashboard/inhalte/modul/${moduleId}${courseQuery}`}
           className="mb-1 inline-block text-sm font-medium text-brand hover:underline"

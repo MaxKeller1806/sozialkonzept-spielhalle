@@ -7,7 +7,6 @@ export function AdminNav({
     | "firma"
     | "mitarbeiter"
     | "seminare"
-    | "inhalte"
     | "feedback"
     | "datenschutz"
     | "konto";
@@ -29,9 +28,6 @@ export function AdminNav({
       </Link>
       <Link href="/dashboard/seminare" className={linkClass("seminare")} aria-current={active === "seminare" ? "page" : undefined}>
         Seminare
-      </Link>
-      <Link href="/dashboard/inhalte" className={linkClass("inhalte")} aria-current={active === "inhalte" ? "page" : undefined}>
-        Inhalte
       </Link>
       <Link href="/dashboard/feedback" className={linkClass("feedback")} aria-current={active === "feedback" ? "page" : undefined}>
         Rückmeldungen

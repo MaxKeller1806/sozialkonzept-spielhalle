@@ -1,7 +1,8 @@
 import { randomUUID } from "crypto";
 import { ensureSeeded, getSql } from "./db";
 import { mapCertificate, mapUser } from "./db/row-mappers";
-import { getCourseForContext } from "./course";
+import { getCourseMeta } from "./course-db";
+import { calculateValidUntil, addMonths } from "./course-validity";
 import type { Certificate, User } from "./types";
 
 export async function nextCertificateNumber(companyId: number): Promise<string> {
@@ -36,11 +37,7 @@ export async function nextCertificateNumber(companyId: number): Promise<string> 
   return `SK-${year}-${String(num).padStart(6, "0")}`;
 }
 
-export function addMonths(date: Date, months: number): Date {
-  const result = new Date(date);
-  result.setMonth(result.getMonth() + months);
-  return result;
-}
+export { addMonths } from "./course-validity";
 
 export async function createCertificate(
   userId: number,
@@ -48,11 +45,17 @@ export async function createCertificate(
   courseId: string,
   score: number
 ): Promise<Certificate> {
-  const course = await getCourseForContext(companyId, courseId);
+  const meta = await getCourseMeta(companyId, courseId);
+  if (!meta) throw new Error("COURSE_NOT_FOUND");
   await ensureSeeded();
   const sql = getSql();
   const issuedAt = new Date();
-  const validUntil = addMonths(issuedAt, course.certificateValidityMonths);
+  const validUntil = calculateValidUntil(issuedAt, {
+    validityType: meta.validityType,
+    validityIntervalValue: meta.validityIntervalValue,
+    validityIntervalUnit: meta.validityIntervalUnit,
+    validityMonths: meta.validityMonths,
+  });
   const certificateNumber = await nextCertificateNumber(companyId);
   const verificationToken = randomUUID();
 
@@ -63,7 +66,7 @@ export async function createCertificate(
     )
     VALUES (
       ${certificateNumber}, ${userId}, ${companyId}, ${courseId},
-      ${issuedAt.toISOString()}, ${validUntil.toISOString()},
+      ${issuedAt.toISOString()}, ${validUntil ? validUntil.toISOString() : null},
       ${score}, ${verificationToken}, FALSE
     )
     RETURNING *

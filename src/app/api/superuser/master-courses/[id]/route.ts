@@ -5,6 +5,7 @@ import {
   deleteMasterCourse,
   getMasterCourseDetail,
   getMasterCourseMeta,
+  importCompanyCourseIntoMaster,
   updateMasterCourseSettings,
 } from "@/lib/master-course-db";
 
@@ -19,7 +20,11 @@ export async function GET(
     if (!detail) {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }
-    return NextResponse.json({ meta: detail.meta, course: detail.course });
+    return NextResponse.json({
+      meta: detail.meta,
+      course: detail.course,
+      importHint: detail.importHint,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
@@ -43,6 +48,9 @@ export async function PATCH(
       status: body.status,
       title: body.title,
       description: body.description,
+      validityType: body.validityType,
+      validityIntervalValue: body.validityIntervalValue,
+      validityIntervalUnit: body.validityIntervalUnit,
     });
 
     const meta = await getMasterCourseMeta(id);
@@ -76,6 +84,29 @@ export async function POST(
         canDeactivate: body.canDeactivate === true,
       });
       return NextResponse.json({ ok: true, assignedCount: count });
+    }
+
+    if (body.action === "importFromCompanyCourse") {
+      const result = await importCompanyCourseIntoMaster(id);
+      if (!result.ok) {
+        const messages: Record<string, string> = {
+          NOT_FOUND: "Master-Kurs nicht gefunden.",
+          ALREADY_HAS_CONTENT: "Dieser Master-Kurs enthält bereits Inhalte.",
+          NO_SOURCE: "Kein Firmenkurs mit Inhalten für diesen Slug gefunden.",
+        };
+        return NextResponse.json(
+          { error: messages[result.reason] ?? "Import fehlgeschlagen." },
+          { status: result.reason === "NOT_FOUND" ? 404 : 409 }
+        );
+      }
+      const detail = await getMasterCourseDetail(id);
+      return NextResponse.json({
+        ok: true,
+        imported: result,
+        meta: detail?.meta,
+        course: detail?.course,
+        importHint: detail?.importHint,
+      });
     }
 
     return NextResponse.json({ error: "Unbekannte Aktion." }, { status: 400 });

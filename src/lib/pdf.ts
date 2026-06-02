@@ -54,7 +54,7 @@ export async function generateCertificatePdf(
       ["Spielhalle", user.location ?? "—"],
       ["Abschlussdatum", formatDate(cert.issuedAt)],
       ["Prüfungsergebnis", `${cert.score.toFixed(0)} %`],
-      ["Gültig bis", formatDate(cert.validUntil)],
+      ["Gültig bis", cert.validUntil ? formatDate(cert.validUntil) : "Unbegrenzt gültig"],
       ["Zertifikatsnummer", cert.certificateNumber],
     ];
 

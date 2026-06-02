@@ -171,7 +171,7 @@ export default function FrageForm() {
     <div className="min-h-screen pb-16">
       <AppHeader title={isNew ? "Neue Frage" : `Frage ${idParam} bearbeiten`} />
       <div className="mx-auto max-w-2xl px-4 py-8">
-        <AdminNav active="inhalte" />
+        <AdminNav active="seminare" />
         <Link
           href={`/dashboard/inhalte/modul/${moduleId}${courseQuery}`}
           className="mb-1 inline-block text-sm font-medium text-brand hover:underline"

@@ -17,9 +17,11 @@ interface CourseListItem {
   title: string;
   slug: string;
   inProgress: boolean;
+  seminarStatus?: string;
+  seminarStatusLabel?: string;
   certificate: {
     id: number;
-    validUntil: string;
+    validUntil: string | null;
     status: "green" | "yellow" | "red";
   } | null;
 }
@@ -46,7 +48,7 @@ interface TrainingData {
   certificate: {
     id: number;
     certificateNumber: string;
-    validUntil: string;
+    validUntil: string | null;
     score: number;
     status: "green" | "yellow" | "red";
   } | null;
@@ -140,13 +142,15 @@ function SchulungContent() {
                 <Card className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="font-semibold">{c.title}</p>
-                    {c.certificate && (
-                      <p className="mt-1 flex items-center gap-2 text-sm text-slate-600">
+                    <p className="mt-1 flex items-center gap-2 text-sm text-slate-600">
+                      {c.certificate && (
                         <StatusDot status={c.certificate.status} />
-                        Zertifikat gültig bis{" "}
-                        {new Date(c.certificate.validUntil).toLocaleDateString("de-DE")}
-                      </p>
-                    )}
+                      )}
+                      {c.seminarStatusLabel ??
+                        (c.certificate?.validUntil
+                          ? `Zertifikat gültig bis ${new Date(c.certificate.validUntil).toLocaleDateString("de-DE")}`
+                          : "Offen")}
+                    </p>
                   </div>
                   <ButtonLink href={`/schulung?courseId=${encodeURIComponent(c.id)}`}>
                     {c.inProgress ? "Fortsetzen" : "Starten"}
@@ -219,10 +223,17 @@ function SchulungContent() {
               <div className="flex-1">
                 <h2 className="font-semibold text-brand">Zertifikat vorhanden</h2>
                 <p className="text-base text-brand">
-                  {certificate.certificateNumber} · gültig bis{" "}
-                  <time dateTime={certificate.validUntil}>
-                    {new Date(certificate.validUntil).toLocaleDateString("de-DE")}
-                  </time>
+                  {certificate.certificateNumber}
+                  {certificate.validUntil ? (
+                    <>
+                      {" · gültig bis "}
+                      <time dateTime={certificate.validUntil}>
+                        {new Date(certificate.validUntil).toLocaleDateString("de-DE")}
+                      </time>
+                    </>
+                  ) : (
+                    " · unbegrenzt gültig"
+                  )}
                 </p>
                 <a href={`/api/certificates/${certificate.id}/pdf`} className="link-brand mt-3 text-base">
                   Zertifikat als PDF herunterladen

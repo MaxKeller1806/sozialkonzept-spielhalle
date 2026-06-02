@@ -1,3 +1,14 @@
+import {
+  courseContentScore,
+  isEmptyCourseContent,
+  parseContentJson,
+} from "./content-json";
+import {
+  formatValidityRuleLabel,
+  parseValidityRuleFromRow,
+  type ValidityIntervalUnit,
+  type ValidityType,
+} from "./course-validity";
 import { migrateCourse } from "./course-migrate";
 import { getSql } from "./db";
 import type {
@@ -50,17 +61,21 @@ function emptyTemplate(id: string, title: string): CourseData {
 }
 
 function mapListItem(row: Record<string, unknown>): MasterCourseListItem {
+  const rule = parseValidityRuleFromRow(row);
   return {
     id: String(row.id),
     title: String(row.title),
     description: row.description != null ? String(row.description) : null,
     status: row.status as MasterCourseStatus,
+    validityType: rule.validityType,
+    validityLabel: formatValidityRuleLabel(rule),
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at ?? row.created_at)).toISOString(),
   };
 }
 
 function mapMeta(row: Record<string, unknown>): MasterCourseMeta {
+  const rule = parseValidityRuleFromRow(row);
   return {
     id: String(row.id),
     slug: String(row.slug),
@@ -69,23 +84,13 @@ function mapMeta(row: Record<string, unknown>): MasterCourseMeta {
     version: String(row.version),
     passingScore: Number(row.passing_score),
     validityMonths: Number(row.validity_months),
+    validityType: rule.validityType,
+    validityIntervalValue: rule.validityIntervalValue ?? null,
+    validityIntervalUnit: rule.validityIntervalUnit ?? null,
     status: row.status as MasterCourseStatus,
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at ?? row.created_at)).toISOString(),
   };
-}
-
-function parseContentJson(raw: unknown): CourseData | null {
-  if (raw == null) return null;
-  if (typeof raw === "string") {
-    try {
-      return JSON.parse(raw) as CourseData;
-    } catch {
-      return null;
-    }
-  }
-  if (typeof raw === "object") return raw as CourseData;
-  return null;
 }
 
 function rowToData(row: Record<string, unknown>): CourseData {
@@ -109,6 +114,8 @@ export type MasterCourseListItem = {
   title: string;
   description: string | null;
   status: MasterCourseStatus;
+  validityType: ValidityType;
+  validityLabel: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -118,7 +125,8 @@ export async function listMasterCoursesMetadata(): Promise<MasterCourseListItem[
   const sql = getSql();
   try {
     const rows = await sql`
-      SELECT id, title, description, status, created_at, updated_at
+      SELECT id, title, description, status, validity_type, validity_interval_value,
+             validity_interval_unit, validity_months, created_at, updated_at
       FROM master_courses
       ORDER BY created_at DESC, title ASC
     `;
@@ -127,6 +135,26 @@ export async function listMasterCoursesMetadata(): Promise<MasterCourseListItem[
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("does not exist") && msg.includes("master_courses")) {
       return [];
+    }
+    // Migration noch nicht angewendet: ohne validity_*-Spalten laden
+    if (
+      msg.includes("validity_type") ||
+      msg.includes("validity_interval") ||
+      msg.includes("column")
+    ) {
+      const rows = await sql`
+        SELECT id, title, description, status, validity_months, created_at, updated_at
+        FROM master_courses
+        ORDER BY created_at DESC, title ASC
+      `;
+      return rows.map((r) =>
+        mapListItem({
+          ...(r as Record<string, unknown>),
+          validity_type: "yearly",
+          validity_interval_value: null,
+          validity_interval_unit: null,
+        })
+      );
     }
     throw e;
   }
@@ -176,15 +204,39 @@ export async function getMasterCourseMeta(
   id: string
 ): Promise<MasterCourseMeta | undefined> {
   const sql = getSql();
-  const rows = await sql`
-    SELECT
-      id, slug, title, description, version,
-      passing_score, validity_months, status, created_at, updated_at
-    FROM master_courses
-    WHERE id = ${id}
-    LIMIT 1
-  `;
-  return rows[0] ? mapMeta(rows[0] as Record<string, unknown>) : undefined;
+  try {
+    const rows = await sql`
+      SELECT
+        id, slug, title, description, version,
+        passing_score, validity_type, validity_interval_value, validity_interval_unit,
+        validity_months, status, created_at, updated_at
+      FROM master_courses
+      WHERE id = ${id}
+      LIMIT 1
+    `;
+    return rows[0] ? mapMeta(rows[0] as Record<string, unknown>) : undefined;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("validity_type") || msg.includes("validity_interval")) {
+      const rows = await sql`
+        SELECT
+          id, slug, title, description, version,
+          passing_score, validity_months, status, created_at, updated_at
+        FROM master_courses
+        WHERE id = ${id}
+        LIMIT 1
+      `;
+      return rows[0]
+        ? mapMeta({
+            ...(rows[0] as Record<string, unknown>),
+            validity_type: "yearly",
+            validity_interval_value: null,
+            validity_interval_unit: null,
+          })
+        : undefined;
+    }
+    throw e;
+  }
 }
 
 export async function getMasterCourseData(
@@ -203,22 +255,68 @@ export async function getMasterCourseData(
   return rows[0] ? rowToData(rows[0] as Record<string, unknown>) : undefined;
 }
 
+export type MasterCourseImportHint = {
+  masterEmpty: boolean;
+  sourceAvailable: boolean;
+  sourceTitle: string | null;
+  sourceCourseId: string | null;
+};
+
 export async function getMasterCourseDetail(
   id: string
-): Promise<{ meta: MasterCourseMeta; course: CourseData } | undefined> {
+): Promise<
+  | { meta: MasterCourseMeta; course: CourseData; importHint: MasterCourseImportHint }
+  | undefined
+> {
   const sql = getSql();
-  const rows = await sql`
-    SELECT
-      id, slug, title, description, version,
-      passing_score, validity_months, status, created_at, updated_at,
-      content_json
-    FROM master_courses
-    WHERE id = ${id}
-    LIMIT 1
-  `;
+  let rows;
+  try {
+    rows = await sql`
+      SELECT
+        id, slug, title, description, version,
+        passing_score, validity_type, validity_interval_value, validity_interval_unit,
+        validity_months, status, created_at, updated_at,
+        content_json
+      FROM master_courses
+      WHERE id = ${id}
+      LIMIT 1
+    `;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("validity_type") || msg.includes("validity_interval")) {
+      rows = await sql`
+        SELECT
+          id, slug, title, description, version,
+          passing_score, validity_months, status, created_at, updated_at,
+          content_json
+        FROM master_courses
+        WHERE id = ${id}
+        LIMIT 1
+      `;
+    } else {
+      throw e;
+    }
+  }
   if (!rows[0]) return undefined;
-  const row = rows[0] as Record<string, unknown>;
-  return { meta: mapMeta(row), course: rowToData(row) };
+  const base = rows[0] as Record<string, unknown>;
+  const row: Record<string, unknown> = {
+    ...base,
+    validity_type: base.validity_type ?? "yearly",
+    validity_interval_value: base.validity_interval_value ?? null,
+    validity_interval_unit: base.validity_interval_unit ?? null,
+  };
+  const course = rowToData(row);
+  const source = await findRichestCompanyCourseForMaster(String(row.slug ?? ""));
+  return {
+    meta: mapMeta(row),
+    course,
+    importHint: {
+      masterEmpty: isEmptyCourseContent(course),
+      sourceAvailable: source != null && !isEmptyCourseContent(source.content),
+      sourceTitle: source?.title ?? null,
+      sourceCourseId: source?.id ?? null,
+    },
+  };
 }
 
 export async function createMasterCourse(input: {
@@ -272,6 +370,9 @@ export async function updateMasterCourseSettings(
     status?: MasterCourseStatus;
     title?: string;
     description?: string | null;
+    validityType?: ValidityType;
+    validityIntervalValue?: number | null;
+    validityIntervalUnit?: ValidityIntervalUnit | null;
   }
 ): Promise<CourseData> {
   const course = await getMasterCourseData(id);
@@ -285,15 +386,44 @@ export async function updateMasterCourseSettings(
   const meta = await getMasterCourseMeta(id);
   if (!meta) throw new Error("NOT_FOUND");
 
+  const validityType = settings.validityType ?? meta.validityType;
+  let intervalValue = settings.validityIntervalValue ?? meta.validityIntervalValue;
+  let intervalUnit = settings.validityIntervalUnit ?? meta.validityIntervalUnit;
+  if (validityType === "custom") {
+    if (!intervalValue || intervalValue <= 0) intervalValue = meta.validityMonths || 12;
+    if (!intervalUnit) intervalUnit = "months";
+  } else {
+    intervalValue = null;
+    intervalUnit = null;
+  }
+  const validityMonths =
+    validityType === "half_yearly"
+      ? 6
+      : validityType === "yearly"
+        ? 12
+        : validityType === "custom"
+          ? intervalUnit === "years"
+            ? (intervalValue ?? 12) * 12
+            : intervalUnit === "days"
+              ? Math.max(1, Math.ceil((intervalValue ?? 365) / 30))
+              : (intervalValue ?? meta.validityMonths)
+          : meta.validityMonths;
+
   await sql`
     UPDATE master_courses SET
       status = ${settings.status ?? meta.status},
       title = ${settings.title ?? meta.title},
       description = ${settings.description !== undefined ? settings.description : meta.description},
+      passing_score = ${course.passingScore},
+      validity_type = ${validityType},
+      validity_interval_value = ${intervalValue},
+      validity_interval_unit = ${intervalUnit},
+      validity_months = ${validityMonths},
       updated_at = NOW()
     WHERE id = ${id}
   `;
 
+  course.certificateValidityMonths = validityMonths;
   return saveMasterCourseData(course);
 }
 
@@ -435,7 +565,7 @@ export function masterContentAsCourseData(master: CourseData, companyId: number,
   });
 }
 
-/** Bestehende Firmenkurse als Master übernehmen – nur per POST-Import, nicht beim GET. */
+/** Bestehende Firmenkurse als Master übernehmen – idempotent, füllt leere Master nach. */
 export async function importExistingCoursesAsMasters(): Promise<number> {
   const sql = getSql();
   const slugRows = await sql`
@@ -447,55 +577,193 @@ export async function importExistingCoursesAsMasters(): Promise<number> {
   let count = 0;
   for (const { course_key: courseKey } of slugRows) {
     const key = String(courseKey);
-    const candidates = await sql`
-      SELECT
-        id, slug, title, description, version,
-        passing_score, validity_months, content_json
-      FROM courses
-      WHERE company_id IS NOT NULL
-        AND COALESCE(NULLIF(TRIM(slug), ''), id) = ${key}
-      ORDER BY octet_length(COALESCE(content_json::text, '')) DESC
-      LIMIT 1
-    `;
-    const row = candidates[0];
-    if (!row) continue;
+    const source = await findRichestCompanyCourseForSlug(key);
+    if (!source || isEmptyCourseContent(source.content)) continue;
 
-    const rawSlug = row.slug != null ? String(row.slug) : String(row.id).replace(/^\d+-/, "");
-    const slug = rawSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-") || "kurs";
-    const masterId = `master-${slug}`;
-    const existing = await getMasterCourseMeta(masterId);
-    if (existing) continue;
+    const rawSlug = source.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-") || "kurs";
+    const masterId = `master-${rawSlug}`;
+    const existingMeta = await getMasterCourseMeta(masterId);
+    const existingCourse = existingMeta ? await getMasterCourseData(masterId) : undefined;
 
-    const content = row.content_json as CourseData | null;
-    const title = String(row.title);
-    const normalized =
-      content?.modules && content.modules.length > 0
-        ? normalize({
-            ...content,
-            courseId: masterId,
-            courseName: title,
-            version: String(row.version ?? content.version ?? "1.0"),
-            passingScore: Number(row.passing_score ?? content.passingScore ?? 80),
-            certificateValidityMonths: Number(
-              row.validity_months ?? content.certificateValidityMonths ?? 24
-            ),
-          })
-        : emptyTemplate(masterId, title);
+    if (existingMeta && existingCourse && !isEmptyCourseContent(existingCourse)) {
+      continue;
+    }
 
-    await sql`
-      INSERT INTO master_courses (
-        id, slug, title, description, version,
-        passing_score, validity_months, content_json, status
-      )
-      VALUES (
-        ${masterId}, ${slug}, ${title}, ${row.description ?? null},
-        ${normalized.version}, ${normalized.passingScore},
-        ${normalized.certificateValidityMonths},
-        ${JSON.stringify(normalized)}::jsonb, 'published'
-      )
-      ON CONFLICT (id) DO NOTHING
-    `;
+    const normalized = normalizeMasterFromCompanySource(masterId, source);
+    if (existingMeta) {
+      await upsertMasterFromCompanySource(masterId, source, normalized);
+    } else {
+      await sql`
+        INSERT INTO master_courses (
+          id, slug, title, description, version,
+          passing_score, validity_type, validity_interval_value, validity_interval_unit,
+          validity_months, content_json, status
+        )
+        VALUES (
+          ${masterId}, ${rawSlug}, ${source.title}, ${source.description ?? null},
+          ${normalized.version}, ${normalized.passingScore},
+          ${source.validityType}, ${source.validityIntervalValue}, ${source.validityIntervalUnit},
+          ${normalized.certificateValidityMonths},
+          ${JSON.stringify(normalized)}::jsonb, 'published'
+        )
+        ON CONFLICT (id) DO NOTHING
+      `;
+    }
     count++;
   }
   return count;
+}
+
+type CompanyCourseSource = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  version: string;
+  passingScore: number;
+  validityType: ValidityType;
+  validityIntervalValue: number | null;
+  validityIntervalUnit: ValidityIntervalUnit | null;
+  validityMonths: number;
+  content: CourseData;
+};
+
+async function findRichestCompanyCourseForSlug(slugOrKey: string): Promise<CompanyCourseSource | null> {
+  const sql = getSql();
+  const candidates = await sql`
+    SELECT
+      id, slug, title, description, version,
+      passing_score, validity_type, validity_interval_value, validity_interval_unit,
+      validity_months, content_json
+    FROM courses
+    WHERE company_id IS NOT NULL
+      AND COALESCE(NULLIF(TRIM(slug), ''), id) = ${slugOrKey}
+    ORDER BY octet_length(COALESCE(content_json::text, '')) DESC
+  `;
+  return pickRichestCompanySource(candidates as Record<string, unknown>[]);
+}
+
+async function findRichestCompanyCourseForMaster(slug: string): Promise<CompanyCourseSource | null> {
+  const key = slug.trim() || slug;
+  return findRichestCompanyCourseForSlug(key);
+}
+
+function pickRichestCompanySource(
+  rows: Record<string, unknown>[]
+): CompanyCourseSource | null {
+  let best: CompanyCourseSource | null = null;
+  let bestScore = -1;
+
+  for (const row of rows) {
+    const parsed = parseContentJson(row.content_json);
+    if (!parsed) continue;
+    const score = courseContentScore(parsed);
+    if (score <= bestScore) continue;
+
+    const rule = parseValidityRuleFromRow(row);
+    best = {
+      id: String(row.id),
+      slug: String(row.slug ?? row.id).replace(/^\d+-/, ""),
+      title: String(row.title),
+      description: row.description != null ? String(row.description) : null,
+      version: String(row.version ?? parsed.version ?? "1.0"),
+      passingScore: Number(row.passing_score ?? parsed.passingScore ?? 80),
+      validityType: rule.validityType,
+      validityIntervalValue: rule.validityIntervalValue ?? null,
+      validityIntervalUnit: rule.validityIntervalUnit ?? null,
+      validityMonths: Number(row.validity_months ?? parsed.certificateValidityMonths ?? 24),
+      content: parsed,
+    };
+    bestScore = score;
+  }
+  return best;
+}
+
+function normalizeMasterFromCompanySource(
+  masterId: string,
+  source: CompanyCourseSource
+): CourseData {
+  return normalize({
+    ...source.content,
+    courseId: masterId,
+    courseName: source.title,
+    version: source.version,
+    passingScore: source.passingScore,
+    certificateValidityMonths: source.validityMonths,
+  });
+}
+
+async function upsertMasterFromCompanySource(
+  masterId: string,
+  source: CompanyCourseSource,
+  normalized: CourseData
+): Promise<void> {
+  const sql = getSql();
+  try {
+    await sql`
+      UPDATE master_courses SET
+        title = ${source.title},
+        description = ${source.description ?? null},
+        version = ${normalized.version},
+        passing_score = ${normalized.passingScore},
+        validity_type = ${source.validityType},
+        validity_interval_value = ${source.validityIntervalValue},
+        validity_interval_unit = ${source.validityIntervalUnit},
+        validity_months = ${normalized.certificateValidityMonths},
+        content_json = ${JSON.stringify(normalized)}::jsonb,
+        updated_at = NOW()
+      WHERE id = ${masterId}
+    `;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("validity_type") || msg.includes("validity_interval")) {
+      await sql`
+        UPDATE master_courses SET
+          title = ${source.title},
+          description = ${source.description ?? null},
+          version = ${normalized.version},
+          passing_score = ${normalized.passingScore},
+          validity_months = ${normalized.certificateValidityMonths},
+          content_json = ${JSON.stringify(normalized)}::jsonb,
+          updated_at = NOW()
+        WHERE id = ${masterId}
+      `;
+    } else {
+      throw e;
+    }
+  }
+}
+
+export type ImportCompanyCourseResult =
+  | { ok: true; imported: true; modules: number; lessons: number; examQuestions: number }
+  | { ok: false; reason: "NOT_FOUND" | "ALREADY_HAS_CONTENT" | "NO_SOURCE" };
+
+/** Übernimmt Inhalte aus dem reichhaltigsten Firmenkurs mit gleichem Slug – nur wenn Master leer ist. */
+export async function importCompanyCourseIntoMaster(
+  masterId: string
+): Promise<ImportCompanyCourseResult> {
+  const meta = await getMasterCourseMeta(masterId);
+  if (!meta) return { ok: false, reason: "NOT_FOUND" };
+
+  const existing = await getMasterCourseData(masterId);
+  if (existing && !isEmptyCourseContent(existing)) {
+    return { ok: false, reason: "ALREADY_HAS_CONTENT" };
+  }
+
+  const source = await findRichestCompanyCourseForMaster(meta.slug);
+  if (!source || isEmptyCourseContent(source.content)) {
+    return { ok: false, reason: "NO_SOURCE" };
+  }
+
+  const normalized = normalizeMasterFromCompanySource(masterId, source);
+  await upsertMasterFromCompanySource(masterId, source, normalized);
+
+  const modules = normalized.modules?.length ?? 0;
+  const lessons = normalized.modules?.reduce(
+    (sum, mod) => sum + (mod.lessons?.length ?? 0),
+    0
+  ) ?? 0;
+  const examQuestions = normalized.exam?.length ?? 0;
+
+  return { ok: true, imported: true, modules, lessons, examQuestions };
 }

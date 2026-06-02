@@ -5,6 +5,7 @@ import {
 } from "./course-db";
 import {
   getMasterCourseData,
+  getMasterCourseMeta,
   masterContentAsCourseData,
 } from "./master-course-db";
 import type { CourseProvision, CourseProvisionStatus } from "./types";
@@ -265,6 +266,24 @@ export async function assertCourseEditable(
   return provision;
 }
 
+/** Gültigkeit/Bestehensgrenze – auch bei deaktivierten Seminaren, außer Certiano-read-only. */
+export async function assertCourseSettingsEditable(
+  companyId: number,
+  courseId: string
+): Promise<void> {
+  const sql = getSql();
+  const courseRows = await sql`
+    SELECT id FROM courses WHERE id = ${courseId} AND company_id = ${companyId} LIMIT 1
+  `;
+  if (courseRows.length === 0) throw new Error("COURSE_NOT_FOUND");
+
+  const provision = await getCourseProvision(companyId, courseId);
+  if (!provision) return;
+  if (provision.source === "master" && !provision.canEditContent) {
+    throw new Error("COURSE_READ_ONLY");
+  }
+}
+
 export async function updateProvision(
   companyId: number,
   courseId: string,
@@ -342,6 +361,7 @@ export async function assignMasterToCompany(
 ): Promise<CourseProvision> {
   const master = await getMasterCourseData(masterCourseId);
   if (!master) throw new Error("MASTER_NOT_FOUND");
+  const masterMeta = await getMasterCourseMeta(masterCourseId);
 
   const sql = getSql();
   const metaRows = await sql`
@@ -354,11 +374,14 @@ export async function assignMasterToCompany(
   await sql`
     INSERT INTO courses (
       id, company_id, slug, title, description, version,
-      passing_score, validity_months, content_json, active, master_course_id
+      passing_score, validity_months, validity_type, validity_interval_value,
+      validity_interval_unit, content_json, active, master_course_id
     )
     VALUES (
       ${courseId}, ${companyId}, ${slug}, ${cloned.courseName}, NULL,
-      ${cloned.version}, ${cloned.passingScore}, ${cloned.certificateValidityMonths},
+      ${cloned.version}, ${cloned.passingScore}, ${masterMeta?.validityMonths ?? cloned.certificateValidityMonths},
+      ${masterMeta?.validityType ?? "yearly"}, ${masterMeta?.validityIntervalValue ?? null},
+      ${masterMeta?.validityIntervalUnit ?? null},
       ${JSON.stringify(cloned)}::jsonb, TRUE, ${masterCourseId}
     )
     ON CONFLICT (id) DO UPDATE SET
@@ -366,6 +389,9 @@ export async function assignMasterToCompany(
       version = EXCLUDED.version,
       passing_score = EXCLUDED.passing_score,
       validity_months = EXCLUDED.validity_months,
+      validity_type = EXCLUDED.validity_type,
+      validity_interval_value = EXCLUDED.validity_interval_value,
+      validity_interval_unit = EXCLUDED.validity_interval_unit,
       content_json = EXCLUDED.content_json,
       master_course_id = EXCLUDED.master_course_id,
       active = TRUE
