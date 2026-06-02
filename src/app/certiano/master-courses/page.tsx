@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { CertianoShell } from "@/components/certiano-shell";
 import { Button, Card, Input } from "@/components/ui";
 
@@ -23,11 +23,13 @@ export default function MasterCoursesPage() {
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
 
-  const load = useCallback(() => {
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError("");
+
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 20000);
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
 
     fetch("/api/superuser/master-courses", { signal: controller.signal })
       .then(async (r) => {
@@ -39,19 +41,19 @@ export default function MasterCoursesPage() {
         if (!r.ok) {
           throw new Error(d.error ?? "Laden fehlgeschlagen.");
         }
-        setCourses(d.courses ?? []);
+        if (!cancelled) setCourses(d.courses ?? []);
       })
       .catch((e) => {
+        if (cancelled) return;
         const isAbort =
           e instanceof Error &&
           (e.name === "AbortError" ||
             e.message.toLowerCase().includes("aborted"));
         if (isAbort) {
           setError(
-            "Die Master-Kurse konnten nicht geladen werden. Bitte erneut versuchen."
+            "Zeitüberschreitung beim Laden. Bitte erneut versuchen."
           );
         } else {
-          console.error("[master-courses page] load:", e);
           setError(
             e instanceof Error ? e.message : "Laden fehlgeschlagen."
           );
@@ -59,13 +61,34 @@ export default function MasterCoursesPage() {
       })
       .finally(() => {
         window.clearTimeout(timeout);
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  function reloadCourses() {
+    setLoading(true);
+    setError("");
+    fetch("/api/superuser/master-courses")
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
+        if (r.status === 403 || r.status === 401) {
+          window.location.replace("/certiano/login");
+          return;
+        }
+        if (!r.ok) throw new Error(d.error ?? "Laden fehlgeschlagen.");
+        setCourses(d.courses ?? []);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "Laden fehlgeschlagen.");
+      })
+      .finally(() => setLoading(false));
+  }
 
   async function importExisting() {
     setImporting(true);
@@ -101,7 +124,7 @@ export default function MasterCoursesPage() {
       setMessage("Master-Seminar angelegt.");
       setShowForm(false);
       setForm({ title: "", slug: "" });
-      load();
+      reloadCourses();
     } else {
       setMessage(d.error ?? "Anlegen fehlgeschlagen.");
     }

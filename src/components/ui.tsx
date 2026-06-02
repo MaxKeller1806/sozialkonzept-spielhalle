@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useId } from "react";
 import { AccountMenu } from "@/components/account-menu";
+import {
+  TenantBrandingLoader,
+  useTenantBranding,
+} from "@/components/tenant-branding-loader";
 import type { TrainingStatus } from "@/lib/types";
 
 const buttonBase =
@@ -134,28 +138,38 @@ export const EMPLOYEE_TITLE =
   "Schulung und Unterweisung in das betriebliche Sozialkonzept";
 
 export function EmployeeHeader({ pageTitle }: { pageTitle?: string }) {
+  const tenant = useTenantBranding();
+
   return (
-    <header className="border-b border-brand-light bg-white">
-      <div className="mx-auto flex max-w-4xl items-start justify-between gap-3 px-4 py-5">
-        <div className="min-w-0 flex-1">
-          <p className="text-brand-muted text-xs font-medium uppercase tracking-wide">
-            {EMPLOYEE_SUBTITLE}
-          </p>
-          <h1
-            className="text-brand mt-1 text-base font-bold leading-snug sm:text-lg"
-            style={{ color: "#000080" }}
-          >
-            {EMPLOYEE_TITLE}
-          </h1>
-          {pageTitle && (
-            <h2 className="text-brand mt-2 text-sm font-medium" style={{ color: "#000080" }}>
-              {pageTitle}
-            </h2>
-          )}
+    <TenantBrandingLoader>
+      <header
+        className="border-b border-brand-light bg-white"
+        style={{ backgroundColor: tenant?.branding.backgroundColor }}
+      >
+        <div className="mx-auto flex max-w-4xl items-start justify-between gap-3 px-4 py-5">
+          <div className="min-w-0 flex-1">
+            {tenant?.branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={tenant.branding.logoUrl}
+                alt=""
+                className="mb-2 h-8 w-auto max-w-[140px] object-contain"
+              />
+            ) : null}
+            <p className="text-brand-muted text-xs font-medium uppercase tracking-wide">
+              {EMPLOYEE_SUBTITLE}
+            </p>
+            <h1 className="text-brand mt-1 text-base font-bold leading-snug sm:text-lg">
+              {tenant?.companyName || EMPLOYEE_TITLE}
+            </h1>
+            {pageTitle && (
+              <h2 className="text-brand mt-2 text-sm font-medium">{pageTitle}</h2>
+            )}
+          </div>
+          <AccountMenu className="shrink-0" />
         </div>
-        <AccountMenu className="shrink-0" />
-      </div>
-    </header>
+      </header>
+    </TenantBrandingLoader>
   );
 }
 
@@ -168,38 +182,55 @@ export function AppHeader({
   userName?: string;
   links?: { href: string; label: string }[];
 }) {
+  const tenant = useTenantBranding();
+
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-4">
-        <div>
-          <p className="text-brand text-xs font-medium uppercase tracking-wide">
-            Administration
-          </p>
-          <h1 className="text-lg font-bold text-slate-900">{title}</h1>
+    <TenantBrandingLoader>
+      <header
+        className="border-b border-slate-200 bg-white"
+        style={{ backgroundColor: tenant?.branding.backgroundColor }}
+      >
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+          <div>
+            {tenant?.branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={tenant.branding.logoUrl}
+                alt=""
+                className="mb-2 h-8 w-auto max-w-[140px] object-contain"
+              />
+            ) : null}
+            <p className="text-brand text-xs font-medium uppercase tracking-wide">
+              {tenant?.companyName || "Administration"}
+            </p>
+            <h1 className="text-lg font-bold text-slate-900">{title}</h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {userName && <span className="text-slate-600">{userName}</span>}
+            {links?.map((l) => (
+              <Link key={l.href} href={l.href} className="link-brand text-sm">
+                {l.label}
+              </Link>
+            ))}
+            <AccountMenu />
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          {userName && <span className="text-slate-600">{userName}</span>}
-          {links?.map((l) => (
-            <Link key={l.href} href={l.href} className="link-brand text-sm">
-              {l.label}
-            </Link>
-          ))}
-          <AccountMenu />
-        </div>
-      </div>
-    </header>
+      </header>
+    </TenantBrandingLoader>
   );
 }
 
 export function PageMain({
   children,
   className = "",
+  style,
 }: {
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   return (
-    <main id="main-content" className={className} tabIndex={-1}>
+    <main id="main-content" className={className} style={style} tabIndex={-1}>
       {children}
     </main>
   );

@@ -12,7 +12,7 @@ function menuItems(role: UserRole): MenuItem[] {
   switch (role) {
     case "superuser":
       return [
-        { type: "link", href: "/konto", label: "Mein Konto" },
+        { type: "link", href: "/certiano/konto", label: "Mein Konto" },
         { type: "link", href: "/certiano", label: "Certiano-Bereich" },
         { type: "logout", label: "Abmelden" },
       ];
@@ -36,6 +36,37 @@ function logoutRedirect(role: UserRole): string {
   return role === "superuser" ? "/certiano/login" : "/login";
 }
 
+let sessionUserCache: SessionUser | null | undefined;
+let sessionUserFetch: Promise<SessionUser | null> | null = null;
+
+export function clearSessionUserCache(): void {
+  sessionUserCache = undefined;
+  sessionUserFetch = null;
+}
+
+function loadSessionUser(): Promise<SessionUser | null> {
+  if (sessionUserCache !== undefined) {
+    return Promise.resolve(sessionUserCache);
+  }
+  if (!sessionUserFetch) {
+    sessionUserFetch = fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const user = (d?.user as SessionUser | undefined) ?? null;
+        sessionUserCache = user;
+        return user;
+      })
+      .catch(() => {
+        sessionUserCache = null;
+        return null;
+      })
+      .finally(() => {
+        sessionUserFetch = null;
+      });
+  }
+  return sessionUserFetch;
+}
+
 function userInitials(user: SessionUser): string {
   const first = user.firstName?.trim().charAt(0) ?? "";
   const last = user.lastName?.trim().charAt(0) ?? "";
@@ -57,12 +88,9 @@ export function AccountMenu({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/auth/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!cancelled && d?.user) setUser(d.user);
-      })
-      .catch(() => {});
+    loadSessionUser().then((u) => {
+      if (!cancelled && u) setUser(u);
+    });
     return () => {
       cancelled = true;
     };
@@ -94,6 +122,7 @@ export function AccountMenu({
   const logout = useCallback(async () => {
     if (!user) return;
     setOpen(false);
+    clearSessionUserCache();
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.replace(logoutRedirect(user.role));
   }, [user]);

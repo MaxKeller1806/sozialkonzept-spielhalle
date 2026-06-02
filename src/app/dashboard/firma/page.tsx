@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AdminNav } from "@/components/admin-nav";
+import { invalidateTenantBrandingCache } from "@/components/tenant-branding-loader";
 import { AppHeader, Button, Card, Input } from "@/components/ui";
+import { applyBrandingCssVars } from "@/lib/branding-theme";
 
 export default function FirmaPage() {
   const router = useRouter();
@@ -65,8 +67,16 @@ export default function FirmaPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
-    if (res.ok) setMessage("Firma gespeichert.");
-    else setMessage("Speichern fehlgeschlagen.");
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      if (data.company?.branding) {
+        applyBrandingCssVars(data.company.branding);
+      }
+      invalidateTenantBrandingCache();
+      setMessage("Firma gespeichert.");
+    } else {
+      setMessage(data.error ?? "Speichern fehlgeschlagen.");
+    }
   }
 
   return (

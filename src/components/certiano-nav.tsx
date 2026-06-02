@@ -4,6 +4,11 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/certiano", label: "Firmen", match: (p: string) => p === "/certiano" },
   {
+    href: "/certiano/users",
+    label: "Benutzer",
+    match: (p: string) => p === "/certiano/users",
+  },
+  {
     href: "/certiano/master-courses",
     label: "Seminarverwaltung",
     match: (p: string) => p.startsWith("/certiano/master-courses"),
@@ -12,6 +17,11 @@ const links = [
     href: "/certiano/branding",
     label: "Branding",
     match: (p: string) => p.startsWith("/certiano/branding"),
+  },
+  {
+    href: "/certiano/konto",
+    label: "Mein Konto",
+    match: (p: string) => p === "/certiano/konto",
   },
 ];
 
@@ -53,7 +63,7 @@ export function CertianoNav({ companyId }: { companyId?: number }) {
                 : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
             }`}
           >
-            Benutzer
+            Benutzer (Firma)
           </Link>
           <Link
             href={`/certiano/companies/${companyId}/courses`}

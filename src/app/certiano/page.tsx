@@ -25,6 +25,7 @@ interface CompanySummary {
 export default function CertianoDashboardPage() {
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [newLicense, setNewLicense] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", slug: "", email: "" });
@@ -32,7 +33,11 @@ export default function CertianoDashboardPage() {
 
   const load = useCallback(() => {
     setLoading(true);
-    fetch("/api/superuser/companies")
+    setLoadError("");
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
+
+    fetch("/api/superuser/companies", { signal: controller.signal })
       .then((r) => {
         if (r.status === 403 || r.status === 401) {
           window.location.replace("/certiano/login");
@@ -49,9 +54,19 @@ export default function CertianoDashboardPage() {
         if (d?.companies) setCompanies(d.companies);
       })
       .catch((e) => {
-        setMessage(e instanceof Error ? e.message : "Laden fehlgeschlagen.");
+        const isAbort =
+          e instanceof Error &&
+          (e.name === "AbortError" || e.message.toLowerCase().includes("aborted"));
+        setLoadError(
+          isAbort
+            ? "Zeitüberschreitung beim Laden. Bitte erneut versuchen."
+            : e instanceof Error
+              ? e.message
+              : "Laden fehlgeschlagen."
+        );
       })
       .finally(() => {
+        window.clearTimeout(timeout);
         setLoading(false);
       });
   }, []);
@@ -101,14 +116,6 @@ export default function CertianoDashboardPage() {
     load();
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-900 text-white">
-        Lädt…
-      </div>
-    );
-  }
-
   return (
     <CertianoShell>
         <div className="mb-6 flex flex-wrap justify-between gap-3">
@@ -123,6 +130,14 @@ export default function CertianoDashboardPage() {
           <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">
             {message}
           </p>
+        )}
+        {loadError && (
+          <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">
+            <p>{loadError}</p>
+            <Button type="button" variant="secondary" onClick={load} className="mt-3 !w-auto">
+              Erneut laden
+            </Button>
+          </div>
         )}
         {newLicense && (
           <Card className="mb-4 border-amber-200 bg-amber-50">
@@ -163,6 +178,9 @@ export default function CertianoDashboardPage() {
           </Card>
         )}
 
+        {loading ? (
+          <p className="text-sm text-slate-600">Lädt Firmen…</p>
+        ) : (
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[800px] text-left text-sm">
             <thead className="border-b bg-slate-50 text-slate-600">
@@ -250,6 +268,7 @@ export default function CertianoDashboardPage() {
             </tbody>
           </table>
         </Card>
+        )}
     </CertianoShell>
   );
 }

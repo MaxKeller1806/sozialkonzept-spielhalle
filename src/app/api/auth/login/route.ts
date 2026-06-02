@@ -22,14 +22,20 @@ export async function POST(request: Request) {
 
   try {
     console.time("login:1-read-request");
-    let body: { email?: string; password?: string; portal?: string };
+    let body: {
+      email?: string;
+      password?: string;
+      portal?: string;
+      companySlug?: string;
+      companyId?: number;
+    };
     try {
       body = await request.json();
     } catch {
       t("1-read-request");
       return NextResponse.json({ error: "Ungültige Anfrage." }, { status: 400 });
     }
-    const { email, password, portal } = body;
+    const { email, password, portal, companySlug, companyId } = body;
     t("1-read-request");
 
     if (!email || !password) {
@@ -75,6 +81,32 @@ export async function POST(request: Request) {
         { error: "Superuser melden sich unter /certiano/login an." },
         { status: 403 }
       );
+    }
+
+    const { resolveLoginCompanyId } = await import("@/lib/tenant-resolve");
+
+    if (portal !== "certiano") {
+      const expectedCompanyId = await resolveLoginCompanyId({
+        companySlug: companySlug ?? null,
+        companyId: companyId ?? null,
+      });
+
+      if (expectedCompanyId == null) {
+        return NextResponse.json(
+          {
+            error:
+              "Bitte Firmenkennung angeben oder die firmenspezifische Login-Adresse nutzen.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (sessionUser.companyId !== expectedCompanyId) {
+        return NextResponse.json(
+          { error: "Ungültige Anmeldedaten." },
+          { status: 401 }
+        );
+      }
     }
 
     if (sessionUser.role !== "superuser" && !sessionUser.companyId) {

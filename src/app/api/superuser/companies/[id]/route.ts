@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
 import { getSql } from "@/lib/db";
-import { generateLicenseKey, hashLicenseKey } from "@/lib/license";
 import {
   getCompanyById,
+  permanentlyDeleteCompanyUser,
   removeOrArchiveCompanyUser,
 } from "@/lib/tenant";
+import { ConfirmDeleteRequiredError } from "@/lib/user-delete";
 
 export async function GET(
   _request: Request,
@@ -73,6 +74,7 @@ export async function PATCH(
       ["accentColor", "accent_color"],
       ["logoUrl", "logo_url"],
       ["loginBackgroundUrl", "login_background_url"],
+      ["loginDomain", "login_domain"],
       ["street", "street"],
       ["postalCode", "postal_code"],
       ["city", "city"],
@@ -98,7 +100,8 @@ export async function PATCH(
       WHERE id = ${companyId}
     `;
 
-    return NextResponse.json({ ok: true });
+    const company = await getCompanyById(companyId);
+    return NextResponse.json({ ok: true, company });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
@@ -122,6 +125,27 @@ export async function DELETE(
     }
 
     const uid = Number(deleteUserId);
+    const url = new URL(request.url);
+    const permanent = url.searchParams.get("permanent") === "true";
+    const confirmDelete =
+      url.searchParams.get("confirmDelete") === "true" ||
+      (await request
+        .clone()
+        .json()
+        .then((body) => body?.confirmDelete === true)
+        .catch(() => false));
+
+    if (permanent) {
+      const result = await permanentlyDeleteCompanyUser(uid, companyId, confirmDelete);
+      return NextResponse.json({
+        action: result.action,
+        hadEvidenceData: result.hadEvidenceData,
+        message: result.hadEvidenceData
+          ? "Benutzer und zugehörige Nachweisdaten wurden endgültig gelöscht."
+          : "Benutzer wurde endgültig gelöscht.",
+      });
+    }
+
     const result = await removeOrArchiveCompanyUser(uid, companyId);
 
     return NextResponse.json({
@@ -130,6 +154,16 @@ export async function DELETE(
         "Benutzer wurde archiviert. Vorhandene Prüfungs- und Zertifikatsdaten bleiben aus Nachweisgründen erhalten.",
     });
   } catch (e) {
+    if (e instanceof ConfirmDeleteRequiredError) {
+      return NextResponse.json(
+        {
+          error: e.preview.warningMessage,
+          code: "CONFIRM_DELETE_REQUIRED",
+          preview: e.preview,
+        },
+        { status: 409 }
+      );
+    }
     const msg = e instanceof Error ? e.message : "";
     if (msg === "NOT_FOUND") {
       return NextResponse.json({ error: "Nutzer nicht gefunden." }, { status: 404 });

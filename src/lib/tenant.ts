@@ -1,4 +1,6 @@
 import { getSql } from "./db";
+import { brandingToCssVars as themeBrandingToCssVars } from "./branding-theme";
+import { OPERATOR_COMPANY_SLUG } from "./branding-theme";
 import type { Company, CompanyBranding, PrivacyPolicyVersion, SessionUser } from "./types";
 
 export function mapCompany(row: Record<string, unknown>): Company {
@@ -13,6 +15,7 @@ export function mapCompany(row: Record<string, unknown>): Company {
     email: row.email != null ? String(row.email) : null,
     phone: row.phone != null ? String(row.phone) : null,
     website: row.website != null ? String(row.website) : null,
+    loginDomain: row.login_domain != null ? String(row.login_domain) : null,
     branding: {
       primaryColor: String(row.primary_color ?? "#000080"),
       secondaryColor: String(row.secondary_color ?? "#4040a0"),
@@ -42,7 +45,23 @@ export async function getCompanyById(id: number): Promise<Company | undefined> {
 
 export async function getCompanyBySlug(slug: string): Promise<Company | undefined> {
   const sql = getSql();
-  const rows = await sql`SELECT * FROM companies WHERE slug = ${slug} LIMIT 1`;
+  const normalized = slug.trim().toLowerCase();
+  const rows = await sql`
+    SELECT * FROM companies WHERE LOWER(slug) = ${normalized} LIMIT 1
+  `;
+  return rows[0] ? mapCompany(rows[0] as Record<string, unknown>) : undefined;
+}
+
+export async function getCompanyByLoginDomain(
+  domain: string
+): Promise<Company | undefined> {
+  const sql = getSql();
+  const hostname = domain.split(":")[0].toLowerCase();
+  const rows = await sql`
+    SELECT * FROM companies
+    WHERE LOWER(login_domain) = ${hostname}
+    LIMIT 1
+  `;
   return rows[0] ? mapCompany(rows[0] as Record<string, unknown>) : undefined;
 }
 
@@ -64,11 +83,57 @@ export async function assertCompanyAccess(
 }
 
 export function brandingToCssVars(branding: CompanyBranding): Record<string, string> {
+  return themeBrandingToCssVars(branding);
+}
+
+export async function listCompanyOptions(): Promise<Array<{ id: number; name: string }>> {
+  const sql = getSql();
+  const rows = await sql`SELECT id, name FROM companies ORDER BY name ASC`;
+  return rows.map((r) => ({
+    id: Number(r.id),
+    name: String(r.name),
+  }));
+}
+
+export async function countTenantUsersStatus(): Promise<{
+  active: number;
+  archived: number;
+}> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      COUNT(*) FILTER (WHERE active)::int AS active,
+      COUNT(*) FILTER (WHERE NOT active)::int AS archived
+    FROM users
+    WHERE role IN ('admin', 'employee')
+  `;
   return {
-    "--brand-primary": branding.primaryColor,
-    "--brand-secondary": branding.secondaryColor,
-    "--brand-bg": branding.backgroundColor,
-    "--brand-accent": branding.accentColor,
+    active: Number(rows[0]?.active ?? 0),
+    archived: Number(rows[0]?.archived ?? 0),
+  };
+}
+
+export async function countCompanyUsersStatus(companyId: number): Promise<{
+  active: number;
+  archived: number;
+  adminCount: number;
+  employeeCount: number;
+}> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      COUNT(*) FILTER (WHERE active)::int AS active,
+      COUNT(*) FILTER (WHERE NOT active)::int AS archived,
+      COUNT(*) FILTER (WHERE role = 'admin')::int AS admin_count,
+      COUNT(*) FILTER (WHERE role = 'employee')::int AS employee_count
+    FROM users
+    WHERE company_id = ${companyId} AND role IN ('admin', 'employee')
+  `;
+  return {
+    active: Number(rows[0]?.active ?? 0),
+    archived: Number(rows[0]?.archived ?? 0),
+    adminCount: Number(rows[0]?.admin_count ?? 0),
+    employeeCount: Number(rows[0]?.employee_count ?? 0),
   };
 }
 
@@ -87,6 +152,32 @@ export async function getCompanySummaries(): Promise<
 > {
   const sql = getSql();
   const rows = await sql`
+    WITH user_stats AS (
+      SELECT
+        company_id,
+        COUNT(*) FILTER (WHERE role = 'employee')::int AS employee_count,
+        COUNT(*) FILTER (WHERE role = 'admin')::int AS admin_count
+      FROM users
+      WHERE role IN ('admin', 'employee')
+      GROUP BY company_id
+    ),
+    admin_contacts AS (
+      SELECT
+        company_id,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'name', TRIM(first_name || ' ' || last_name),
+              'email', email
+            )
+            ORDER BY id
+          ),
+          '[]'::json
+        ) AS admin_contacts
+      FROM users
+      WHERE role = 'admin' AND active = TRUE
+      GROUP BY company_id
+    )
     SELECT
       c.id,
       c.name,
@@ -94,25 +185,31 @@ export async function getCompanySummaries(): Promise<
       c.license_status,
       c.license_expires_at,
       c.created_at,
-      COUNT(*) FILTER (WHERE u.role = 'employee')::int AS employee_count,
-      COUNT(*) FILTER (WHERE u.role = 'admin')::int AS admin_count
+      COALESCE(us.employee_count, 0) AS employee_count,
+      COALESCE(us.admin_count, 0) AS admin_count,
+      COALESCE(ac.admin_contacts, '[]'::json) AS admin_contacts
     FROM companies c
-    LEFT JOIN users u ON u.company_id = c.id AND u.role IN ('admin', 'employee')
-    GROUP BY c.id
+    LEFT JOIN user_stats us ON us.company_id = c.id
+    LEFT JOIN admin_contacts ac ON ac.company_id = c.id
+    WHERE c.slug != ${OPERATOR_COMPANY_SLUG}
     ORDER BY c.created_at DESC
   `;
 
-  const summaries = [];
-  for (const row of rows) {
-    const companyId = Number(row.id);
-    const adminRows = await sql`
-      SELECT first_name, last_name, email
-      FROM users
-      WHERE company_id = ${companyId} AND role = 'admin' AND active = TRUE
-      ORDER BY id ASC
-    `;
-    summaries.push({
-      id: companyId,
+  return rows.map((row) => {
+    const rawContacts = row.admin_contacts;
+    let adminContacts: Array<{ name: string; email: string }> = [];
+    if (Array.isArray(rawContacts)) {
+      adminContacts = rawContacts as Array<{ name: string; email: string }>;
+    } else if (typeof rawContacts === "string") {
+      try {
+        adminContacts = JSON.parse(rawContacts) as Array<{ name: string; email: string }>;
+      } catch {
+        adminContacts = [];
+      }
+    }
+
+    return {
+      id: Number(row.id),
       name: String(row.name),
       status: String(row.status),
       licenseStatus: String(row.license_status),
@@ -122,13 +219,9 @@ export async function getCompanySummaries(): Promise<
       createdAt: new Date(String(row.created_at)).toISOString(),
       employeeCount: Number(row.employee_count ?? 0),
       adminCount: Number(row.admin_count ?? 0),
-      adminContacts: adminRows.map((a) => ({
-        name: `${String(a.first_name)} ${String(a.last_name)}`.trim(),
-        email: String(a.email),
-      })),
-    });
-  }
-  return summaries;
+      adminContacts,
+    };
+  });
 }
 
 export async function deleteCompanyUser(userId: number, companyId: number): Promise<boolean> {
@@ -178,6 +271,7 @@ export async function listCompanyUsersMinimal(
       WHERE u.company_id = ${companyId} AND u.role IN ('admin', 'employee')
       ${activeFilter}
       ORDER BY u.active DESC, u.role ASC, u.last_name ASC, u.first_name ASC
+      LIMIT 100
     `) as Record<string, unknown>[];
   } catch {
     rows = (await sql`
@@ -187,6 +281,7 @@ export async function listCompanyUsersMinimal(
       WHERE u.company_id = ${companyId} AND u.role IN ('admin', 'employee')
       ${activeFilter}
       ORDER BY u.active DESC, u.role ASC, u.last_name ASC, u.first_name ASC
+      LIMIT 100
     `) as Record<string, unknown>[];
   }
   return rows.map((r) => ({
@@ -201,6 +296,171 @@ export async function listCompanyUsersMinimal(
       ? new Date(String(r.last_login_at)).toISOString()
       : null,
   }));
+}
+
+export interface AllUsersQuery {
+  companyId?: number | null;
+  role?: "admin" | "employee" | null;
+  filter?: UserListFilter;
+  search?: string | null;
+  limit?: number;
+  offset?: number;
+}
+
+export async function listAllUsersMinimal(
+  query: AllUsersQuery = {}
+): Promise<{
+  users: Array<{
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+    active: boolean;
+    companyId: number | null;
+    companyName: string | null;
+    lastLoginAt: string | null;
+  }>;
+  total: number;
+  limit: number;
+  offset: number;
+}> {
+  const sql = getSql();
+  const filter = query.filter ?? "all";
+  const companyId = query.companyId ?? null;
+  const role = query.role ?? null;
+  const search = query.search?.trim().toLowerCase() ?? "";
+  const limit = Math.min(Math.max(query.limit ?? 100, 1), 100);
+  const offset = Math.max(query.offset ?? 0, 0);
+
+  const activeFilter =
+    filter === "active"
+      ? sql`AND u.active = TRUE`
+      : filter === "archived"
+        ? sql`AND u.active = FALSE`
+        : sql``;
+
+  const companyFilter =
+    companyId != null && companyId > 0
+      ? sql`AND u.company_id = ${companyId}`
+      : sql``;
+
+  const roleFilter =
+    role === "admin" || role === "employee" ? sql`AND u.role = ${role}` : sql``;
+
+  const searchPattern = search ? `%${search}%` : null;
+  const searchFilter = searchPattern
+    ? sql`AND (
+        LOWER(u.email) LIKE ${searchPattern}
+        OR LOWER(u.first_name) LIKE ${searchPattern}
+        OR LOWER(u.last_name) LIKE ${searchPattern}
+        OR LOWER(u.first_name || ' ' || u.last_name) LIKE ${searchPattern}
+      )`
+    : sql``;
+
+  const mapRow = (r: Record<string, unknown>) => ({
+    id: Number(r.id),
+    firstName: String(r.first_name),
+    lastName: String(r.last_name),
+    email: String(r.email),
+    role: String(r.role),
+    active: Boolean(r.active),
+    companyId: r.company_id != null ? Number(r.company_id) : null,
+    companyName: r.company_name != null ? String(r.company_name) : null,
+    lastLoginAt: r.last_login_at
+      ? new Date(String(r.last_login_at)).toISOString()
+      : null,
+  });
+
+  try {
+    const rows = await sql`
+      SELECT
+        u.id,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.role,
+        u.active,
+        u.last_login_at,
+        u.company_id,
+        c.name AS company_name,
+        COUNT(*) OVER()::int AS total_count
+      FROM users u
+      LEFT JOIN companies c ON c.id = u.company_id
+      WHERE u.role IN ('admin', 'employee')
+      ${activeFilter}
+      ${companyFilter}
+      ${roleFilter}
+      ${searchFilter}
+      ORDER BY c.name ASC NULLS LAST, u.active DESC, u.role ASC, u.last_name ASC, u.first_name ASC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+    const total = rows.length > 0 ? Number(rows[0].total_count ?? 0) : 0;
+    return {
+      users: rows.map((r) => mapRow(r as Record<string, unknown>)),
+      total,
+      limit,
+      offset,
+    };
+  } catch {
+    const rows = await sql`
+      SELECT
+        u.id,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.role,
+        u.active,
+        u.company_id,
+        c.name AS company_name,
+        COUNT(*) OVER()::int AS total_count
+      FROM users u
+      LEFT JOIN companies c ON c.id = u.company_id
+      WHERE u.role IN ('admin', 'employee')
+      ${activeFilter}
+      ${companyFilter}
+      ${roleFilter}
+      ${searchFilter}
+      ORDER BY c.name ASC NULLS LAST, u.active DESC, u.role ASC, u.last_name ASC, u.first_name ASC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+    const total = rows.length > 0 ? Number(rows[0].total_count ?? 0) : 0;
+    return {
+      users: rows.map((r) => mapRow(r as Record<string, unknown>)),
+      total,
+      limit,
+      offset,
+    };
+  }
+}
+
+export async function getTenantUserCompanyId(userId: number): Promise<number | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT company_id, role FROM users WHERE id = ${userId} LIMIT 1
+  `;
+  if (!rows[0]) return null;
+  if (String(rows[0].role) === "superuser") return null;
+  const cid = rows[0].company_id;
+  return cid != null ? Number(cid) : null;
+}
+
+export async function permanentlyDeleteCompanyUser(
+  userId: number,
+  companyId: number,
+  confirmDelete = false
+): Promise<{ action: "deleted"; hadEvidenceData: boolean }> {
+  const { executePermanentUserDelete } = await import("./user-delete");
+  return executePermanentUserDelete(userId, companyId, confirmDelete);
+}
+
+export async function archiveCompanyUser(
+  userId: number,
+  companyId: number
+): Promise<{ action: "deactivated" }> {
+  return removeOrArchiveCompanyUser(userId, companyId);
 }
 
 export async function removeOrArchiveCompanyUser(

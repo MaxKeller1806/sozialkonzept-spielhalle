@@ -117,13 +117,6 @@ export type MasterCourseListItem = {
 export async function listMasterCoursesMetadata(): Promise<MasterCourseListItem[]> {
   const sql = getSql();
   try {
-    const countRows = await sql`
-      SELECT COUNT(*)::int AS n FROM master_courses
-    `;
-    if (Number(countRows[0]?.n ?? 0) === 0) {
-      return [];
-    }
-
     const rows = await sql`
       SELECT id, title, description, status, created_at, updated_at
       FROM master_courses

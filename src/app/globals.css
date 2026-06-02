@@ -573,42 +573,42 @@ html[data-high-contrast="true"] .skip-link {
 }
 
 .text-brand {
-  color: #000080 !important;
+  color: var(--brand-primary, #000080) !important;
 }
 
 .text-brand-muted {
-  color: #4040a0 !important;
+  color: var(--brand-secondary, #4040a0) !important;
 }
 
 .bg-brand {
-  background-color: #000080 !important;
+  background-color: var(--brand-primary, #000080) !important;
 }
 
 .border-brand {
-  border-color: #000080 !important;
+  border-color: var(--brand-primary, #000080) !important;
 }
 
 .border-brand-light {
-  border-color: #b0b0e0 !important;
+  border-color: var(--brand-navy-border, #b0b0e0) !important;
 }
 
 .bg-brand-light {
-  background-color: #ededf8 !important;
+  background-color: color-mix(in srgb, var(--brand-primary, #000080) 12%, white) !important;
 }
 
 .focus-brand:focus-visible {
-  border-color: #000080 !important;
+  border-color: var(--brand-primary, #000080) !important;
   outline: var(--focus-width) solid var(--focus-color);
   outline-offset: var(--focus-offset);
   box-shadow: none;
 }
 
 .has-\[\:checked\]\:border-brand:has(:checked) {
-  border-color: #000080 !important;
+  border-color: var(--brand-primary, #000080) !important;
 }
 
 .has-\[\:checked\]\:bg-brand-light:has(:checked) {
-  background-color: #ededf8 !important;
+  background-color: color-mix(in srgb, var(--brand-primary, #000080) 12%, white) !important;
 }
 
 html[data-high-contrast="true"] .has-\[\:checked\]\:border-brand:has(:checked) {
@@ -620,7 +620,7 @@ html[data-high-contrast="true"] .has-\[\:checked\]\:bg-brand-light:has(:checked)
 }
 
 .link-brand {
-  color: #000080;
+  color: var(--brand-primary, #000080);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;

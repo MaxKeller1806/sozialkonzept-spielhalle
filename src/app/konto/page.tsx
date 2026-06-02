@@ -50,7 +50,7 @@ export default function KontoPage() {
           return null;
         }
         if (d.user.role === "superuser") {
-          window.location.replace("/certiano");
+          window.location.replace("/certiano/konto");
           return null;
         }
         setMustChange(!!d.user.mustChangePassword);

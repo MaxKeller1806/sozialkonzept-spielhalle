@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CertianoShell } from "@/components/certiano-shell";
 import { Button, Card } from "@/components/ui";
+import { useSuperuserDeleteUser } from "@/hooks/use-superuser-delete-user";
 
 type UserFilter = "active" | "archived" | "all";
 
@@ -21,12 +22,28 @@ export default function CompanyUsersPage() {
   const params = useParams();
   const companyId = Number(params.id);
   const [users, setUsers] = useState<UserRow[]>([]);
-  const [filter, setFilter] = useState<UserFilter>("active");
+  const [filter, setFilter] = useState<UserFilter>("all");
   const [activeCount, setActiveCount] = useState(0);
   const [archivedCount, setArchivedCount] = useState(0);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [reloadNonce, setReloadNonce] = useState(0);
+
+  const { openDeleteDialog, deleteDialog } = useSuperuserDeleteUser({
+    getPreviewUrl: (userId) => `/api/superuser/users/${userId}/delete-preview`,
+    getDeleteUrl: (userId) => `/api/superuser/companies/${companyId}/users/${userId}`,
+    getArchiveUrl: (userId) => `/api/superuser/companies/${companyId}/users/${userId}`,
+    onDeleted: (msg) => {
+      setMessage(msg);
+      setReloadNonce((n) => n + 1);
+    },
+    onArchived: (msg) => {
+      setMessage(msg);
+      setReloadNonce((n) => n + 1);
+    },
+    onError: (msg) => setError(msg),
+  });
 
   const load = useCallback(() => {
     if (!Number.isFinite(companyId) || companyId <= 0) {
@@ -74,7 +91,7 @@ export default function CompanyUsersPage() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, reloadNonce]);
 
   async function reactivateUser(user: UserRow) {
     setMessage("");
@@ -90,7 +107,7 @@ export default function CompanyUsersPage() {
     const d = await res.json().catch(() => ({}));
     if (res.ok) {
       setMessage(`${user.firstName} ${user.lastName} wurde reaktiviert.`);
-      load();
+      setReloadNonce((n) => n + 1);
     } else {
       setError(d.error ?? "Reaktivierung fehlgeschlagen.");
     }
@@ -108,12 +125,16 @@ export default function CompanyUsersPage() {
     setError("");
     const res = await fetch(
       `/api/superuser/companies/${companyId}/users/${user.id}`,
-      { method: "DELETE" }
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: false }),
+      }
     );
     const d = await res.json().catch(() => ({}));
     if (res.ok) {
       setMessage(d.message ?? "Benutzer wurde archiviert.");
-      load();
+      setReloadNonce((n) => n + 1);
     } else {
       setError(d.error ?? "Archivierung fehlgeschlagen.");
     }
@@ -205,15 +226,25 @@ export default function CompanyUsersPage() {
                       : "—"}
                   </td>
                   <td className="p-4">
-                    {u.active ? (
-                      <Button type="button" variant="secondary" onClick={() => archiveUser(u)}>
-                        Archivieren
+                    <div className="flex flex-col gap-2">
+                      {u.active ? (
+                        <Button type="button" variant="secondary" onClick={() => archiveUser(u)}>
+                          Archivieren
+                        </Button>
+                      ) : (
+                        <Button type="button" variant="secondary" onClick={() => reactivateUser(u)}>
+                          Reaktivieren
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="danger"
+                        className="!w-auto"
+                        onClick={() => void openDeleteDialog(u)}
+                      >
+                        Endgültig löschen
                       </Button>
-                    ) : (
-                      <Button type="button" variant="secondary" onClick={() => reactivateUser(u)}>
-                        Reaktivieren
-                      </Button>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -221,6 +252,7 @@ export default function CompanyUsersPage() {
           </table>
         </Card>
       )}
+      {deleteDialog}
     </CertianoShell>
   );
 }

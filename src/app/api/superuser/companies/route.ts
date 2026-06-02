@@ -1,20 +1,47 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
-import { getSql } from "@/lib/db";
+import { isDbConnectionError, getSql, resetSql, withDbQuery } from "@/lib/db";
 import { generateLicenseKey, hashLicenseKey } from "@/lib/license";
 import { getCompanySummaries, mapCompany } from "@/lib/tenant";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 10;
+
+function superuserErrorResponse(e: unknown) {
+  const msg = e instanceof Error ? e.message : "";
+  if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
+    return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+  }
+  return null;
+}
+
 export async function GET() {
+  const tag = `[superuser/companies] ${Date.now()}`;
   try {
+    console.time(`${tag} auth`);
     await requireSuperuser();
-    const companies = await getCompanySummaries();
-    return NextResponse.json({ companies });
+    console.timeEnd(`${tag} auth`);
+
+    console.time(`${tag} query`);
+    const companies = await withDbQuery(() => getCompanySummaries());
+    console.timeEnd(`${tag} query`);
+
+    console.time(`${tag} response`);
+    const body = NextResponse.json({ companies });
+    console.timeEnd(`${tag} response`);
+    return body;
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "";
-    if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
-      return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    console.error("[superuser/companies] GET:", e);
+    await resetSql();
+    const auth = superuserErrorResponse(e);
+    if (auth) return auth;
+    if (isDbConnectionError(e)) {
+      return NextResponse.json(
+        { error: "Datenbankverbindung unterbrochen. Bitte erneut versuchen." },
+        { status: 503 }
+      );
     }
-    return NextResponse.json({ error: "Fehler." }, { status: 500 });
+    return NextResponse.json({ error: "Firmen konnten nicht geladen werden." }, { status: 500 });
   }
 }
 

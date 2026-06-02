@@ -28,14 +28,25 @@ export default function CompanyDetailPage() {
     licenseExpiresAt: "",
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [message, setMessage] = useState("");
 
   const load = useCallback(() => {
-    fetch(`/api/superuser/companies/${companyId}`)
+    setLoading(true);
+    setLoadError("");
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
+
+    fetch(`/api/superuser/companies/${companyId}`, { signal: controller.signal })
       .then((r) => {
         if (r.status === 403 || r.status === 401) {
           window.location.replace("/certiano/login");
           return null;
+        }
+        if (!r.ok) {
+          return r.json().then((d) => {
+            throw new Error(d.error ?? "Laden fehlgeschlagen.");
+          });
         }
         return r.json();
       })
@@ -64,7 +75,22 @@ export default function CompanyDetailPage() {
           });
         }
       })
-      .finally(() => setLoading(false));
+      .catch((e) => {
+        const isAbort =
+          e instanceof Error &&
+          (e.name === "AbortError" || e.message.toLowerCase().includes("aborted"));
+        setLoadError(
+          isAbort
+            ? "Zeitüberschreitung beim Laden. Bitte erneut versuchen."
+            : e instanceof Error
+              ? e.message
+              : "Laden fehlgeschlagen."
+        );
+      })
+      .finally(() => {
+        window.clearTimeout(timeout);
+        setLoading(false);
+      });
   }, [companyId]);
 
   useEffect(() => {
@@ -91,16 +117,18 @@ export default function CompanyDetailPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-900 text-white">
-        Lädt…
-      </div>
-    );
-  }
-
   return (
     <CertianoShell companyId={companyId}>
+      {loading ? (
+        <p className="text-sm text-slate-600">Lädt Firmendaten…</p>
+      ) : loadError ? (
+        <Card>
+          <p className="text-sm text-red-700">{loadError}</p>
+          <Button type="button" variant="secondary" onClick={load} className="mt-3 !w-auto">
+            Erneut laden
+          </Button>
+        </Card>
+      ) : (
       <Card>
         <h2 className="mb-4 text-lg font-bold">Firma bearbeiten: {form.name}</h2>
         {message && (
@@ -169,6 +197,7 @@ export default function CompanyDetailPage() {
           </div>
         </form>
       </Card>
+      )}
     </CertianoShell>
   );
 }

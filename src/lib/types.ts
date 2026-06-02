@@ -23,6 +23,7 @@ export interface Company {
   email: string | null;
   phone: string | null;
   website: string | null;
+  loginDomain: string | null;
   branding: CompanyBranding;
   status: CompanyStatus;
   licenseStatus: LicenseStatus;

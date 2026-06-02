@@ -13,14 +13,8 @@ export const maxDuration = 30;
 
 export async function GET() {
   try {
-    console.time("master-courses auth");
     await requireSuperuser();
-    console.timeEnd("master-courses auth");
-
-    console.time("master-courses list");
     const courses = await listMasterCoursesMetadata();
-    console.timeEnd("master-courses list");
-
     return NextResponse.json({ courses });
   } catch (e) {
     console.error("[superuser/master-courses] GET:", e);

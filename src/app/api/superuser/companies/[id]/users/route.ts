@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
-import { resetSql } from "@/lib/db";
-import { listCompanyUsersMinimal, type UserListFilter } from "@/lib/tenant";
+import { isDbConnectionError, resetSql, withDbRetry } from "@/lib/db";
+import {
+  countCompanyUsersStatus,
+  listCompanyUsersMinimal,
+  type UserListFilter,
+} from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 function parseFilter(value: string | null): UserListFilter {
-  if (value === "archived" || value === "all") return value;
-  return "active";
+  if (value === "active" || value === "archived") return value;
+  return "all";
 }
 
 export async function GET(
@@ -19,28 +23,29 @@ export async function GET(
     await requireSuperuser();
     const { id } = await params;
     const companyId = Number(id);
+    if (!Number.isFinite(companyId) || companyId <= 0) {
+      return NextResponse.json({ error: "Ungültige Firmen-ID." }, { status: 400 });
+    }
+
     const filter = parseFilter(new URL(request.url).searchParams.get("filter"));
 
-    const users = await listCompanyUsersMinimal(companyId, filter);
-    const adminCount = users.filter((u) => u.role === "admin").length;
-    const employeeCount = users.filter((u) => u.role === "employee").length;
-
-    const allUsers = filter === "all"
-      ? users
-      : await listCompanyUsersMinimal(companyId, "all");
-    const activeCount = allUsers.filter((u) => u.active).length;
-    const archivedCount = allUsers.filter((u) => !u.active).length;
+    const [users, counts] = await withDbRetry(() =>
+      Promise.all([
+        listCompanyUsersMinimal(companyId, filter),
+        countCompanyUsersStatus(companyId),
+      ])
+    );
 
     return NextResponse.json({
       users,
-      adminCount,
-      employeeCount,
-      activeCount,
-      archivedCount,
+      adminCount: counts.adminCount,
+      employeeCount: counts.employeeCount,
+      activeCount: counts.active,
+      archivedCount: counts.archived,
       filter,
     });
   } catch (e) {
-    console.error("[superuser/users] GET:", e);
+    console.error("[superuser/company-users] GET:", e);
     await resetSql();
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED") {
@@ -53,6 +58,12 @@ export async function GET(
       return NextResponse.json(
         { error: "Bitte als Certiano-Superuser anmelden." },
         { status: 403 }
+      );
+    }
+    if (isDbConnectionError(e)) {
+      return NextResponse.json(
+        { error: "Datenbankverbindung unterbrochen. Bitte erneut versuchen." },
+        { status: 503 }
       );
     }
     return NextResponse.json(

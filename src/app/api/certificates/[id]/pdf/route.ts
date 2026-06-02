@@ -18,7 +18,7 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
     }
-    if (user.role === "superuser") {
+    if (user.role !== "superuser" && user.role !== "admin" && user.role !== "employee") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
 
@@ -26,7 +26,9 @@ export async function GET(
     const certId = Number(id);
 
     let cert;
-    if (user.role === "admin") {
+    if (user.role === "superuser") {
+      cert = await getCertificateById(certId);
+    } else if (user.role === "admin") {
       cert = await getCertificateById(certId);
       if (cert && cert.companyId !== user.companyId) {
         cert = undefined;

@@ -87,3 +87,22 @@ export async function PATCH(
     return NextResponse.json({ error: "Fehler." }, { status: 500 });
   }
 }
+
+export async function DELETE() {
+  try {
+    await requireAdmin();
+    return NextResponse.json(
+      {
+        error:
+          "Endgültiges Löschen ist für Admins nicht erlaubt. Bitte Benutzer archivieren (deaktivieren).",
+      },
+      { status: 403 }
+    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
+      return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
+    return NextResponse.json({ error: "Fehler." }, { status: 500 });
+  }
+}

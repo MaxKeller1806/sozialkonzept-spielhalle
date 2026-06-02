@@ -412,7 +412,7 @@ export default function DashboardPage() {
                           onClick={() => toggleActive(u)}
                           className="text-left text-slate-600 hover:underline"
                         >
-                          {u.active ? "Deaktivieren" : "Aktivieren"}
+                          {u.active ? "Archivieren" : "Reaktivieren"}
                         </button>
                       </div>
                     </td>
