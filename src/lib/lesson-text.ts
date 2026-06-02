@@ -1,7 +1,9 @@
 import type { ContentBlock, Lesson } from "./types";
 
-function blockToText(block: ContentBlock): string {
+export function blockToPlainText(block: ContentBlock): string {
   switch (block.type) {
+    case "heading":
+      return block.title ?? block.body ?? "";
     case "text":
       return block.body ?? "";
     case "info":
@@ -50,7 +52,7 @@ export function lessonToPlainText(lesson: Lesson): string {
 
   if (lesson.blocks?.length) {
     for (const block of lesson.blocks) {
-      const text = blockToText(block);
+      const text = blockToPlainText(block);
       if (text) parts.push(text);
     }
   } else if (lesson.content) {

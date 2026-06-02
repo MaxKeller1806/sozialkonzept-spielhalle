@@ -67,7 +67,12 @@ export async function GET() {
       console.log("[privacy] Redirect-Ziel:", redirect);
     }
 
-    return NextResponse.json({ policy, accepted, redirect });
+    return NextResponse.json({
+      policy,
+      accepted,
+      redirect,
+      pendingConfirmation: !!user && !accepted,
+    });
   } catch (err) {
     console.error("[privacy] GET Fehler:", err);
     return NextResponse.json(

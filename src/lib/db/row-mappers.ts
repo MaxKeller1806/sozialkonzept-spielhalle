@@ -13,6 +13,10 @@ export function mapUser(row: Record<string, unknown>): User {
     birthPlace: row.birth_place != null ? String(row.birth_place) : null,
     placeOfResidence:
       row.place_of_residence != null ? String(row.place_of_residence) : null,
+    street: row.street != null ? String(row.street) : null,
+    houseNumber: row.house_number != null ? String(row.house_number) : null,
+    postalCode: row.postal_code != null ? String(row.postal_code) : null,
+    city: row.city != null ? String(row.city) : null,
     role: row.role as User["role"],
     location: row.location != null ? String(row.location) : null,
     active: row.active ? 1 : 0,

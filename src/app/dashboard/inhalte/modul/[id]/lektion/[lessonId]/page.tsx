@@ -1,28 +1,53 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { AdminNav } from "@/components/admin-nav";
-import { AppHeader, Button, Card, Input, Textarea } from "@/components/ui";
+import {
+  createEmptyEditorBlock,
+  LessonBlockEditor,
+} from "@/components/lesson-block-editor";
+import { LessonContent } from "@/components/lesson-content";
+import { AppHeader, Button, Card, Input } from "@/components/ui";
+import {
+  editorRowsToLessonBlocks,
+  lessonToEditorRows,
+  normalizeLessonForSave,
+  type EditorBlockRow,
+} from "@/lib/lesson-blocks";
+import type { Lesson } from "@/lib/types";
 
 export default function LektionEditPage() {
+  return (
+    <Suspense fallback={<div className="p-8">Lädt…</div>}>
+      <LektionEditContent />
+    </Suspense>
+  );
+}
+
+function LektionEditContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get("courseId");
+  const courseQuery = courseId ? `?courseId=${encodeURIComponent(courseId)}` : "";
   const moduleId = String(params.id);
   const lessonParam = String(params.lessonId);
   const isNew = lessonParam === "neu";
 
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [blocks, setBlocks] = useState<EditorBlockRow[]>([createEmptyEditorBlock("text")]);
+  const [previewLesson, setPreviewLesson] = useState<Lesson | null>(null);
   const [moduleTitle, setModuleTitle] = useState("");
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch(`/api/admin/course/modules/${moduleId}`)
+    fetch(`/api/admin/course/modules/${moduleId}${courseQuery}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.module) setModuleTitle(d.module.title);
@@ -30,33 +55,53 @@ export default function LektionEditPage() {
 
     if (isNew) return;
 
-    fetch(`/api/admin/course/modules/${moduleId}/lessons/${lessonParam}`)
+    fetch(`/api/admin/course/modules/${moduleId}/lessons/${lessonParam}${courseQuery}`)
       .then((r) => {
         if (!r.ok) throw new Error();
         return r.json();
       })
       .then((d) => {
         setTitle(d.lesson.title);
-        setContent(d.lesson.content);
+        const rows = lessonToEditorRows(d.lesson);
+        setBlocks(rows.length > 0 ? rows : [createEmptyEditorBlock("text")]);
         setLoading(false);
       })
-      .catch(() => router.push(`/dashboard/inhalte/modul/${moduleId}`));
-  }, [moduleId, lessonParam, isNew, router]);
+      .catch(() => router.push(`/dashboard/inhalte/modul/${moduleId}${courseQuery}`));
+  }, [moduleId, lessonParam, isNew, router, courseQuery]);
+
+  useEffect(() => {
+    const contentBlocks = editorRowsToLessonBlocks(blocks);
+    setPreviewLesson({
+      id: Number(lessonParam) || 0,
+      title: title || "Vorschau",
+      content: "",
+      blocks: contentBlocks.length > 0 ? contentBlocks : undefined,
+    });
+  }, [blocks, title, lessonParam]);
 
   async function save() {
     setSaving(true);
     setError("");
     setMessage("");
 
+    const lesson = normalizeLessonForSave(
+      {
+        id: isNew ? 0 : Number(lessonParam),
+        title,
+        blocks: editorRowsToLessonBlocks(blocks),
+      },
+      blocks
+    );
+
     const url = isNew
-      ? `/api/admin/course/modules/${moduleId}/lessons`
-      : `/api/admin/course/modules/${moduleId}/lessons/${lessonParam}`;
+      ? `/api/admin/course/modules/${moduleId}/lessons${courseQuery}`
+      : `/api/admin/course/modules/${moduleId}/lessons/${lessonParam}${courseQuery}`;
     const method = isNew ? "POST" : "PUT";
 
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, content }),
+      body: JSON.stringify(lesson),
     });
     const data = await res.json();
     setSaving(false);
@@ -69,7 +114,7 @@ export default function LektionEditPage() {
     setMessage("Lerninhalt gespeichert.");
     if (isNew) {
       router.push(
-        `/dashboard/inhalte/modul/${moduleId}/lektion/${data.lesson.id}`
+        `/dashboard/inhalte/modul/${moduleId}/lektion/${data.lesson.id}${courseQuery}`
       );
     }
   }
@@ -79,10 +124,10 @@ export default function LektionEditPage() {
     if (!confirm("Lerninhalt wirklich löschen?")) return;
 
     const res = await fetch(
-      `/api/admin/course/modules/${moduleId}/lessons/${lessonParam}`,
+      `/api/admin/course/modules/${moduleId}/lessons/${lessonParam}${courseQuery}`,
       { method: "DELETE" }
     );
-    if (res.ok) router.push(`/dashboard/inhalte/modul/${moduleId}`);
+    if (res.ok) router.push(`/dashboard/inhalte/modul/${moduleId}${courseQuery}`);
     else setError("Löschen fehlgeschlagen.");
   }
 
@@ -95,16 +140,20 @@ export default function LektionEditPage() {
   return (
     <div className="min-h-screen pb-16">
       <AppHeader title={isNew ? "Neuer Lerninhalt" : "Lerninhalt bearbeiten"} />
-      <div className="mx-auto max-w-2xl px-4 py-8">
+      <div className="mx-auto max-w-3xl px-4 py-8">
         <AdminNav active="inhalte" />
         <Link
-          href={`/dashboard/inhalte/modul/${moduleId}`}
+          href={`/dashboard/inhalte/modul/${moduleId}${courseQuery}`}
           className="mb-1 inline-block text-sm font-medium text-brand hover:underline"
         >
           ← Zurück zu Modul{moduleTitle ? `: ${moduleTitle}` : ""}
         </Link>
 
         <Card className="mt-4">
+          <p className="mb-4 text-sm text-slate-600">
+            Strukturierte Inhaltsblöcke – dieselben Blöcke, die Mitarbeitende in der
+            Schulung sehen.
+          </p>
           <div className="space-y-4">
             <Input
               label="Titel des Lerninhalts"
@@ -113,14 +162,28 @@ export default function LektionEditPage() {
               placeholder="z. B. Ziele des Sozialkonzeptes"
               required
             />
-            <Textarea
-              label="Inhalt"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={14}
-              placeholder="Kurzer, verständlicher Text…"
-            />
+            <div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-slate-800">Inhaltsblöcke</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowPreview((v) => !v)}
+                  className="text-sm font-medium text-brand hover:underline"
+                >
+                  {showPreview ? "Vorschau ausblenden" : "Mitarbeiter-Vorschau"}
+                </button>
+              </div>
+              <LessonBlockEditor blocks={blocks} onChange={setBlocks} />
+            </div>
           </div>
+
+          {showPreview && previewLesson && (
+            <Card className="mt-6 border-brand-light bg-white">
+              <h3 className="mb-2 text-sm font-semibold text-brand">Vorschau (Mitarbeiteransicht)</h3>
+              <h2 className="text-lg font-bold">{previewLesson.title}</h2>
+              <LessonContent lesson={previewLesson} />
+            </Card>
+          )}
 
           {error && (
             <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

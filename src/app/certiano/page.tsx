@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { CertianoShell } from "@/components/certiano-shell";
 import { Button, Card, Input } from "@/components/ui";
-import { APP_NAME, OPERATOR_NAME } from "@/lib/branding";
 
 interface AdminContact {
   name: string;
@@ -55,11 +55,6 @@ export default function CertianoDashboardPage() {
         setLoading(false);
       });
   }, []);
-
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.replace("/certiano/login");
-  }
 
   useEffect(() => {
     load();
@@ -115,39 +110,7 @@ export default function CertianoDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-16">
-      <header className="border-b border-slate-800 bg-slate-900 text-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              {OPERATOR_NAME}
-            </p>
-            <h1 className="text-xl font-bold">{APP_NAME}</h1>
-            <p className="text-sm text-slate-400">Mandantenverwaltung</p>
-          </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="text-sm text-slate-300 hover:underline"
-          >
-            Abmelden
-          </button>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        <nav className="mb-6 flex flex-wrap items-center gap-2" aria-label="Certiano">
-          <span className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-            Kundenfirmen
-          </span>
-          <Link
-            href="/certiano/branding"
-            className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
-          >
-            Branding
-          </Link>
-        </nav>
-
+    <CertianoShell>
         <div className="mb-6 flex flex-wrap justify-between gap-3">
           <p className="max-w-xl text-sm text-slate-600">
             Aggregierte Übersicht aller Kundenfirmen. Keine Mitarbeiterdetails
@@ -242,6 +205,24 @@ export default function CertianoDashboardPage() {
                   </td>
                   <td className="p-4">
                     <div className="flex flex-col gap-1">
+                      <Link
+                        href={`/certiano/companies/${c.id}`}
+                        className="text-brand hover:underline"
+                      >
+                        Bearbeiten
+                      </Link>
+                      <Link
+                        href={`/certiano/companies/${c.id}/users`}
+                        className="text-brand hover:underline"
+                      >
+                        Benutzer
+                      </Link>
+                      <Link
+                        href={`/certiano/companies/${c.id}/courses`}
+                        className="text-brand hover:underline"
+                      >
+                        Kurse
+                      </Link>
                       <button
                         type="button"
                         className="text-left text-brand hover:underline"
@@ -269,7 +250,6 @@ export default function CertianoDashboardPage() {
             </tbody>
           </table>
         </Card>
-      </div>
-    </div>
+    </CertianoShell>
   );
 }

@@ -44,8 +44,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
     }
     if (msg === "FORBIDDEN") {
-      return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+      return NextResponse.json(
+        { error: "Dieser Kurs ist Ihnen nicht zugewiesen oder wurde deaktiviert." },
+        { status: 403 }
+      );
     }
-    return NextResponse.json({ error: "Fehler." }, { status: 500 });
+    return NextResponse.json({ error: msg || "Fehler beim Speichern." }, { status: 500 });
   }
 }

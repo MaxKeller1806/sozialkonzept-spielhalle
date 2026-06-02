@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
-import { ensureSeeded, getSql } from "@/lib/db";
+import { getSql } from "@/lib/db";
 import { generateLicenseKey, hashLicenseKey } from "@/lib/license";
-import { getCompanyById, deleteCompanyUser } from "@/lib/tenant";
+import {
+  getCompanyById,
+  removeOrArchiveCompanyUser,
+} from "@/lib/tenant";
 
 export async function GET(
   _request: Request,
@@ -88,7 +91,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Keine Änderungen." }, { status: 400 });
     }
 
-    await ensureSeeded();
+    await requireSuperuser();
     const sql = getSql();
     await sql`
       UPDATE companies SET ${sql(patch, ...keys)}
@@ -118,14 +121,19 @@ export async function DELETE(
       return NextResponse.json({ error: "userId erforderlich." }, { status: 400 });
     }
 
-    const ok = await deleteCompanyUser(Number(deleteUserId), companyId);
-    if (!ok) {
-      return NextResponse.json({ error: "Nutzer nicht gefunden." }, { status: 404 });
-    }
+    const uid = Number(deleteUserId);
+    const result = await removeOrArchiveCompanyUser(uid, companyId);
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      action: result.action,
+      message:
+        "Benutzer wurde archiviert. Vorhandene Prüfungs- und Zertifikatsdaten bleiben aus Nachweisgründen erhalten.",
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
+    if (msg === "NOT_FOUND") {
+      return NextResponse.json({ error: "Nutzer nicht gefunden." }, { status: 404 });
+    }
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }

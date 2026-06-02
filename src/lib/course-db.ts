@@ -57,14 +57,28 @@ function mapCourseMeta(row: Record<string, unknown>): CourseMeta {
     passingScore: Number(row.passing_score),
     validityMonths: Number(row.validity_months),
     active: Boolean(row.active),
+    masterCourseId: row.master_course_id != null ? String(row.master_course_id) : null,
     createdAt: new Date(String(row.created_at ?? row.id)).toISOString(),
   };
 }
 
+function parseContentJson(raw: unknown): CourseData | null {
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as CourseData;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof raw === "object") return raw as CourseData;
+  return null;
+}
+
 function rowToCourseData(row: Record<string, unknown>): CourseData {
   const meta = mapCourseMeta(row);
-  const content = row.content_json as CourseData | null;
-  if (content?.modules) {
+  const content = parseContentJson(row.content_json);
+  if (content && Array.isArray(content.modules)) {
     return normalize({
       ...content,
       courseId: meta.id,
@@ -86,6 +100,39 @@ export async function listCompanyCourses(companyId: number): Promise<CourseMeta[
     ORDER BY created_at ASC, title ASC
   `;
   return rows.map((r) => mapCourseMeta(r as Record<string, unknown>));
+}
+
+/** Kurs mit den meisten Lerninhalten (gleiche Quelle wie Mitarbeiter-Schulung). */
+export async function resolveDefaultCompanyCourseId(
+  companyId: number
+): Promise<string | null> {
+  const courses = await listCompanyCourses(companyId);
+  if (courses.length === 0) return null;
+  if (courses.length === 1) return courses[0].id;
+
+  const sql = getSql();
+  let bestId = courses[0].id;
+  let bestScore = -1;
+
+  for (const meta of courses) {
+    const data = await getCourseData(companyId, meta.id);
+    const moduleCount = data?.modules?.length ?? 0;
+    const lessonCount =
+      data?.modules?.reduce((s, m) => s + (m.lessons?.length ?? 0), 0) ?? 0;
+    const assignRows = await sql`
+      SELECT COUNT(*)::int AS n
+      FROM user_course_assignments
+      WHERE course_id = ${meta.id}
+    `;
+    const assignCount = Number(assignRows[0]?.n ?? 0);
+    const score = moduleCount * 10000 + lessonCount * 100 + assignCount;
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = meta.id;
+    }
+  }
+
+  return bestId;
 }
 
 export async function getCourseMeta(
@@ -123,7 +170,7 @@ export async function saveCourseData(
   const normalized = normalize(course);
   await ensureSeeded();
   const sql = getSql();
-  await sql`
+  const rows = await sql`
     UPDATE courses SET
       title = ${normalized.courseName},
       version = ${normalized.version},
@@ -131,7 +178,9 @@ export async function saveCourseData(
       validity_months = ${normalized.certificateValidityMonths},
       content_json = ${JSON.stringify(normalized)}::jsonb
     WHERE id = ${normalized.courseId} AND company_id = ${companyId}
+    RETURNING id
   `;
+  if (rows.length === 0) throw new Error("NOT_FOUND");
   return normalized;
 }
 
@@ -158,6 +207,8 @@ export async function createCompanyCourse(
     )
     RETURNING *
   `;
+  const { ensureProvisionForCourse } = await import("./course-provisions");
+  await ensureProvisionForCourse(companyId, courseId);
   return mapCourseMeta(rows[0] as Record<string, unknown>);
 }
 
@@ -340,9 +391,11 @@ export async function getUserAssignedCourses(
     SELECT c.*
     FROM user_course_assignments uca
     JOIN courses c ON c.id = uca.course_id
+    LEFT JOIN company_course_provisions p ON p.course_id = c.id AND p.company_id = c.company_id
     WHERE uca.user_id = ${userId}
       AND c.company_id = ${companyId}
       AND c.active = TRUE
+      AND (p.status IS NULL OR p.status = 'active')
     ORDER BY c.title ASC
   `;
   return rows.map((r) => mapCourseMeta(r as Record<string, unknown>));

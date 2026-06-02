@@ -3,6 +3,8 @@ import { requireAdmin } from "@/lib/auth";
 import { validateModule } from "@/lib/course-validation";
 import { deleteModule, getModule, saveModule } from "@/lib/course-db";
 import { resolveAdminCourse, courseIdFromRequest } from "@/lib/course-context";
+import { assertCourseEditable } from "@/lib/course-provisions";
+import { coursePermissionErrorResponse } from "@/lib/course-permissions-api";
 import type { CourseModule } from "@/lib/types";
 
 export async function GET(
@@ -22,6 +24,8 @@ export async function GET(
     }
     return NextResponse.json({ module });
   } catch (e) {
+    const perm = coursePermissionErrorResponse(e);
+    if (perm) return perm;
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
@@ -41,6 +45,7 @@ export async function PUT(
       courseIdFromRequest(request)
     );
     const { id } = await params;
+    await assertCourseEditable(companyId, courseId, "content");
     const body = await request.json();
     const existing = await getModule(companyId, courseId, Number(id));
     if (!existing) {
@@ -62,6 +67,8 @@ export async function PUT(
     await saveModule(companyId, courseId, module);
     return NextResponse.json({ module });
   } catch (e) {
+    const perm = coursePermissionErrorResponse(e);
+    if (perm) return perm;
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
@@ -81,12 +88,15 @@ export async function DELETE(
       courseIdFromRequest(request)
     );
     const { id } = await params;
+    await assertCourseEditable(companyId, courseId, "content");
     const ok = await deleteModule(companyId, courseId, Number(id));
     if (!ok) {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }
     return NextResponse.json({ ok: true });
   } catch (e) {
+    const perm = coursePermissionErrorResponse(e);
+    if (perm) return perm;
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });

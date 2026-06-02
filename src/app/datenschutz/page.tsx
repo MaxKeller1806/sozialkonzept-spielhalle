@@ -9,6 +9,7 @@ export default function DatenschutzPage() {
   const [title, setTitle] = useState("Datenschutzerklärung");
   const [version, setVersion] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [pendingConfirmation, setPendingConfirmation] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/privacy")
@@ -27,6 +28,7 @@ export default function DatenschutzPage() {
         } else {
           setContent("");
         }
+        setPendingConfirmation(Boolean(d.pendingConfirmation));
       })
       .catch((e) => {
         setError(e instanceof Error ? e.message : "Laden fehlgeschlagen.");
@@ -50,9 +52,15 @@ export default function DatenschutzPage() {
         )}
       </div>
       <p className="mt-8">
-        <Link href="/login" className="text-brand underline">
-          Zur Anmeldung
-        </Link>
+        {pendingConfirmation ? (
+          <a href="/datenschutz/bestaetigen" className="text-brand underline">
+            ← Zurück zur Bestätigung
+          </a>
+        ) : (
+          <Link href="/login" className="text-brand underline">
+            Zur Anmeldung
+          </Link>
+        )}
       </p>
     </PageMain>
   );

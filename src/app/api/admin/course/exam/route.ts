@@ -3,6 +3,8 @@ import { requireAdmin } from "@/lib/auth";
 import { validateExamQuestion } from "@/lib/course-validation";
 import { getCourseData, nextExamId, saveExamQuestion } from "@/lib/course-db";
 import { resolveAdminCourse, courseIdFromRequest } from "@/lib/course-context";
+import { assertCourseEditable } from "@/lib/course-provisions";
+import { coursePermissionErrorResponse } from "@/lib/course-permissions-api";
 import type { ExamQuestion } from "@/lib/types";
 
 export async function POST(request: Request) {
@@ -12,6 +14,7 @@ export async function POST(request: Request) {
       user,
       courseIdFromRequest(request)
     );
+    await assertCourseEditable(companyId, courseId, "tests");
     const body = await request.json();
     const course = await getCourseData(companyId, courseId);
     if (!course) {
@@ -38,6 +41,8 @@ export async function POST(request: Request) {
     await saveExamQuestion(companyId, courseId, question);
     return NextResponse.json({ question }, { status: 201 });
   } catch (e) {
+    const perm = coursePermissionErrorResponse(e);
+    if (perm) return perm;
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });

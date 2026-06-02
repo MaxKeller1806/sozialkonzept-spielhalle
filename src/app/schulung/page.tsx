@@ -120,11 +120,6 @@ function SchulungContent() {
     };
   }, [courseId]);
 
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.replace("/login");
-  }
-
   if (loading) return <LoadingStatus />;
   if (error) {
     return (
@@ -139,11 +134,6 @@ function SchulungContent() {
       <div className="min-h-screen pb-12">
         <EmployeeHeader pageTitle="Meine Schulungen" />
         <PageMain className="mx-auto max-w-2xl px-4 py-8">
-          <div className="mb-6 flex justify-end">
-            <button type="button" onClick={logout} className="link-brand text-sm">
-              Abmelden
-            </button>
-          </div>
           <ul className="space-y-4">
             {courses.map((c) => (
               <li key={c.id}>
@@ -173,7 +163,28 @@ function SchulungContent() {
     );
   }
 
-  if (!data) return <LoadingStatus />;
+  if (!data && !courses) {
+    return (
+      <PageMain className="mx-auto max-w-3xl px-4 py-12">
+        <p className="text-slate-600" role="status">
+          Weiterleitung…
+        </p>
+      </PageMain>
+    );
+  }
+
+  if (!data) {
+    return (
+      <PageMain className="mx-auto max-w-3xl px-4 py-12">
+        <p className="text-red-600" role="alert">
+          Schulung konnte nicht geladen werden.
+        </p>
+        <ButtonLink href="/schulung" variant="secondary" className="mt-4">
+          Zur Übersicht
+        </ButtonLink>
+      </PageMain>
+    );
+  }
 
   const { course, attempt, certificate } = data;
 
@@ -185,9 +196,6 @@ function SchulungContent() {
           <ButtonLink href="/schulung" variant="secondary">
             Alle Schulungen
           </ButtonLink>
-          <button type="button" onClick={logout} className="link-brand text-sm">
-            Abmelden
-          </button>
         </div>
 
         <Card className="mb-6">
@@ -229,6 +237,13 @@ function SchulungContent() {
             <ButtonLink href={attempt.nextLessonUrl} className="w-full text-lg py-4">
               {attempt.hasStarted ? "Schulung fortsetzen" : "Schulung starten"}
             </ButtonLink>
+          )}
+          {!attempt.lessonsComplete && !attempt.nextLessonUrl && (
+            <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {attempt.totalLessons === 0
+                ? "Dieser Kurs enthält noch keine Lerninhalte."
+                : "Kein nächster Lernschritt verfügbar."}
+            </p>
           )}
           {attempt.examAvailable && courseId && (
             <ButtonLink

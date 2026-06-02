@@ -101,6 +101,9 @@ export default function DatenschutzBestaetigenPage() {
     );
   }
 
+  const preview =
+    content.length > 600 ? `${content.slice(0, 600).trim()}…` : content;
+
   return (
     <PageMain className="mx-auto max-w-3xl px-4 py-12">
       <Card>
@@ -108,15 +111,28 @@ export default function DatenschutzBestaetigenPage() {
         {version && (
           <p className="mt-1 text-sm text-slate-500">Version {version}</p>
         )}
-        <div className="mt-6 max-h-96 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-          {content || "Keine Datenschutzerklärung hinterlegt."}
+
+        <div className="mt-6 max-h-48 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+          {preview || "Keine Datenschutzerklärung hinterlegt."}
         </div>
+
+        {content.length > 600 && (
+          <details className="mt-4 rounded-xl border border-slate-200 p-4">
+            <summary className="cursor-pointer text-sm font-medium text-brand">
+              Vollständige Datenschutzerklärung anzeigen
+            </summary>
+            <div className="mt-4 max-h-96 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+              {content}
+            </div>
+          </details>
+        )}
+
         {error && (
           <p className="mt-4 text-sm text-red-600" role="alert">
             {error}
           </p>
         )}
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-6">
           <Button
             onClick={accept}
             disabled={submitting || !content}
@@ -126,12 +142,6 @@ export default function DatenschutzBestaetigenPage() {
               ? "Wird gespeichert…"
               : "Ich habe die Datenschutzerklärung gelesen und akzeptiere sie"}
           </Button>
-          <a
-            href="/datenschutz"
-            className="text-sm text-brand underline self-center"
-          >
-            Vollständige Ansicht
-          </a>
         </div>
       </Card>
     </PageMain>

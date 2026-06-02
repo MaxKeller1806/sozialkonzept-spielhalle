@@ -1,7 +1,7 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { LessonSpeechRegister } from "@/components/lesson-speech-register";
 import {
   Button,
@@ -16,8 +16,19 @@ import { LessonContent } from "@/components/lesson-content";
 import type { Lesson } from "@/lib/types";
 
 export default function LektionPage() {
+  return (
+    <Suspense fallback={<LoadingStatus />}>
+      <LektionContent />
+    </Suspense>
+  );
+}
+
+function LektionContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get("courseId");
+  const courseQuery = courseId ? `?courseId=${encodeURIComponent(courseId)}` : "";
   const moduleId = Number(params.id);
   const lessonId = Number(params.lessonId);
 
@@ -29,32 +40,48 @@ export default function LektionPage() {
   const [nextUrl, setNextUrl] = useState<string | null>(null);
   const [prevUrl, setPrevUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/training")
-      .then((r) => {
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+
+    const url = courseId
+      ? `/api/training?courseId=${encodeURIComponent(courseId)}`
+      : "/api/training";
+
+    fetch(url)
+      .then(async (r) => {
         if (r.status === 401) {
           router.push("/login");
           return null;
         }
-        return r.json();
+        const data = await r.json();
+        if (!r.ok) {
+          throw new Error(data.error ?? "Laden fehlgeschlagen.");
+        }
+        return data;
       })
       .then((data) => {
-        if (!data) return;
+        if (cancelled || !data) return;
+
+        if (data.courses) {
+          throw new Error("Bitte wählen Sie zuerst eine Schulung aus.");
+        }
 
         const mod = data.course.modules.find(
           (m: { id: number }) => m.id === moduleId
         );
         if (!mod) {
-          router.push("/schulung");
-          return;
+          throw new Error("Modul nicht gefunden.");
         }
 
         setModuleTitle(mod.title);
         const current = (mod.lessons as Lesson[]).find((l) => l.id === lessonId);
         if (!current) {
-          router.push("/schulung");
-          return;
+          throw new Error("Lernschritt nicht gefunden.");
         }
         setLesson(current);
 
@@ -73,7 +100,7 @@ export default function LektionPage() {
         if (idx > 0) {
           const prev = all[idx - 1];
           setPrevUrl(
-            `/schulung/modul/${prev.moduleId}/lektion/${prev.lessonId}`
+            `/schulung/modul/${prev.moduleId}/lektion/${prev.lessonId}${courseQuery}`
           );
         } else {
           setPrevUrl(null);
@@ -82,34 +109,69 @@ export default function LektionPage() {
         if (idx < all.length - 1) {
           const next = all[idx + 1];
           setNextUrl(
-            `/schulung/modul/${next.moduleId}/lektion/${next.lessonId}`
+            `/schulung/modul/${next.moduleId}/lektion/${next.lessonId}${courseQuery}`
           );
         } else {
           setNextUrl(null);
         }
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : "Laden fehlgeschlagen.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-  }, [moduleId, lessonId, router]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [moduleId, lessonId, router, courseId, courseQuery]);
 
   async function markComplete() {
-    setSaving(true);
+    if (!courseId) {
+      setError("Kurs-ID fehlt. Bitte über die Schulungsübersicht starten.");
+      return;
+    }
 
-    await fetch("/api/training/lesson", {
+    setSaving(true);
+    setError("");
+
+    const res = await fetch("/api/training/lesson", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ moduleId, lessonId }),
+      body: JSON.stringify({ moduleId, lessonId, courseId }),
     });
-
+    const data = await res.json().catch(() => ({}));
     setSaving(false);
+
+    if (!res.ok) {
+      setError(data.error ?? "Speichern fehlgeschlagen.");
+      return;
+    }
 
     if (nextUrl) {
       router.push(nextUrl);
     } else {
-      router.push("/schulung");
+      router.push(`/schulung${courseQuery}`);
     }
   }
 
-  if (!lesson) {
+  if (loading) {
     return <LoadingStatus />;
+  }
+
+  if (error || !lesson) {
+    return (
+      <PageMain className="mx-auto max-w-3xl px-4 py-12">
+        <p className="text-red-600" role="alert">
+          {error ?? "Lernschritt konnte nicht geladen werden."}
+        </p>
+        <ButtonLink href={`/schulung${courseQuery}`} variant="secondary" className="mt-4">
+          Zur Schulungsübersicht
+        </ButtonLink>
+      </PageMain>
+    );
   }
 
   const lessonKey = `${moduleId}:${lessonId}`;
@@ -118,7 +180,7 @@ export default function LektionPage() {
     <div className="min-h-screen pb-12">
       <EmployeeHeader pageTitle={moduleTitle} />
       <PageMain className="mx-auto max-w-2xl px-4 py-8">
-        <ButtonLink href="/schulung" variant="secondary" className="mb-4 w-auto">
+        <ButtonLink href={`/schulung${courseQuery}`} variant="secondary" className="mb-4 w-auto">
           ← Zur Schulungsübersicht
         </ButtonLink>
 

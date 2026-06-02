@@ -140,3 +140,93 @@ export async function deleteCompanyUser(userId: number, companyId: number): Prom
   `;
   return rows.length > 0;
 }
+
+export type UserListFilter = "active" | "archived" | "all";
+
+export async function listCompanyUsersMinimal(
+  companyId: number,
+  filter: UserListFilter = "all"
+): Promise<
+  Array<{
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+    active: boolean;
+    createdAt: string;
+    lastLoginAt: string | null;
+  }>
+> {
+  if (!Number.isFinite(companyId) || companyId <= 0) {
+    return [];
+  }
+  const sql = getSql();
+  let rows: Record<string, unknown>[];
+  const activeFilter =
+    filter === "active"
+      ? sql`AND u.active = TRUE`
+      : filter === "archived"
+        ? sql`AND u.active = FALSE`
+        : sql``;
+
+  try {
+    rows = (await sql`
+      SELECT
+        u.id, u.first_name, u.last_name, u.email, u.role, u.active, u.created_at, u.last_login_at
+      FROM users u
+      WHERE u.company_id = ${companyId} AND u.role IN ('admin', 'employee')
+      ${activeFilter}
+      ORDER BY u.active DESC, u.role ASC, u.last_name ASC, u.first_name ASC
+    `) as Record<string, unknown>[];
+  } catch {
+    rows = (await sql`
+      SELECT
+        u.id, u.first_name, u.last_name, u.email, u.role, u.active, u.created_at
+      FROM users u
+      WHERE u.company_id = ${companyId} AND u.role IN ('admin', 'employee')
+      ${activeFilter}
+      ORDER BY u.active DESC, u.role ASC, u.last_name ASC, u.first_name ASC
+    `) as Record<string, unknown>[];
+  }
+  return rows.map((r) => ({
+    id: Number(r.id),
+    firstName: String(r.first_name),
+    lastName: String(r.last_name),
+    email: String(r.email),
+    role: String(r.role),
+    active: Boolean(r.active),
+    createdAt: new Date(String(r.created_at)).toISOString(),
+    lastLoginAt: r.last_login_at
+      ? new Date(String(r.last_login_at)).toISOString()
+      : null,
+  }));
+}
+
+export async function removeOrArchiveCompanyUser(
+  userId: number,
+  companyId: number
+): Promise<{ action: "deactivated" }> {
+  const ok = await setCompanyUserActive(userId, companyId, false);
+  if (!ok) throw new Error("NOT_FOUND");
+  return { action: "deactivated" };
+}
+
+export async function setCompanyUserActive(
+  userId: number,
+  companyId: number,
+  active: boolean
+): Promise<boolean> {
+  const sql = getSql();
+  const rows = await sql`
+    UPDATE users SET active = ${active}
+    WHERE id = ${userId} AND company_id = ${companyId} AND role != 'superuser'
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+export async function touchLastLogin(userId: number): Promise<void> {
+  const sql = getSql();
+  await sql`UPDATE users SET last_login_at = NOW() WHERE id = ${userId}`;
+}

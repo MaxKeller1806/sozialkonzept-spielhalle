@@ -1,5 +1,6 @@
 import PDFDocument from "pdfkit";
-import type { CompanyBranding, CourseData, ExamQuestion } from "./types";
+import { blockToPlainText } from "./lesson-text";
+import type { CompanyBranding, ContentBlock, CourseData, ExamQuestion } from "./types";
 
 function createPdfBuffer(
   build: (doc: InstanceType<typeof PDFDocument>) => void
@@ -28,6 +29,102 @@ function formatCorrectAnswer(q: ExamQuestion): string {
     return indices.map((i) => q.answers![i]).join("; ");
   }
   return "—";
+}
+
+function writeBlockToPdf(
+  doc: InstanceType<typeof PDFDocument>,
+  block: ContentBlock,
+  primary: string
+) {
+  const append = (text: string, opts?: { bold?: boolean; size?: number; color?: string }) => {
+    if (!text.trim()) return;
+    doc
+      .font(opts?.bold ? "Helvetica-Bold" : "Helvetica")
+      .fontSize(opts?.size ?? 11)
+      .fillColor(opts?.color ?? "#333")
+      .text(text, { align: "left", lineGap: 3 });
+    doc.moveDown(0.3);
+  };
+
+  switch (block.type) {
+    case "heading":
+      append(block.title || block.body || "", { bold: true, size: 13, color: primary });
+      break;
+    case "text":
+      append(block.body ?? "");
+      break;
+    case "info":
+      append([block.title, block.body].filter(Boolean).join("\n"), {
+        bold: !!block.title,
+        color: primary,
+      });
+      break;
+    case "merksatz":
+      append(`Merksatz: ${block.body ?? ""}`, { bold: true, color: primary });
+      break;
+    case "hinweis":
+      append(`${block.title ?? "Hinweis"}\n${block.body ?? ""}`, { color: "#92400e" });
+      break;
+    case "fehler":
+      append(`${block.title ?? "Typischer Fehler"}\n${block.body ?? ""}`, { color: "#991b1b" });
+      break;
+    case "praxis":
+      append(
+        [block.title ?? "Praxisfall", block.body, block.solution ? `Empfohlene Reaktion: ${block.solution}` : ""]
+          .filter(Boolean)
+          .join("\n")
+      );
+      break;
+    case "dialog":
+      append(
+        [
+          block.title,
+          ...(block.lines?.map((l) => `${l.speaker}: ${l.text}`) ?? []),
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
+      break;
+    case "summary":
+      if (block.title) append(block.title, { bold: true });
+      block.items?.forEach((item) => append(`• ${item}`));
+      break;
+    case "quiz":
+      append(
+        [
+          "Wissensfrage",
+          block.question,
+          ...(block.answers?.map((a, i) => `${i + 1}. ${a}`) ?? []),
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
+      break;
+    default:
+      append(blockToPlainText(block));
+  }
+}
+
+function writeLessonToPdf(
+  doc: InstanceType<typeof PDFDocument>,
+  lesson: CourseData["modules"][0]["lessons"][0],
+  primary: string
+) {
+  doc.fontSize(12).fillColor("#000").font("Helvetica-Bold").text(lesson.title);
+  doc.moveDown(0.3);
+
+  if (lesson.blocks?.length) {
+    doc.font("Helvetica");
+    for (const block of lesson.blocks) {
+      writeBlockToPdf(doc, block, primary);
+    }
+  } else if (lesson.content) {
+    doc.font("Helvetica").fontSize(11).fillColor("#333").text(lesson.content, {
+      align: "left",
+      lineGap: 4,
+    });
+  }
+  doc.moveDown(0.8);
 }
 
 export async function generateLearningContentPdf(
@@ -73,13 +170,7 @@ export async function generateLearningContentPdf(
       doc.moveDown(0.8);
 
       for (const lesson of mod.lessons) {
-        doc.fontSize(12).fillColor("#000").font("Helvetica-Bold").text(lesson.title);
-        doc.moveDown(0.3);
-        doc.font("Helvetica").fontSize(11).fillColor("#333").text(lesson.content, {
-          align: "left",
-          lineGap: 4,
-        });
-        doc.moveDown(0.8);
+        writeLessonToPdf(doc, lesson, primary);
       }
     }
   });

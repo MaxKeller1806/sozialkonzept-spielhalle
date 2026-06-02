@@ -4,12 +4,23 @@ import {
   listCompanyCourses,
   createCompanyCourse,
 } from "@/lib/course-db";
+import {
+  listCompanyProvisions,
+  provisionPermissions,
+} from "@/lib/course-provisions";
 
 export async function GET() {
   try {
     const user = await requireAdmin();
     const courses = await listCompanyCourses(user.companyId!);
-    return NextResponse.json({ courses });
+    const provisions = await listCompanyProvisions(user.companyId!);
+    const byCourse = new Map(provisions.map((p) => [p.courseId, p]));
+    return NextResponse.json({
+      courses: courses.map((c) => ({
+        ...c,
+        permissions: provisionPermissions(byCourse.get(c.id)),
+      })),
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {

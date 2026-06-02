@@ -1,6 +1,7 @@
 import {
   listCompanyCourses,
   getCourseData as getDbCourse,
+  resolveDefaultCompanyCourseId,
 } from "./course-db";
 import { getCourseForContext } from "./course";
 import { requireCompanyId } from "./tenant";
@@ -12,9 +13,12 @@ export async function resolveAdminCourse(
 ): Promise<{ companyId: number; courseId: string; course: CourseData }> {
   const companyId = requireCompanyId(user);
   const courses = await listCompanyCourses(companyId);
-  const id = courseId ?? courses[0]?.id;
+  const id =
+    courseId ??
+    (await resolveDefaultCompanyCourseId(companyId)) ??
+    courses[0]?.id;
   if (!id) throw new Error("NO_COURSE");
-  const course = await getCourseForContext(companyId, id);
+  const course = await getCourseForContext(companyId, id, { filterContent: false });
   return { companyId, courseId: id, course };
 }
 

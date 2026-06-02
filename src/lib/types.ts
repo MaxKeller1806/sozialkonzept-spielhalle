@@ -51,7 +51,12 @@ export interface User {
   email: string;
   birthDate: string | null;
   birthPlace: string | null;
+  /** @deprecated Sync mit city – nur noch für Abwärtskompatibilität */
   placeOfResidence: string | null;
+  street: string | null;
+  houseNumber: string | null;
+  postalCode: string | null;
+  city: string | null;
   role: UserRole;
   location: string | null;
   active: number;
@@ -60,6 +65,7 @@ export interface User {
 }
 
 export type ContentBlockType =
+  | "heading"
   | "text"
   | "info"
   | "merksatz"
@@ -138,7 +144,54 @@ export interface CourseMeta {
   passingScore: number;
   validityMonths: number;
   active: boolean;
+  masterCourseId: string | null;
   createdAt: string;
+}
+
+export type MasterCourseStatus = "draft" | "published" | "disabled";
+export type CourseProvisionStatus = "active" | "locked" | "disabled";
+
+export interface MasterCourseMeta {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  version: string;
+  passingScore: number;
+  validityMonths: number;
+  status: MasterCourseStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseProvision {
+  id: number;
+  companyId: number;
+  courseId: string;
+  masterCourseId: string | null;
+  masterTitle: string | null;
+  status: CourseProvisionStatus;
+  canEditContent: boolean;
+  canEditTests: boolean;
+  canAddModules: boolean;
+  canDeactivate: boolean;
+  disabledBySuperuser: boolean;
+  assignedAt: string;
+  courseTitle: string;
+  courseSlug: string;
+  courseActive: boolean;
+  source: "native" | "master";
+}
+
+export interface CompanyUserSummary {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: UserRole;
+  active: boolean;
+  createdAt: string;
+  lastLoginAt: string | null;
 }
 
 export type TrainingStatus = "green" | "yellow" | "red";

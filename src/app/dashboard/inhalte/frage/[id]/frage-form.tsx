@@ -19,6 +19,8 @@ export default function FrageForm() {
   const searchParams = useSearchParams();
   const idParam = String(params.id);
   const isNew = idParam === "neu";
+  const courseId = searchParams.get("courseId");
+  const courseQuery = courseId ? `?courseId=${encodeURIComponent(courseId)}` : "";
 
   const [modules, setModules] = useState<ModuleOption[]>([]);
   const [moduleId, setModuleId] = useState(1);
@@ -34,7 +36,7 @@ export default function FrageForm() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/course")
+    fetch(`/api/admin/course${courseQuery}`)
       .then((r) => r.json())
       .then((d) => {
         if (!d.course?.modules) return;
@@ -46,11 +48,11 @@ export default function FrageForm() {
           setModuleId(d.course.modules[0].id);
         }
       });
-  }, [searchParams]);
+  }, [searchParams, courseQuery]);
 
   useEffect(() => {
     if (isNew) return;
-    fetch(`/api/admin/course/exam/${idParam}`)
+    fetch(`/api/admin/course/exam/${idParam}${courseQuery}`)
       .then((r) => {
         if (!r.ok) throw new Error();
         return r.json();
@@ -69,8 +71,8 @@ export default function FrageForm() {
         }
         setLoading(false);
       })
-      .catch(() => router.push("/dashboard/inhalte"));
-  }, [idParam, isNew, router]);
+      .catch(() => router.push(`/dashboard/inhalte${courseQuery}`));
+  }, [idParam, isNew, router, courseQuery]);
 
   function setAnswerText(index: number, value: string) {
     setAnswers((prev) => prev.map((a, i) => (i === index ? value : a)));
@@ -113,8 +115,8 @@ export default function FrageForm() {
     setMessage("");
 
     const url = isNew
-      ? "/api/admin/course/exam"
-      : `/api/admin/course/exam/${idParam}`;
+      ? `/api/admin/course/exam${courseQuery}`
+      : `/api/admin/course/exam/${idParam}${courseQuery}`;
     const method = isNew ? "POST" : "PUT";
 
     const res = await fetch(url, {
@@ -132,7 +134,7 @@ export default function FrageForm() {
 
     setMessage("Gespeichert.");
     if (isNew) {
-      router.push(`/dashboard/inhalte/frage/${data.question.id}`);
+      router.push(`/dashboard/inhalte/frage/${data.question.id}${courseQuery}`);
     }
   }
 
@@ -140,10 +142,10 @@ export default function FrageForm() {
     if (isNew) return;
     if (!confirm("Frage wirklich löschen?")) return;
 
-    const res = await fetch(`/api/admin/course/exam/${idParam}`, {
+    const res = await fetch(`/api/admin/course/exam/${idParam}${courseQuery}`, {
       method: "DELETE",
     });
-    if (res.ok) router.push("/dashboard/inhalte");
+    if (res.ok) router.push(`/dashboard/inhalte${courseQuery}`);
     else setError("Löschen fehlgeschlagen.");
   }
 
@@ -171,13 +173,13 @@ export default function FrageForm() {
       <div className="mx-auto max-w-2xl px-4 py-8">
         <AdminNav active="inhalte" />
         <Link
-          href={`/dashboard/inhalte/modul/${moduleId}`}
+          href={`/dashboard/inhalte/modul/${moduleId}${courseQuery}`}
           className="mb-1 inline-block text-sm font-medium text-brand hover:underline"
         >
           ← Zum Modul
         </Link>
         <Link
-          href="/dashboard/inhalte"
+          href={`/dashboard/inhalte${courseQuery}`}
           className="mb-4 ml-4 inline-block text-sm text-slate-500 hover:underline"
         >
           Kursübersicht

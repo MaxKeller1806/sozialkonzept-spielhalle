@@ -196,10 +196,12 @@ export async function assertUserCourseAccess(
   const rows = await sql`
     SELECT 1 FROM user_course_assignments uca
     JOIN courses c ON c.id = uca.course_id
+    LEFT JOIN company_course_provisions p ON p.course_id = c.id AND p.company_id = c.company_id
     WHERE uca.user_id = ${userId}
       AND uca.course_id = ${courseId}
       AND c.company_id = ${companyId}
       AND c.active = TRUE
+      AND (p.status IS NULL OR p.status = 'active')
     LIMIT 1
   `;
   if (rows.length === 0) {

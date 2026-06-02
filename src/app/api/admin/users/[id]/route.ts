@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { hashPassword, requireAdmin, validatePassword } from "@/lib/auth";
 import { ensureSeeded, getSql } from "@/lib/db";
+import { syncCityFields } from "@/lib/user-profile";
 
 export async function PATCH(
   request: Request,
@@ -32,7 +33,10 @@ export async function PATCH(
       password,
       birthDate,
       birthPlace,
-      placeOfResidence,
+      street,
+      houseNumber,
+      postalCode,
+      city,
       location,
       role,
       active,
@@ -44,7 +48,14 @@ export async function PATCH(
     if (email !== undefined) patch.email = String(email).trim().toLowerCase();
     if (birthDate !== undefined) patch.birth_date = birthDate || null;
     if (birthPlace !== undefined) patch.birth_place = birthPlace || null;
-    if (placeOfResidence !== undefined) patch.place_of_residence = placeOfResidence || null;
+    if (street !== undefined) patch.street = street || null;
+    if (houseNumber !== undefined) patch.house_number = houseNumber || null;
+    if (postalCode !== undefined) patch.postal_code = postalCode || null;
+    if (city !== undefined) {
+      const synced = syncCityFields(city);
+      patch.city = synced.city;
+      patch.place_of_residence = synced.placeOfResidence;
+    }
     if (location !== undefined) patch.location = location || null;
     if (role !== undefined) patch.role = role === "admin" ? "admin" : "employee";
     if (active !== undefined) patch.active = Boolean(active);

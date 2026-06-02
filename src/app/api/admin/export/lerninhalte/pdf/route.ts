@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { filterCourseForCompany } from "@/lib/content-provisions";
 import { generateLearningContentPdf } from "@/lib/pdf-export";
 import { resolveAdminCourse, courseIdFromRequest } from "@/lib/course-context";
 import { getCompanyById } from "@/lib/tenant";
@@ -7,9 +8,13 @@ import { getCompanyById } from "@/lib/tenant";
 export async function GET(request: Request) {
   try {
     const user = await requireAdmin();
-    const { course } = await resolveAdminCourse(user, courseIdFromRequest(request));
+    const { companyId, courseId, course } = await resolveAdminCourse(
+      user,
+      courseIdFromRequest(request)
+    );
+    const filtered = await filterCourseForCompany(companyId, course);
     const company = await getCompanyById(user.companyId!);
-    const pdf = await generateLearningContentPdf(course, {
+    const pdf = await generateLearningContentPdf(filtered, {
       companyName: company?.name,
       branding: company?.branding,
     });

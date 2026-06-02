@@ -69,7 +69,7 @@ export default function AdminKontoPage() {
 
   return (
     <div className="min-h-screen pb-16">
-      <AppHeader title="Admin-Dashboard" />
+      <AppHeader title="Mein Konto" />
       <div className="mx-auto max-w-2xl px-4 py-8">
         <AdminNav active="konto" />
 

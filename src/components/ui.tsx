@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useId } from "react";
+import { AccountMenu } from "@/components/account-menu";
 import type { TrainingStatus } from "@/lib/types";
 
 const buttonBase =
@@ -135,21 +136,24 @@ export const EMPLOYEE_TITLE =
 export function EmployeeHeader({ pageTitle }: { pageTitle?: string }) {
   return (
     <header className="border-b border-brand-light bg-white">
-      <div className="mx-auto max-w-4xl px-4 py-5">
-        <p className="text-brand-muted text-xs font-medium uppercase tracking-wide">
-          {EMPLOYEE_SUBTITLE}
-        </p>
-        <h1
-          className="text-brand mt-1 text-base font-bold leading-snug sm:text-lg"
-          style={{ color: "#000080" }}
-        >
-          {EMPLOYEE_TITLE}
-        </h1>
-        {pageTitle && (
-          <h2 className="text-brand mt-2 text-sm font-medium" style={{ color: "#000080" }}>
-            {pageTitle}
-          </h2>
-        )}
+      <div className="mx-auto flex max-w-4xl items-start justify-between gap-3 px-4 py-5">
+        <div className="min-w-0 flex-1">
+          <p className="text-brand-muted text-xs font-medium uppercase tracking-wide">
+            {EMPLOYEE_SUBTITLE}
+          </p>
+          <h1
+            className="text-brand mt-1 text-base font-bold leading-snug sm:text-lg"
+            style={{ color: "#000080" }}
+          >
+            {EMPLOYEE_TITLE}
+          </h1>
+          {pageTitle && (
+            <h2 className="text-brand mt-2 text-sm font-medium" style={{ color: "#000080" }}>
+              {pageTitle}
+            </h2>
+          )}
+        </div>
+        <AccountMenu className="shrink-0" />
       </div>
     </header>
   );
@@ -180,6 +184,7 @@ export function AppHeader({
               {l.label}
             </Link>
           ))}
+          <AccountMenu />
         </div>
       </div>
     </header>

@@ -75,6 +75,12 @@ function InlineQuiz({ block }: { block: ContentBlock }) {
 
 function BlockRenderer({ block }: { block: ContentBlock }) {
   switch (block.type) {
+    case "heading":
+      return (
+        <h3 className="text-brand my-4 text-xl font-bold leading-snug">
+          {block.title || block.body}
+        </h3>
+      );
     case "text":
       return (
         <p className="my-3 leading-relaxed text-slate-700 whitespace-pre-wrap">

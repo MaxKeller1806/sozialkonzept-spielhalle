@@ -10,6 +10,7 @@ import {
   StatusDot,
 } from "@/components/ui";
 import type { TrainingStatus } from "@/lib/types";
+import { formatUserAddress } from "@/lib/user-profile";
 
 interface AdminUser {
   id: number;
@@ -19,7 +20,10 @@ interface AdminUser {
   role: string;
   birthDate: string | null;
   birthPlace: string | null;
-  placeOfResidence: string | null;
+  street: string | null;
+  houseNumber: string | null;
+  postalCode: string | null;
+  city: string | null;
   location: string | null;
   active: boolean;
   status: TrainingStatus;
@@ -44,7 +48,10 @@ export default function DashboardPage() {
     password: "",
     birthDate: "",
     birthPlace: "",
-    placeOfResidence: "",
+    street: "",
+    houseNumber: "",
+    postalCode: "",
+    city: "",
     location: "",
   });
   const [message, setMessage] = useState("");
@@ -103,11 +110,6 @@ export default function DashboardPage() {
     loadUsers();
   }, [loadUsers]);
 
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.replace("/login");
-  }
-
   function resetForm() {
     setForm({
       firstName: "",
@@ -116,7 +118,10 @@ export default function DashboardPage() {
       password: "",
       birthDate: "",
       birthPlace: "",
-      placeOfResidence: "",
+      street: "",
+      houseNumber: "",
+      postalCode: "",
+      city: "",
       location: "",
     });
     setEditId(null);
@@ -132,7 +137,10 @@ export default function DashboardPage() {
       password: "",
       birthDate: u.birthDate ?? "",
       birthPlace: u.birthPlace ?? "",
-      placeOfResidence: u.placeOfResidence ?? "",
+      street: u.street ?? "",
+      houseNumber: u.houseNumber ?? "",
+      postalCode: u.postalCode ?? "",
+      city: u.city ?? "",
       location: u.location ?? "",
     });
     setShowForm(true);
@@ -149,7 +157,10 @@ export default function DashboardPage() {
         email: form.email,
         birthDate: form.birthDate || null,
         birthPlace: form.birthPlace || null,
-        placeOfResidence: form.placeOfResidence || null,
+        street: form.street || null,
+        houseNumber: form.houseNumber || null,
+        postalCode: form.postalCode || null,
+        city: form.city || null,
         location: form.location || null,
       };
       if (form.password) body.password = form.password;
@@ -230,13 +241,6 @@ export default function DashboardPage() {
             >
               Mitarbeiter anlegen
             </Button>
-            <button
-              type="button"
-              onClick={logout}
-              className="rounded-xl px-4 py-3 text-sm font-medium text-slate-600 hover:underline"
-            >
-              Abmelden
-            </button>
           </div>
         </div>
 
@@ -300,10 +304,31 @@ export default function DashboardPage() {
                 }
               />
               <Input
-                label="Wohnort"
-                value={form.placeOfResidence}
+                label="Straße"
+                value={form.street}
                 onChange={(e) =>
-                  setForm({ ...form, placeOfResidence: e.target.value })
+                  setForm({ ...form, street: e.target.value })
+                }
+              />
+              <Input
+                label="Hausnummer"
+                value={form.houseNumber}
+                onChange={(e) =>
+                  setForm({ ...form, houseNumber: e.target.value })
+                }
+              />
+              <Input
+                label="Postleitzahl"
+                value={form.postalCode}
+                onChange={(e) =>
+                  setForm({ ...form, postalCode: e.target.value })
+                }
+              />
+              <Input
+                label="Ort"
+                value={form.city}
+                onChange={(e) =>
+                  setForm({ ...form, city: e.target.value })
                 }
               />
               <Input
@@ -330,6 +355,7 @@ export default function DashboardPage() {
                 <th className="p-4">Status</th>
                 <th className="p-4">Name</th>
                 <th className="p-4">E-Mail</th>
+                <th className="p-4">Anschrift</th>
                 <th className="p-4">Spielhalle</th>
                 <th className="p-4">Zertifikat</th>
                 <th className="p-4">Aktionen</th>
@@ -353,6 +379,9 @@ export default function DashboardPage() {
                       )}
                     </td>
                     <td className="p-4">{u.email}</td>
+                    <td className="p-4 text-xs text-slate-600">
+                      {formatUserAddress(u)}
+                    </td>
                     <td className="p-4">{u.location ?? "—"}</td>
                     <td className="p-4">
                       {u.certificate ? (

@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { AccountMenu } from "@/components/account-menu";
 import { Button, Card, Input } from "@/components/ui";
 import { APP_NAME, OPERATOR_NAME } from "@/lib/branding";
 
@@ -98,11 +99,14 @@ export default function CertianoBrandingPage() {
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
       <header className="border-b border-slate-800 bg-slate-900 text-white">
-        <div className="mx-auto max-w-3xl px-4 py-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            {OPERATOR_NAME}
-          </p>
-          <h1 className="text-xl font-bold">{APP_NAME} – Branding</h1>
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              {OPERATOR_NAME}
+            </p>
+            <h1 className="text-xl font-bold">{APP_NAME} – Branding</h1>
+          </div>
+          <AccountMenu variant="dark" />
         </div>
       </header>
       <div className="mx-auto max-w-3xl px-4 py-8">

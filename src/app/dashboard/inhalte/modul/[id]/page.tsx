@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { AdminNav } from "@/components/admin-nav";
 import { AppHeader, Button, Card, Input } from "@/components/ui";
 
@@ -18,8 +18,19 @@ interface ExamItem {
 }
 
 export default function ModulEditPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Lädt…</div>}>
+      <ModulEditContent />
+    </Suspense>
+  );
+}
+
+function ModulEditContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get("courseId");
+  const courseQuery = courseId ? `?courseId=${encodeURIComponent(courseId)}` : "";
   const idParam = String(params.id);
   const isNew = idParam === "neu";
 
@@ -34,7 +45,7 @@ export default function ModulEditPage() {
 
   useEffect(() => {
     if (isNew) return;
-    fetch(`/api/admin/course/modules/${idParam}`)
+    fetch(`/api/admin/course/modules/${idParam}${courseQuery}`)
       .then((r) => {
         if (!r.ok) throw new Error();
         return r.json();
@@ -45,10 +56,10 @@ export default function ModulEditPage() {
         setLessons(d.module.lessons ?? []);
         setLoading(false);
       })
-      .catch(() => router.push("/dashboard/inhalte"));
+      .catch(() => router.push(`/dashboard/inhalte${courseQuery}`));
 
     if (!isNew) {
-      fetch("/api/admin/course")
+      fetch(`/api/admin/course${courseQuery}`)
         .then((r) => r.json())
         .then((d) => {
           const modId = Number(idParam);
@@ -58,7 +69,7 @@ export default function ModulEditPage() {
           setExamQuestions(qs);
         });
     }
-  }, [idParam, isNew, router]);
+  }, [idParam, isNew, router, courseQuery]);
 
   async function save() {
     setSaving(true);
@@ -66,8 +77,8 @@ export default function ModulEditPage() {
     setMessage("");
 
     const url = isNew
-      ? "/api/admin/course/modules"
-      : `/api/admin/course/modules/${idParam}`;
+      ? `/api/admin/course/modules${courseQuery}`
+      : `/api/admin/course/modules/${idParam}${courseQuery}`;
     const method = isNew ? "POST" : "PUT";
 
     const res = await fetch(url, {
@@ -85,7 +96,7 @@ export default function ModulEditPage() {
 
     setMessage("Modul gespeichert.");
     if (isNew) {
-      router.push(`/dashboard/inhalte/modul/${data.module.id}`);
+      router.push(`/dashboard/inhalte/modul/${data.module.id}${courseQuery}`);
     }
   }
 
@@ -93,10 +104,10 @@ export default function ModulEditPage() {
     if (isNew) return;
     if (!confirm("Modul und alle Lerninhalte wirklich löschen?")) return;
 
-    const res = await fetch(`/api/admin/course/modules/${idParam}`, {
+    const res = await fetch(`/api/admin/course/modules/${idParam}${courseQuery}`, {
       method: "DELETE",
     });
-    if (res.ok) router.push("/dashboard/inhalte");
+    if (res.ok) router.push(`/dashboard/inhalte${courseQuery}`);
     else setError("Löschen fehlgeschlagen.");
   }
 
@@ -112,7 +123,7 @@ export default function ModulEditPage() {
       <div className="mx-auto max-w-2xl px-4 py-8">
         <AdminNav active="inhalte" />
         <Link
-          href="/dashboard/inhalte"
+          href={`/dashboard/inhalte${courseQuery}`}
           className="mb-4 inline-block text-sm font-medium text-brand hover:underline"
         >
           ← Zurück zur Übersicht
@@ -169,7 +180,7 @@ export default function ModulEditPage() {
                   Einzelne Abschnitte innerhalb dieses Moduls
                 </p>
               </div>
-              <Link href={`/dashboard/inhalte/modul/${idParam}/lektion/neu`}>
+              <Link href={`/dashboard/inhalte/modul/${idParam}/lektion/neu${courseQuery}`}>
                 <Button>+ Lerninhalt</Button>
               </Link>
             </div>
@@ -190,7 +201,7 @@ export default function ModulEditPage() {
                       {i + 1}. {l.title}
                     </p>
                     <Link
-                      href={`/dashboard/inhalte/modul/${idParam}/lektion/${l.id}`}
+                      href={`/dashboard/inhalte/modul/${idParam}/lektion/${l.id}${courseQuery}`}
                     >
                       <Button variant="secondary">Bearbeiten</Button>
                     </Link>
@@ -210,7 +221,7 @@ export default function ModulEditPage() {
                   Fragen zum Abschlusstest für dieses Modul
                 </p>
               </div>
-              <Link href={`/dashboard/inhalte/frage/neu?module=${idParam}`}>
+              <Link href={`/dashboard/inhalte/frage/neu?module=${idParam}${courseId ? `&courseId=${encodeURIComponent(courseId)}` : ""}`}>
                 <Button>+ Prüfungsfrage</Button>
               </Link>
             </div>
@@ -229,7 +240,7 @@ export default function ModulEditPage() {
                       <p className="text-xs text-slate-400">{q.type}</p>
                       <p className="font-medium">{q.question}</p>
                     </div>
-                    <Link href={`/dashboard/inhalte/frage/${q.id}`}>
+                    <Link href={`/dashboard/inhalte/frage/${q.id}${courseQuery}`}>
                       <Button variant="secondary">Bearbeiten</Button>
                     </Link>
                   </li>

@@ -7,6 +7,7 @@ import { AdminNav } from "@/components/admin-nav";
 import { AppHeader, Button, Card } from "@/components/ui";
 
 interface CourseOverview {
+  courseId: string;
   courseName: string;
   version: string;
   totalQuestions: number;
@@ -15,6 +16,20 @@ interface CourseOverview {
   examQuestionsPerTest?: number;
   modules: { id: number; title: string; duration: number; lessons: { id: number; title: string }[] }[];
   exam: { id: number; moduleId: number; question: string; type: string }[];
+}
+
+interface ContentStates {
+  modules: Record<string, boolean>;
+  lessons: Record<string, boolean>;
+  questions: Record<string, boolean>;
+}
+
+function DeactivatedBadge() {
+  return (
+    <span className="ml-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+      durch Certiano deaktiviert
+    </span>
+  );
 }
 
 export default function InhaltePage() {
@@ -31,12 +46,24 @@ function InhalteContent() {
   const courseId = searchParams.get("courseId");
   const courseQuery = courseId ? `?courseId=${encodeURIComponent(courseId)}` : "";
   const [course, setCourse] = useState<CourseOverview | null>(null);
+  const [resolvedCourseId, setResolvedCourseId] = useState<string | null>(courseId);
+  const [contentStates, setContentStates] = useState<ContentStates | null>(null);
+  const [permissions, setPermissions] = useState({
+    canEditContent: true,
+    canEditTests: true,
+    canAddModules: true,
+    readOnly: false,
+    fromMaster: false,
+  });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [passingScoreInput, setPassingScoreInput] = useState("80");
   const [savingScore, setSavingScore] = useState(false);
   const [scoreMessage, setScoreMessage] = useState("");
 
   const load = useCallback(() => {
+    setLoading(true);
+    setError("");
     fetch(`/api/admin/course${courseQuery}`)
       .then((r) => {
         if (r.status === 401 || r.status === 403) {
@@ -46,13 +73,41 @@ function InhalteContent() {
         return r.json();
       })
       .then((d) => {
-        if (d?.course) {
-          setCourse(d.course);
-          setPassingScoreInput(String(d.course.passingScore));
+        if (!d) return;
+
+        if (d.error) {
+          setError(d.error);
+          setCourse(null);
+          return;
         }
-        setLoading(false);
-      });
-  }, [router, courseQuery]);
+
+        const id = d.courseId ?? d.course?.courseId ?? null;
+        if (id && !courseId) {
+          router.replace(`/dashboard/inhalte?courseId=${encodeURIComponent(id)}`);
+        }
+
+        if (d.course) {
+          setCourse(d.course);
+          setResolvedCourseId(id);
+          setPassingScoreInput(String(d.course.passingScore));
+        } else {
+          setCourse(null);
+          setResolvedCourseId(id);
+        }
+
+        if (d.permissions) {
+          setPermissions(d.permissions);
+        }
+        if (d.contentStates) {
+          setContentStates(d.contentStates);
+        }
+      })
+      .catch(() => {
+        setError("Kurs konnte nicht geladen werden.");
+        setCourse(null);
+      })
+      .finally(() => setLoading(false));
+  }, [router, courseQuery, courseId]);
 
   useEffect(() => {
     load();
@@ -74,10 +129,9 @@ function InhalteContent() {
     return course.exam.filter((q) => !moduleIds.has(q.moduleId));
   }, [course]);
 
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-  }
+  const hasContent =
+    course &&
+    (course.modules.length > 0 || course.exam.length > 0);
 
   async function savePassingScore(e: React.FormEvent) {
     e.preventDefault();
@@ -107,9 +161,23 @@ function InhalteContent() {
     (perTest * Number(passingScoreInput || course?.passingScore || 80)) / 100
   );
 
-  if (loading || !course) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">Lädt…</div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen pb-16">
+        <AppHeader title="Kursinhalte bearbeiten" />
+        <div className="mx-auto max-w-4xl px-4 py-8">
+          <AdminNav active="inhalte" />
+          <Card className="border-red-200 bg-red-50">
+            <p className="text-sm text-red-800">{error}</p>
+          </Card>
+        </div>
+      </div>
     );
   }
 
@@ -119,196 +187,257 @@ function InhalteContent() {
       <div className="mx-auto max-w-4xl px-4 py-8">
         <AdminNav active="inhalte" />
 
+        {permissions.readOnly && (
+          <Card className="mb-6 border-amber-200 bg-amber-50">
+            <p className="text-sm text-amber-900">
+              Dieser Kurs wird von Certiano bereitgestellt und kann von Ihrer Firma
+              nicht bearbeitet werden. Sie können Inhalte einsehen, Mitarbeiter
+              zuweisen und PDFs exportieren.
+            </p>
+          </Card>
+        )}
+
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-600">
-            {course.courseName} · Version {course.version} · Bestehen ab{" "}
-            {course.passingScore} % ({course.totalQuestions} Fragen)
-          </p>
-          <button
-            type="button"
-            onClick={logout}
-            className="text-sm font-medium text-slate-600 hover:underline"
-          >
-            Abmelden
-          </button>
+          <div>
+            <p className="font-semibold text-slate-800">
+              {course?.courseName ?? "Kurs"}
+            </p>
+            <p className="text-sm text-slate-600">
+              Kurs-ID: <code className="rounded bg-slate-100 px-1">{resolvedCourseId ?? "—"}</code>
+              {course && (
+                <>
+                  {" "}
+                  · Version {course.version} · Bestehen ab {course.passingScore} % (
+                  {course.totalQuestions} Fragen)
+                </>
+              )}
+            </p>
+          </div>
         </div>
 
-        <Card className="mb-8">
-          <h2 className="text-lg font-bold">Bestehensgrenze Abschlusstest</h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Legen Sie fest, ab welchem Prozentsatz der Test bestanden gilt. Pro
-            Durchlauf werden {perTest} Fragen aus dem Pool gestellt.
-          </p>
-          <form
-            onSubmit={savePassingScore}
-            className="mt-4 flex flex-wrap items-end gap-4"
-          >
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">
-                Mindestquote (%)
-              </span>
-              <input
-                type="number"
-                min={50}
-                max={100}
-                step={1}
-                value={passingScoreInput}
-                onChange={(e) => setPassingScoreInput(e.target.value)}
-                className="mt-1 block w-28 rounded-xl border border-slate-300 px-3 py-2"
-              />
-            </label>
-            <p className="text-sm text-slate-600">
-              = mindestens <strong>{minCorrect}</strong> von {perTest} Fragen
-              richtig
+        {!hasContent && (
+          <Card className="mb-8 border-slate-200 bg-slate-50">
+            <p className="text-sm text-slate-700">
+              Für diesen Kurs wurden noch keine Inhalte gefunden.
             </p>
-            <Button type="submit" disabled={savingScore}>
-              {savingScore ? "Speichern…" : "Speichern"}
-            </Button>
-          </form>
-          {scoreMessage && (
-            <p
-              className={`mt-3 text-sm ${
-                scoreMessage.includes("fehl") ? "text-red-600" : "text-green-700"
-              }`}
-            >
-              {scoreMessage}
+            <p className="mt-2 text-sm text-slate-500">
+              Prüfen Sie unter{" "}
+              <Link href="/dashboard/seminare" className="text-brand underline">
+                Seminare
+              </Link>
+              , ob der richtige Kurs ausgewählt ist.
             </p>
-          )}
-        </Card>
+          </Card>
+        )}
 
-        <Card className="mb-8 border-brand-light bg-brand-light">
-          <h2 className="text-lg font-bold text-brand">
-            PDF für Behördennachweis
-          </h2>
-          <p className="mt-2 text-sm text-brand">
-            Lerninhalte und Fragenkatalog inkl. Musterlösungen als PDF
-            herunterladen und archivieren.
-          </p>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <a href={`/api/admin/export/lerninhalte/pdf${courseQuery}`} className="flex-1">
-              <Button className="w-full">Lerninhalte als PDF</Button>
-            </a>
-            <a href={`/api/admin/export/pruefung/pdf${courseQuery}`} className="flex-1">
-              <Button variant="secondary" className="w-full">
-                Abschlusstest als PDF
-              </Button>
-            </a>
-          </div>
-        </Card>
-
-        <Card className="mb-8">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-bold">Lernmodule</h2>
-            <Link href="/dashboard/inhalte/modul/neu">
-              <Button>+ Modul anlegen</Button>
-            </Link>
-          </div>
-          <ul className="divide-y divide-slate-100">
-            {course.modules.map((m) => {
-              const qCount = course.exam.filter((q) => q.moduleId === m.id).length;
-              return (
-                <li
-                  key={m.id}
-                  className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
+        {course && (
+          <>
+            <Card className="mb-8">
+              <h2 className="text-lg font-bold">Bestehensgrenze Abschlusstest</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Legen Sie fest, ab welchem Prozentsatz der Test bestanden gilt. Pro
+                Durchlauf werden {perTest} Fragen aus dem Pool gestellt.
+              </p>
+              <form
+                onSubmit={savePassingScore}
+                className="mt-4 flex flex-wrap items-end gap-4"
+              >
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-700">
+                    Mindestquote (%)
+                  </span>
+                  <input
+                    type="number"
+                    min={50}
+                    max={100}
+                    step={1}
+                    value={passingScoreInput}
+                    onChange={(e) => setPassingScoreInput(e.target.value)}
+                    className="mt-1 block w-28 rounded-xl border border-slate-300 px-3 py-2"
+                  />
+                </label>
+                <p className="text-sm text-slate-600">
+                  = mindestens <strong>{minCorrect}</strong> von {perTest} Fragen
+                  richtig
+                </p>
+                <Button type="submit" disabled={savingScore || !permissions.canEditContent}>
+                  {savingScore ? "Speichern…" : "Speichern"}
+                </Button>
+              </form>
+              {scoreMessage && (
+                <p
+                  className={`mt-3 text-sm ${
+                    scoreMessage.includes("fehl") ? "text-red-600" : "text-green-700"
+                  }`}
                 >
-                  <div>
-                    <p className="font-semibold">
-                      {m.id}. {m.title}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      ca. {m.duration} Min. · {m.lessons?.length ?? 0} Lerninhalt
-                      {(m.lessons?.length ?? 0) !== 1 ? "e" : ""} · {qCount} Prüfungsfrage
-                      {qCount !== 1 ? "n" : ""}
-                    </p>
-                  </div>
-                  <Link href={`/dashboard/inhalte/modul/${m.id}`}>
-                    <Button variant="secondary">Bearbeiten</Button>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
+                  {scoreMessage}
+                </p>
+              )}
+            </Card>
 
-        <Card>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold">Abschlusstest – Fragen</h2>
-              <p className="text-sm text-slate-500">Nach Modulen gruppiert</p>
-            </div>
-            <Link href="/dashboard/inhalte/frage/neu">
-              <Button>+ Frage anlegen</Button>
-            </Link>
-          </div>
+            <Card className="mb-8 border-brand-light bg-brand-light">
+              <h2 className="text-lg font-bold text-brand">
+                PDF für Behördennachweis
+              </h2>
+              <p className="mt-2 text-sm text-brand">
+                Lerninhalte und Fragenkatalog inkl. Musterlösungen als PDF
+                herunterladen und archivieren.
+              </p>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <a href={`/api/admin/export/lerninhalte/pdf${courseQuery}`} className="flex-1">
+                  <Button className="w-full">Lerninhalte als PDF</Button>
+                </a>
+                <a href={`/api/admin/export/pruefung/pdf${courseQuery}`} className="flex-1">
+                  <Button variant="secondary" className="w-full">
+                    Abschlusstest als PDF
+                  </Button>
+                </a>
+              </div>
+            </Card>
 
-          <div className="space-y-8">
-            {examByModule.map(({ module: mod, questions }) => (
-              <section key={mod.id}>
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-brand-light pb-2">
-                  <h3 className="font-semibold text-brand">
-                    Modul {mod.id}: {mod.title}
-                  </h3>
-                  <Link href={`/dashboard/inhalte/frage/neu?module=${mod.id}`}>
-                    <span className="text-sm font-medium text-brand hover:underline">
-                      + Frage zu diesem Modul
-                    </span>
+            <Card className="mb-8">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-bold">Lernmodule</h2>
+                {permissions.canAddModules && (
+                  <Link href={`/dashboard/inhalte/modul/neu${courseQuery}`}>
+                    <Button>+ Modul anlegen</Button>
                   </Link>
-                </div>
-                {questions.length === 0 ? (
-                  <p className="text-sm text-slate-500 italic">
-                    Noch keine Fragen für dieses Modul.
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-slate-100">
-                    {questions.map((q) => (
-                      <li
-                        key={q.id}
-                        className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium uppercase text-slate-400">
-                            Frage {q.id} · {q.type}
-                          </p>
-                          <p className="font-medium">{q.question}</p>
-                        </div>
-                        <Link
-                          href={`/dashboard/inhalte/frage/${q.id}`}
-                          className="shrink-0"
-                        >
-                          <Button variant="secondary">Bearbeiten</Button>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
                 )}
-              </section>
-            ))}
-
-            {unassigned.length > 0 && (
-              <section>
-                <h3 className="mb-3 font-semibold text-amber-800">
-                  Ohne Modulzuordnung
-                </h3>
+              </div>
+              {course.modules.length === 0 ? (
+                <p className="text-sm text-slate-500 italic">
+                  Für diesen Kurs wurden noch keine Inhalte gefunden.
+                </p>
+              ) : (
                 <ul className="divide-y divide-slate-100">
-                  {unassigned.map((q) => (
-                    <li key={q.id} className="py-3">
-                      <Link
-                        href={`/dashboard/inhalte/frage/${q.id}`}
-                        className="text-brand underline"
+                  {course.modules.map((m) => {
+                    const qCount = course.exam.filter((q) => q.moduleId === m.id).length;
+                    const moduleActive = contentStates?.modules[String(m.id)] !== false;
+                    return (
+                      <li
+                        key={m.id}
+                        className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
                       >
-                        {q.question}
-                      </Link>
-                    </li>
-                  ))}
+                        <div>
+                          <p className="font-semibold">
+                            {m.id}. {m.title}
+                            {!moduleActive && <DeactivatedBadge />}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            ca. {m.duration} Min. · {m.lessons?.length ?? 0} Lerninhalt
+                            {(m.lessons?.length ?? 0) !== 1 ? "e" : ""} · {qCount} Prüfungsfrage
+                            {qCount !== 1 ? "n" : ""}
+                          </p>
+                        </div>
+                        {permissions.canEditContent ? (
+                          <Link href={`/dashboard/inhalte/modul/${m.id}${courseQuery}`}>
+                            <Button variant="secondary">Bearbeiten</Button>
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-slate-400">Nur Ansicht</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
-              </section>
-            )}
-          </div>
-        </Card>
+              )}
+            </Card>
+
+            <Card>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold">Abschlusstest – Fragen</h2>
+                  <p className="text-sm text-slate-500">Nach Modulen gruppiert</p>
+                </div>
+                {permissions.canEditTests && (
+                  <Link href={`/dashboard/inhalte/frage/neu${courseQuery}`}>
+                    <Button>+ Frage anlegen</Button>
+                  </Link>
+                )}
+              </div>
+
+              <div className="space-y-8">
+                {examByModule.map(({ module: mod, questions }) => (
+                  <section key={mod.id}>
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-brand-light pb-2">
+                      <h3 className="font-semibold text-brand">
+                        Modul {mod.id}: {mod.title}
+                        {contentStates?.modules[String(mod.id)] === false && (
+                          <DeactivatedBadge />
+                        )}
+                      </h3>
+                      {permissions.canEditTests && (
+                        <Link href={`/dashboard/inhalte/frage/neu?module=${mod.id}${courseId ? `&courseId=${encodeURIComponent(courseId)}` : ""}`}>
+                          <span className="text-sm font-medium text-brand hover:underline">
+                            + Frage zu diesem Modul
+                          </span>
+                        </Link>
+                      )}
+                    </div>
+                    {questions.length === 0 ? (
+                      <p className="text-sm text-slate-500 italic">
+                        Noch keine Fragen für dieses Modul.
+                      </p>
+                    ) : (
+                      <ul className="divide-y divide-slate-100">
+                        {questions.map((q) => {
+                          const questionActive =
+                            contentStates?.questions[String(q.id)] !== false;
+                          return (
+                            <li
+                              key={q.id}
+                              className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium uppercase text-slate-400">
+                                  Frage {q.id} · {q.type}
+                                  {!questionActive && <DeactivatedBadge />}
+                                </p>
+                                <p className="font-medium">{q.question}</p>
+                              </div>
+                              {permissions.canEditTests ? (
+                                <Link
+                                  href={`/dashboard/inhalte/frage/${q.id}${courseQuery}`}
+                                  className="shrink-0"
+                                >
+                                  <Button variant="secondary">Bearbeiten</Button>
+                                </Link>
+                              ) : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </section>
+                ))}
+
+                {unassigned.length > 0 && (
+                  <section>
+                    <h3 className="mb-3 font-semibold text-amber-800">
+                      Ohne Modulzuordnung
+                    </h3>
+                    <ul className="divide-y divide-slate-100">
+                      {unassigned.map((q) => (
+                        <li key={q.id} className="py-3">
+                          <Link
+                            href={`/dashboard/inhalte/frage/${q.id}${courseQuery}`}
+                            className="text-brand underline"
+                          >
+                            {q.question}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+              </div>
+            </Card>
+          </>
+        )}
 
         <p className="mt-6 text-center text-xs text-slate-500">
-          Änderungen werden in <code className="rounded bg-slate-100 px-1">data/course.json</code>{" "}
-          gespeichert und sind sofort in der Schulung aktiv.
+          Änderungen werden in der Firmenkurs-Datenbank gespeichert und sind nach dem
+          Speichern in der Schulung sichtbar (sofern nicht durch Certiano deaktiviert).
         </p>
       </div>
     </div>

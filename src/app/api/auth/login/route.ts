@@ -94,6 +94,9 @@ export async function POST(request: Request) {
     await session.save();
     t("5-set-session");
 
+    const { touchLastLogin } = await import("@/lib/tenant");
+    await touchLastLogin(sessionUser.id);
+
     console.time("login:4-company-auth-state");
     const authState = await getAuthState(sessionUser);
     t("4-company-auth-state");

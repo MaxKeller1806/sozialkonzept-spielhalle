@@ -12,7 +12,18 @@ export function validateModule(
 
 export function validateLesson(lesson: Partial<Lesson>): string | null {
   if (!lesson.title?.trim()) return "Titel des Lerninhalts ist erforderlich.";
-  if (!lesson.content?.trim()) return "Text des Lerninhalts ist erforderlich.";
+  const hasBlocks =
+    Array.isArray(lesson.blocks) &&
+    lesson.blocks.some(
+      (b) =>
+        !!b.body?.trim() ||
+        !!b.title?.trim() ||
+        (b.items?.length ?? 0) > 0 ||
+        !!b.question?.trim()
+    );
+  if (!hasBlocks && !lesson.content?.trim()) {
+    return "Mindestens ein Inhaltsblock ist erforderlich.";
+  }
   return null;
 }
 

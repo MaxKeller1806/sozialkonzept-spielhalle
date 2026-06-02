@@ -5,6 +5,7 @@ import { mapUser } from "@/lib/db/row-mappers";
 import { getLatestCertificate } from "@/lib/certificate";
 import { getCertificateStatus, statusLabel } from "@/lib/status";
 import { assignUserToCourse, setUserCourseAssignments } from "@/lib/course-db";
+import { syncCityFields } from "@/lib/user-profile";
 import type { User } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,10 @@ async function mapUserRow(row: User) {
     email: row.email,
     birthDate: row.birthDate,
     birthPlace: row.birthPlace,
-    placeOfResidence: row.placeOfResidence,
+    street: row.street,
+    houseNumber: row.houseNumber,
+    postalCode: row.postalCode,
+    city: row.city ?? row.placeOfResidence,
     role: row.role as "admin" | "employee",
     location: row.location,
     active: !!row.active,
@@ -45,7 +49,8 @@ export async function GET() {
     const sql = getSql();
     const rows = await sql`
       SELECT id, first_name, last_name, email, birth_date, birth_place,
-             place_of_residence, role, location, active, must_change_password, created_at
+             place_of_residence, street, house_number, postal_code, city,
+             role, location, active, must_change_password, created_at
       FROM users
       WHERE company_id = ${admin.companyId} AND role = 'employee'
       ORDER BY last_name, first_name
@@ -79,7 +84,10 @@ export async function POST(request: Request) {
       password,
       birthDate,
       birthPlace,
-      placeOfResidence,
+      street,
+      houseNumber,
+      postalCode,
+      city,
       location,
       courseIds,
     } = body;
@@ -112,16 +120,23 @@ export async function POST(request: Request) {
       );
     }
 
+    const { city: syncedCity, placeOfResidence } = syncCityFields(city);
+
     const rows = await sql`
       INSERT INTO users (
         first_name, last_name, email, password_hash, birth_date, birth_place,
-        place_of_residence, role, company_id, location, active, must_change_password
+        place_of_residence, street, house_number, postal_code, city,
+        role, company_id, location, active, must_change_password
       )
       VALUES (
         ${firstName}, ${lastName}, ${normalizedEmail}, ${hashPassword(password)},
         ${birthDate || null},
         ${birthPlace || null},
-        ${placeOfResidence || null},
+        ${placeOfResidence},
+        ${street || null},
+        ${houseNumber || null},
+        ${postalCode || null},
+        ${syncedCity},
         'employee',
         ${admin.companyId},
         ${location || null},

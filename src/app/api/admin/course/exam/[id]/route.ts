@@ -8,6 +8,8 @@ import {
   saveExamQuestion,
 } from "@/lib/course-db";
 import { resolveAdminCourse, courseIdFromRequest } from "@/lib/course-context";
+import { assertCourseEditable } from "@/lib/course-provisions";
+import { coursePermissionErrorResponse } from "@/lib/course-permissions-api";
 import type { ExamQuestion } from "@/lib/types";
 
 export async function GET(
@@ -27,6 +29,8 @@ export async function GET(
     }
     return NextResponse.json({ question });
   } catch (e) {
+    const perm = coursePermissionErrorResponse(e);
+    if (perm) return perm;
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
@@ -46,6 +50,7 @@ export async function PUT(
       courseIdFromRequest(request)
     );
     const { id } = await params;
+    await assertCourseEditable(companyId, courseId, "tests");
     const body = await request.json();
     const course = await getCourseData(companyId, courseId);
     if (!course) {
@@ -76,6 +81,8 @@ export async function PUT(
     await saveExamQuestion(companyId, courseId, question);
     return NextResponse.json({ question });
   } catch (e) {
+    const perm = coursePermissionErrorResponse(e);
+    if (perm) return perm;
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
@@ -95,12 +102,15 @@ export async function DELETE(
       courseIdFromRequest(request)
     );
     const { id } = await params;
+    await assertCourseEditable(companyId, courseId, "tests");
     const ok = await deleteExamQuestion(companyId, courseId, Number(id));
     if (!ok) {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }
     return NextResponse.json({ ok: true });
   } catch (e) {
+    const perm = coursePermissionErrorResponse(e);
+    if (perm) return perm;
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
