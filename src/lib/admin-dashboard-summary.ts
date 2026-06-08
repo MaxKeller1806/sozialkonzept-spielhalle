@@ -1,15 +1,13 @@
-import { getAdminPrivacyStatusStats } from "./admin-privacy-status-list";
+import { getAdminPrivacyDashboardCounts } from "./admin-privacy-status-list";
 import {
   getAdminTrainingDashboardCounts,
   type AdminTrainingDashboardCounts,
 } from "./admin-training-status-list";
-import {
-  listAdminEmployees,
-  parseAdminEmployeeListQuery,
-} from "./admin-users-list";
+import { countActiveEmployees } from "./admin-users-list";
 import { getCompanyById } from "./tenant";
 
 export type AdminDashboardSummary = {
+  companyId: number;
   companyName: string;
   activeEmployees: number;
   privacy: {
@@ -22,24 +20,21 @@ export type AdminDashboardSummary = {
 export async function getAdminDashboardSummary(
   companyId: number
 ): Promise<AdminDashboardSummary> {
-  const employeeQuery = parseAdminEmployeeListQuery(
-    new URLSearchParams({ pageSize: "1", status: "active" })
-  );
-
-  const [company, employeeResult, privacyStats, trainingCounts] =
+  const [company, activeEmployees, privacyCounts, trainingCounts] =
     await Promise.all([
       getCompanyById(companyId),
-      listAdminEmployees(companyId, employeeQuery),
-      getAdminPrivacyStatusStats(companyId),
+      countActiveEmployees(companyId),
+      getAdminPrivacyDashboardCounts(companyId),
       getAdminTrainingDashboardCounts(companyId),
     ]);
 
   return {
+    companyId,
     companyName: company?.name ?? "",
-    activeEmployees: employeeResult.meta.total,
+    activeEmployees,
     privacy: {
-      open: privacyStats.open,
-      accepted: privacyStats.accepted,
+      open: privacyCounts.open,
+      accepted: privacyCounts.accepted,
     },
     training: trainingCounts,
   };

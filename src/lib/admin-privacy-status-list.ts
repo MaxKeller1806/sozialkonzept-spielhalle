@@ -162,6 +162,79 @@ function computeStats(
   return { activeTotal, accepted, open, departed, openActiveCount, currentVersion: null };
 }
 
+/** Leichtgewichtige Kennzahlen fürs Admin-Dashboard (ohne Mitarbeiterliste). */
+export async function getAdminPrivacyDashboardCounts(
+  companyId: number
+): Promise<{ open: number; accepted: number }> {
+  const sql = getSql();
+  const policy = await getActivePrivacyPolicy();
+  const policyId = policy?.id ?? null;
+
+  const runQuery = async (useLeftCompanyFilter: boolean) => {
+    const employmentFilter = useLeftCompanyFilter
+      ? sql`AND (u.left_company_at IS NULL OR u.left_company_at > CURRENT_DATE)`
+      : sql``;
+
+    if (policyId != null) {
+      const rows = await sql`
+        SELECT
+          COUNT(*) FILTER (WHERE p_current.accepted_at IS NOT NULL)::int AS accepted,
+          COUNT(*) FILTER (WHERE p_current.accepted_at IS NULL)::int AS open
+        FROM users u
+        LEFT JOIN privacy_policy_acceptances p_current
+          ON p_current.user_id = u.id AND p_current.version_id = ${policyId}
+        WHERE u.company_id = ${companyId}
+          AND u.role = 'employee'
+          AND u.active = TRUE
+          ${employmentFilter}
+      `;
+      const row = rows[0] ?? {};
+      return {
+        accepted: Number(row.accepted ?? 0),
+        open: Number(row.open ?? 0),
+      };
+    }
+
+    const rows = await sql`
+      SELECT
+        COUNT(*) FILTER (WHERE latest_any.accepted_at IS NOT NULL)::int AS accepted,
+        COUNT(*) FILTER (WHERE latest_any.accepted_at IS NULL)::int AS open
+      FROM users u
+      LEFT JOIN LATERAL (
+        SELECT pa.accepted_at
+        FROM privacy_policy_acceptances pa
+        WHERE pa.user_id = u.id
+        ORDER BY pa.accepted_at DESC
+        LIMIT 1
+      ) latest_any ON TRUE
+      WHERE u.company_id = ${companyId}
+        AND u.role = 'employee'
+        AND u.active = TRUE
+        ${employmentFilter}
+    `;
+    const row = rows[0] ?? {};
+    return {
+      accepted: Number(row.accepted ?? 0),
+      open: Number(row.open ?? 0),
+    };
+  };
+
+  try {
+    return await runQuery(true);
+  } catch (err) {
+    if (!isMissingColumnError(err, "left_company_at")) throw err;
+    return runQuery(false);
+  }
+}
+
+function isMissingColumnError(err: unknown, column: string): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes(column) &&
+    (msg.includes("does not exist") || msg.includes("42703"))
+  );
+}
+
 export async function getAdminPrivacyStatusStats(
   companyId: number
 ): Promise<PrivacyStatusStats> {
@@ -178,25 +251,48 @@ export async function getAdminPrivacyStatusStats(
       : sql`LEFT JOIN privacy_policy_acceptances p_current ON FALSE
           LEFT JOIN privacy_policy_versions v_current ON FALSE`;
 
-  const statsBaseRows = (await sql`
-    SELECT
-      u.id,
-      u.left_company_at,
-      p_current.accepted_at AS current_accepted_at,
-      latest_any.accepted_at AS any_accepted_at
-    FROM users u
-    ${currentAcceptJoin}
-    LEFT JOIN LATERAL (
-      SELECT pa.accepted_at
-      FROM privacy_policy_acceptances pa
-      WHERE pa.user_id = u.id
-      ORDER BY pa.accepted_at DESC
-      LIMIT 1
-    ) latest_any ON TRUE
-    WHERE u.company_id = ${companyId}
-      AND u.role = 'employee'
-      AND u.active = TRUE
-  `) as Record<string, unknown>[];
+  let statsBaseRows: Record<string, unknown>[];
+  try {
+    statsBaseRows = (await sql`
+      SELECT
+        u.id,
+        u.left_company_at,
+        p_current.accepted_at AS current_accepted_at,
+        latest_any.accepted_at AS any_accepted_at
+      FROM users u
+      ${currentAcceptJoin}
+      LEFT JOIN LATERAL (
+        SELECT pa.accepted_at
+        FROM privacy_policy_acceptances pa
+        WHERE pa.user_id = u.id
+        ORDER BY pa.accepted_at DESC
+        LIMIT 1
+      ) latest_any ON TRUE
+      WHERE u.company_id = ${companyId}
+        AND u.role = 'employee'
+        AND u.active = TRUE
+    `) as Record<string, unknown>[];
+  } catch (err) {
+    if (!isMissingColumnError(err, "left_company_at")) throw err;
+    statsBaseRows = (await sql`
+      SELECT
+        u.id,
+        p_current.accepted_at AS current_accepted_at,
+        latest_any.accepted_at AS any_accepted_at
+      FROM users u
+      ${currentAcceptJoin}
+      LEFT JOIN LATERAL (
+        SELECT pa.accepted_at
+        FROM privacy_policy_acceptances pa
+        WHERE pa.user_id = u.id
+        ORDER BY pa.accepted_at DESC
+        LIMIT 1
+      ) latest_any ON TRUE
+      WHERE u.company_id = ${companyId}
+        AND u.role = 'employee'
+        AND u.active = TRUE
+    `) as Record<string, unknown>[];
+  }
 
   const statsEmployees: AdminPrivacyStatusEmployee[] = statsBaseRows.map(
     (row) => {

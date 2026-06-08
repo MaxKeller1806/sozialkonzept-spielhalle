@@ -10,6 +10,7 @@
     "a11y:check": "node scripts/a11y-check.mjs",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:seed": "node scripts/db-seed.mjs",
+    "db:diagnose": "node scripts/diagnose-dashboard-db.mjs",
     "seed:document-templates": "npx tsx scripts/seed-document-templates.ts",
     "verify:document-templates": "npx tsx scripts/verify-document-templates.ts",
     "test:certificate-pdf": "npx tsx scripts/test-certificate-pdf.ts",

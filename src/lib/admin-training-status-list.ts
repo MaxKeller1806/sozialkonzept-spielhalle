@@ -1,5 +1,6 @@
 import { getSql } from "./db";
 import { formatValidityRuleLabel } from "./course-validity";
+import { DUE_SOON_DAYS } from "./status";
 import {
   buildListMeta,
   parseListQueryFromUrl,
@@ -420,25 +421,106 @@ export type AdminTrainingDashboardCounts = {
   notStarted: number;
 };
 
+function isMissingColumnError(err: unknown, column: string): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes(column) &&
+    (msg.includes("does not exist") || msg.includes("42703"))
+  );
+}
+
+async function queryTrainingDashboardCounts(
+  companyId: number,
+  useLeftCompanyFilter: boolean
+): Promise<AdminTrainingDashboardCounts> {
+  const sql = getSql();
+  const employmentFilter = useLeftCompanyFilter
+    ? sql`AND (u.left_company_at IS NULL OR u.left_company_at > CURRENT_DATE)`
+    : sql``;
+
+  const rows = (await sql`
+    WITH assignment_status AS (
+      SELECT
+        uca.user_id,
+        CASE
+          WHEN latest_cert.id IS NOT NULL AND NOT COALESCE(latest_cert.revoked, FALSE) THEN
+            CASE
+              WHEN latest_cert.valid_until IS NOT NULL AND latest_cert.valid_until < NOW()
+                THEN 'expired'
+              WHEN latest_cert.valid_until IS NOT NULL
+                AND latest_cert.valid_until >= NOW()
+                AND latest_cert.valid_until <= NOW() + make_interval(days => ${DUE_SOON_DAYS})
+                THEN 'due_soon'
+              ELSE NULL
+            END
+          WHEN COALESCE(active_attempt.in_progress, FALSE) THEN NULL
+          WHEN failed_attempt.completed_at IS NOT NULL THEN NULL
+          ELSE 'not_started'
+        END AS status_key
+      FROM user_course_assignments uca
+      JOIN courses c ON c.id = uca.course_id AND c.company_id = ${companyId} AND c.active = TRUE
+      JOIN users u ON u.id = uca.user_id AND u.company_id = ${companyId}
+        AND u.role = 'employee'
+        AND u.active = TRUE
+        ${employmentFilter}
+      LEFT JOIN LATERAL (
+        SELECT cert.id, cert.valid_until, cert.revoked
+        FROM certificates cert
+        WHERE cert.user_id = uca.user_id AND cert.course_id = c.id
+        ORDER BY cert.issued_at DESC
+        LIMIT 1
+      ) latest_cert ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT ta.completed_at
+        FROM training_attempts ta
+        WHERE ta.user_id = uca.user_id
+          AND ta.course_id = c.id
+          AND ta.completed_at IS NOT NULL
+          AND ta.passed = FALSE
+          AND NOT EXISTS (
+            SELECT 1 FROM certificates cert2
+            WHERE cert2.user_id = ta.user_id
+              AND cert2.course_id = ta.course_id
+              AND cert2.revoked = FALSE
+              AND cert2.issued_at >= ta.completed_at
+          )
+        ORDER BY ta.completed_at DESC
+        LIMIT 1
+      ) failed_attempt ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT TRUE AS in_progress
+        FROM training_attempts ta
+        WHERE ta.user_id = uca.user_id
+          AND ta.course_id = c.id
+          AND ta.completed_at IS NULL
+        LIMIT 1
+      ) active_attempt ON TRUE
+    )
+    SELECT
+      COUNT(DISTINCT user_id) FILTER (WHERE status_key = 'expired')::int AS expired,
+      COUNT(DISTINCT user_id) FILTER (WHERE status_key = 'due_soon')::int AS due_soon,
+      COUNT(DISTINCT user_id) FILTER (WHERE status_key = 'not_started')::int AS not_started
+    FROM assignment_status
+    WHERE status_key IS NOT NULL
+  `) as Record<string, unknown>[];
+
+  const row = rows[0] ?? {};
+  return {
+    expired: Number(row.expired ?? 0),
+    dueSoon: Number(row.due_soon ?? 0),
+    notStarted: Number(row.not_started ?? 0),
+  };
+}
+
 export async function getAdminTrainingDashboardCounts(
   companyId: number
 ): Promise<AdminTrainingDashboardCounts> {
-  const query = parseTrainingStatusListQuery(new URLSearchParams());
-  const employees = await buildAdminTrainingStatusEmployees(companyId, query);
-
-  const countFor = (filter: TrainingStatusFilter) =>
-    employees.filter((e) =>
-      employeeMatchesTrainingFilter(
-        e.courses.map((c) => c.statusKey),
-        filter
-      )
-    ).length;
-
-  return {
-    expired: countFor("expired"),
-    dueSoon: countFor("due_soon"),
-    notStarted: countFor("not_started"),
-  };
+  try {
+    return await queryTrainingDashboardCounts(companyId, true);
+  } catch (err) {
+    if (!isMissingColumnError(err, "left_company_at")) throw err;
+    return queryTrainingDashboardCounts(companyId, false);
+  }
 }
 
 export async function listAdminTrainingStatus(

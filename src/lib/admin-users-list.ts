@@ -236,3 +236,16 @@ export function parseAdminEmployeeListQuery(
     status: "all",
   });
 }
+
+/** Schneller Zähler für Dashboard – ohne Zertifikats-Lookups pro Zeile. */
+export async function countActiveEmployees(companyId: number): Promise<number> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT COUNT(*)::int AS total
+    FROM users u
+    WHERE u.company_id = ${companyId}
+      AND u.role = 'employee'
+      AND u.active = TRUE
+  `;
+  return Number(rows[0]?.total ?? 0);
+}

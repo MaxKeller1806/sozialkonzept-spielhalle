@@ -7,58 +7,69 @@ import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui";
 
 type OverviewStats = {
-  employees: number | null;
-  privacyOpen: number | null;
-  privacyAccepted: number | null;
-  trainingExpired: number | null;
-  trainingDueSoon: number | null;
-  trainingNotStarted: number | null;
+  employees: number;
+  privacyOpen: number;
+  privacyAccepted: number;
+  trainingExpired: number;
+  trainingDueSoon: number;
+  trainingNotStarted: number;
   companyName: string;
 };
 
+type LoadState = "loading" | "ok" | "error";
+
 export default function AdminOverviewPage() {
-  const [stats, setStats] = useState<OverviewStats>({
-    employees: null,
-    privacyOpen: null,
-    privacyAccepted: null,
-    trainingExpired: null,
-    trainingDueSoon: null,
-    trainingNotStarted: null,
-    companyName: "",
-  });
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<OverviewStats | null>(null);
+  const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch("/api/admin/dashboard-summary", { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data?.summary) return;
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/dashboard-summary", {
+          signal: controller.signal,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(
+            typeof data.error === "string"
+              ? data.error
+              : "Kennzahlen konnten nicht geladen werden."
+          );
+        }
+        if (!data.summary) {
+          throw new Error("Kennzahlen konnten nicht geladen werden.");
+        }
         const { summary } = data;
         setStats({
           companyName: summary.companyName ?? "",
-          employees: summary.activeEmployees ?? null,
-          privacyOpen: summary.privacy?.open ?? null,
-          privacyAccepted: summary.privacy?.accepted ?? null,
-          trainingExpired: summary.training?.expired ?? null,
-          trainingDueSoon: summary.training?.dueSoon ?? null,
-          trainingNotStarted: summary.training?.notStarted ?? null,
+          employees: Number(summary.activeEmployees ?? 0),
+          privacyOpen: Number(summary.privacy?.open ?? 0),
+          privacyAccepted: Number(summary.privacy?.accepted ?? 0),
+          trainingExpired: Number(summary.training?.expired ?? 0),
+          trainingDueSoon: Number(summary.training?.dueSoon ?? 0),
+          trainingNotStarted: Number(summary.training?.notStarted ?? 0),
         });
-      })
-      .catch((e: unknown) => {
+        setErrorMessage("");
+        setLoadState("ok");
+      } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      });
+        setStats(null);
+        setLoadState("error");
+        setErrorMessage(
+          e instanceof Error
+            ? e.message
+            : "Kennzahlen konnten nicht geladen werden."
+        );
+      }
+    })();
 
     return () => controller.abort();
   }, []);
 
-  const title = stats.companyName
+  const title = stats?.companyName
     ? `Dashboard – ${stats.companyName}`
     : "Dashboard";
 
@@ -74,29 +85,34 @@ export default function AdminOverviewPage() {
         }
       />
 
-      {loading ? (
+      {loadState === "loading" && (
         <p className="text-sm text-slate-600">Kennzahlen werden geladen…</p>
-      ) : (
+      )}
+
+      {loadState === "error" && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {errorMessage || "Kennzahlen konnten nicht geladen werden."}
+        </div>
+      )}
+
+      {loadState === "ok" && stats && (
         <>
           <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <KpiCard
-              label="Mitarbeiter aktiv"
-              value={stats.employees ?? "—"}
-            />
+            <KpiCard label="Mitarbeiter aktiv" value={stats.employees} />
             <KpiCard
               label="Schulungen abgelaufen"
-              value={stats.trainingExpired ?? "—"}
+              value={stats.trainingExpired}
               accent="red"
             />
             <KpiCard
               label="Bald fällig"
-              value={stats.trainingDueSoon ?? "—"}
+              value={stats.trainingDueSoon}
               accent="orange"
             />
             <KpiCard
               label="Datenschutz offen"
-              value={stats.privacyOpen ?? "—"}
-              accent={stats.privacyOpen ? "orange" : "green"}
+              value={stats.privacyOpen}
+              accent={stats.privacyOpen > 0 ? "orange" : "green"}
             />
           </div>
 
@@ -104,8 +120,8 @@ export default function AdminOverviewPage() {
             <Card>
               <h2 className="text-base font-bold text-slate-900">Schulungen</h2>
               <p className="mt-1 text-sm text-slate-600">
-                {stats.trainingNotStarted ?? "—"} Mitarbeiter mit offenen
-                Schulungen (nicht begonnen).
+                {stats.trainingNotStarted} Mitarbeiter mit offenen Schulungen
+                (nicht begonnen).
               </p>
               <div className="mt-4">
                 <Link href="/dashboard/schulungsstatus">
@@ -118,8 +134,7 @@ export default function AdminOverviewPage() {
             <Card>
               <h2 className="text-base font-bold text-slate-900">Datenschutz</h2>
               <p className="mt-1 text-sm text-slate-600">
-                {stats.privacyAccepted ?? "—"} Bestätigungen für die aktuelle
-                Version.
+                {stats.privacyAccepted} Bestätigungen für die aktuelle Version.
               </p>
               <div className="mt-4">
                 <Link href="/dashboard/datenschutz">
