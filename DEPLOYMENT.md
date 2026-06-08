@@ -55,16 +55,35 @@ Diese Einträge stehen bereits in `.gitignore`.
 2. Inhalt von `supabase/migrations/20260301000000_initial_schema.sql` einfügen
 3. **Run** ausführen
 
-**Option B – CLI lokal**
+**Option B – CLI lokal (mit Migration-History)**
 
 ```bash
 cp .env.example .env.local
-# DATABASE_URL auf Direct connection (Port 5432) setzen
+# DATABASE_URL auf Direct connection (Port 5432) setzen — nicht Pooler (6543)
 
 npm install
-npm run db:migrate
+npm run db:migrate:status    # angewendet vs. ausstehend
+npm run db:migrate             # nur fehlende Migrationen
 npm run db:seed
 ```
+
+**Bestehende Produktions-DB (Schema schon vorhanden, erster Lauf schlägt fehl / Timeout):**
+
+```bash
+# 1. Status prüfen (schema_migrations trackt angewendete Dateien)
+npm run db:migrate:status
+
+# 2. Bereits vorhandene Migrationen nur markieren — SQL wird NICHT ausgeführt
+npm run db:migrate:baseline -- --yes
+
+# Optional: nur bis zu einer bestimmten Datei markieren, danach echte Migration:
+# npm run db:migrate:baseline -- --yes --through 20260612120000_company_cert_signature.sql
+
+# 3. Nur noch fehlende Migrationen anwenden
+npm run db:migrate
+```
+
+Tracking-Tabelle: `public.schema_migrations` (Spalten: `filename`, `applied_at`).
 
 ### 2.3 Connection Strings kopieren
 
@@ -164,6 +183,7 @@ Lerninhalte liegen in `data/course.json` (im Git-Repo). Änderungen über das Ad
 |---------|--------|
 | `DATABASE_URL ist nicht gesetzt` | Env-Variable in Vercel prüfen, Redeploy |
 | DB-Verbindungsfehler | Pooler-URL (6543), Passwort, IP-Allowlist in Supabase |
+| Migration Timeout / initial_schema erneut | Direct Connection (5432) nutzen; `npm run db:migrate:status`; bei Legacy-DB `npm run db:migrate:baseline -- --yes`, dann `npm run db:migrate` |
 | Login schlägt fehl | `npm run db:seed` ausführen oder User in Supabase Table Editor prüfen |
 | QR-Code falscher Link | `APP_URL` auf produktive Domain setzen, Redeploy |
 

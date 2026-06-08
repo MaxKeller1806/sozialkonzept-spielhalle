@@ -9,6 +9,8 @@
     "lint": "eslint",
     "a11y:check": "node scripts/a11y-check.mjs",
     "db:migrate": "node scripts/db-migrate.mjs",
+    "db:migrate:status": "node scripts/db-migrate-status.mjs",
+    "db:migrate:baseline": "node scripts/db-migrate-baseline.mjs",
     "db:seed": "node scripts/db-seed.mjs",
     "db:diagnose": "node scripts/diagnose-dashboard-db.mjs",
     "seed:document-templates": "npx tsx scripts/seed-document-templates.ts",
