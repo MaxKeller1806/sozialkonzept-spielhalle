@@ -9,6 +9,12 @@ import {
   provisionPermissions,
 } from "@/lib/course-provisions";
 import { formatValidityRuleLabel } from "@/lib/course-validity";
+import { parseCourseListFilters, MAIN_CATEGORIES } from "@/lib/course-hierarchy";
+import {
+  listAdminCoursesPaginated,
+  ADMIN_COURSE_SORT_KEYS,
+} from "@/lib/admin-courses-list";
+import { parseListQueryFromUrl } from "@/lib/list-query";
 import type { UserListFilter } from "@/lib/tenant";
 
 function parseFilter(value: string | null): UserListFilter {
@@ -19,23 +25,61 @@ function parseFilter(value: string | null): UserListFilter {
 export async function GET(request: Request) {
   try {
     const user = await requireAdmin();
-    const filter = parseFilter(new URL(request.url).searchParams.get("filter"));
-    const courses = await listCompanyCourses(user.companyId!, filter);
+    const params = new URL(request.url).searchParams;
+    const hierarchyFilters = parseCourseListFilters(params);
+
+    if (
+      params.has("filter") &&
+      !params.has("page") &&
+      !params.has("search") &&
+      !params.has("sortBy")
+    ) {
+      const filter = parseFilter(params.get("filter"));
+      const courses = await listCompanyCourses(
+        user.companyId!,
+        filter,
+        hierarchyFilters
+      );
+      const provisions = await listCompanyProvisions(user.companyId!);
+      const byCourse = new Map(provisions.map((p) => [p.courseId, p]));
+      return NextResponse.json({
+        courses: courses.map((c) => ({
+          ...c,
+          validityLabel: formatValidityRuleLabel({
+            validityType: c.validityType,
+            validityIntervalValue: c.validityIntervalValue,
+            validityIntervalUnit: c.validityIntervalUnit,
+            validityMonths: c.validityMonths,
+          }),
+          permissions: provisionPermissions(byCourse.get(c.id)),
+        })),
+        filter,
+        total: courses.length,
+        mainCategories: Object.values(MAIN_CATEGORIES),
+      });
+    }
+
+    const query = parseListQueryFromUrl(params, {
+      sortBy: "title",
+      sortDirection: "asc",
+      status: "active",
+    });
+    const result = await listAdminCoursesPaginated(
+      user.companyId!,
+      query,
+      hierarchyFilters
+    );
     const provisions = await listCompanyProvisions(user.companyId!);
     const byCourse = new Map(provisions.map((p) => [p.courseId, p]));
+
     return NextResponse.json({
-      courses: courses.map((c) => ({
+      courses: result.courses.map((c) => ({
         ...c,
-        validityLabel: formatValidityRuleLabel({
-          validityType: c.validityType,
-          validityIntervalValue: c.validityIntervalValue,
-          validityIntervalUnit: c.validityIntervalUnit,
-          validityMonths: c.validityMonths,
-        }),
         permissions: provisionPermissions(byCourse.get(c.id)),
       })),
-      filter,
-      total: courses.length,
+      meta: result.meta,
+      sortFields: ADMIN_COURSE_SORT_KEYS,
+      mainCategories: Object.values(MAIN_CATEGORIES),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";

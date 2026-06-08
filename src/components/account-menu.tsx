@@ -20,7 +20,7 @@ function menuItems(role: UserRole): MenuItem[] {
       return [
         { type: "link", href: "/dashboard/konto", label: "Mein Konto" },
         { type: "link", href: "/dashboard/firma", label: "Meine Firma" },
-        { type: "link", href: "/dashboard", label: "Dashboard" },
+        { type: "link", href: "/dashboard/uebersicht", label: "Dashboard" },
         { type: "logout", label: "Abmelden" },
       ];
     case "employee":

@@ -169,6 +169,15 @@ export default function CompanyUsersPage() {
         >
           Alle Benutzer
         </Button>
+        {filter !== "all" && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setFilter("all")}
+          >
+            Filter zurücksetzen
+          </Button>
+        )}
       </div>
 
       {error && (
@@ -191,11 +200,9 @@ export default function CompanyUsersPage() {
       ) : users.length === 0 && !error ? (
         <Card>
           <p className="text-sm text-slate-600">
-            {filter === "archived"
-              ? "Keine archivierten Benutzer."
-              : filter === "active"
-                ? "Keine aktiven Benutzer."
-                : "Keine Benutzer für diese Firma gefunden."}
+            {filter !== "all"
+              ? "Keine Treffer für die aktuelle Filterauswahl."
+              : "Keine Benutzer für diese Firma gefunden."}
           </p>
         </Card>
       ) : (

@@ -3,13 +3,11 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { LessonSpeechRegister } from "@/components/lesson-speech-register";
+import { PageHeader } from "@/components/page-header";
 import {
   Button,
   ButtonLink,
   Card,
-  EmployeeHeader,
-  LoadingStatus,
-  PageMain,
   ProgressBar,
 } from "@/components/ui";
 import { LessonContent } from "@/components/lesson-content";
@@ -17,7 +15,7 @@ import type { Lesson } from "@/lib/types";
 
 export default function LektionPage() {
   return (
-    <Suspense fallback={<LoadingStatus />}>
+    <Suspense fallback={<p className="text-sm text-slate-600">Lektion wird geladen…</p>}>
       <LektionContent />
     </Suspense>
   );
@@ -158,64 +156,66 @@ function LektionContent() {
   }
 
   if (loading) {
-    return <LoadingStatus />;
+    return <p className="text-sm text-slate-600">Lektion wird geladen…</p>;
   }
 
   if (error || !lesson) {
     return (
-      <PageMain className="mx-auto max-w-3xl px-4 py-12">
+      <div className="mx-auto max-w-3xl py-8">
         <p className="text-red-600" role="alert">
           {error ?? "Lernschritt konnte nicht geladen werden."}
         </p>
         <ButtonLink href={`/schulung${courseQuery}`} variant="secondary" className="mt-4">
           Zur Schulungsübersicht
         </ButtonLink>
-      </PageMain>
+      </div>
     );
   }
 
   const lessonKey = `${moduleId}:${lessonId}`;
 
   return (
-    <div className="min-h-screen pb-12">
-      <EmployeeHeader pageTitle={moduleTitle} />
-      <PageMain className="mx-auto max-w-2xl px-4 py-8">
-        <ButtonLink href={`/schulung${courseQuery}`} variant="secondary" className="mb-4 w-auto">
-          ← Zur Schulungsübersicht
-        </ButtonLink>
+    <div className="mx-auto max-w-2xl">
+      <PageHeader
+        title={moduleTitle}
+        actions={
+          <ButtonLink href={`/schulung${courseQuery}`} variant="secondary">
+            Zur Schulungsübersicht
+          </ButtonLink>
+        }
+      />
 
-        <div className="mb-4">
-          <ProgressBar value={completedLessons} max={totalLessons} />
-          <p className="mt-1 text-sm text-slate-600">
-            Schritt {globalIndex + 1} von {totalLessons} · {completedLessons}{" "}
-            abgeschlossen
-          </p>
+      <div className="mb-4">
+        <ProgressBar value={completedLessons} max={totalLessons} />
+        <p className="mt-1 text-sm text-slate-600">
+          Schritt {globalIndex + 1} von {totalLessons} · {completedLessons}{" "}
+          abgeschlossen
+        </p>
+      </div>
+
+      <Card>
+        <h2 className="text-2xl font-bold">{lesson.title}</h2>
+
+        <LessonSpeechRegister lesson={lesson} lessonKey={lessonKey} />
+
+        <LessonContent lesson={lesson} />
+
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          {prevUrl && (
+            <ButtonLink href={prevUrl} variant="secondary" className="flex-1">
+              Zurück
+            </ButtonLink>
+          )}
+          <Button
+            onClick={markComplete}
+            disabled={saving}
+            className="flex-1 w-full"
+            aria-busy={saving}
+          >
+            {saving ? "Wird gespeichert…" : nextUrl ? "Weiter" : "Abschließen & zur Übersicht"}
+          </Button>
         </div>
-
-        <Card>
-          <h2 className="text-2xl font-bold">{lesson.title}</h2>
-
-          <LessonSpeechRegister lesson={lesson} lessonKey={lessonKey} />
-
-          <LessonContent lesson={lesson} />
-
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            {prevUrl && (
-              <ButtonLink href={prevUrl} variant="secondary" className="flex-1">
-                Zurück
-              </ButtonLink>
-            )}
-            <Button
-              onClick={markComplete}
-              disabled={saving}
-              className="flex-1 w-full"
-              aria-busy={saving}
-            >
-              {saving ? "Wird gespeichert…" : nextUrl ? "Weiter" : "Abschließen & zur Übersicht"}
-            </Button>
-          </div>
-        </Card>
-      </PageMain>
+      </Card>
     </div>
   );
 }

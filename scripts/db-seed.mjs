@@ -4,6 +4,7 @@
  * Usage: npm run db:seed
  */
 import bcrypt from "bcryptjs";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -148,6 +149,15 @@ async function main() {
 
   console.log("Seed abgeschlossen (Firma, Kurs, Superuser, Admin, Mitarbeiter).");
   await sql.end();
+
+  const seedTemplates = spawnSync(
+    "npx",
+    ["tsx", path.join(__dirname, "seed-document-templates.ts")],
+    { stdio: "inherit", env: process.env }
+  );
+  if (seedTemplates.status !== 0) {
+    process.exit(seedTemplates.status ?? 1);
+  }
 }
 
 main().catch((err) => {

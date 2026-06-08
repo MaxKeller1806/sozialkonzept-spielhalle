@@ -28,6 +28,9 @@ export async function PATCH(request: Request) {
 
     if (body.name !== undefined) patch.name = body.name;
     const fields: [string, string][] = [
+      ["certSignaturePerson", "cert_signature_person"],
+      ["certSignaturePosition", "cert_signature_position"],
+      ["certSignatureText", "cert_signature_text"],
       ["street", "street"],
       ["postalCode", "postal_code"],
       ["city", "city"],

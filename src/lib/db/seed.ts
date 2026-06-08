@@ -3,6 +3,7 @@ import type postgres from "postgres";
 import { importCourseFromJson, assignUserToCourse } from "../course-db";
 import { getCourseFromFile } from "../course";
 import { hashLicenseKey } from "../license";
+import { seedGlobalDocumentTemplates } from "../document-template-db";
 
 export async function seedDatabase(sql: postgres.Sql): Promise<void> {
   const companyRows = await sql`
@@ -93,4 +94,6 @@ export async function seedDatabase(sql: postgres.Sql): Promise<void> {
     SET license_key_hash = ${hashLicenseKey(process.env.DEFAULT_LICENSE_KEY ?? "SK-DEMO-LICENSE")}
     WHERE id = ${companyId} AND license_key_hash IS NULL
   `;
+
+  await seedGlobalDocumentTemplates(sql);
 }

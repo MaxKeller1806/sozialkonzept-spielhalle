@@ -2,14 +2,12 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useId, useState } from "react";
+import { PageHeader } from "@/components/page-header";
 import {
   Button,
   ButtonLink,
   Card,
-  EmployeeHeader,
   ErrorMessage,
-  LoadingStatus,
-  PageMain,
 } from "@/components/ui";
 import type { AnswerValue } from "@/lib/exam";
 
@@ -28,7 +26,7 @@ interface ExamSection {
 
 export default function PruefungPage() {
   return (
-    <Suspense fallback={<LoadingStatus />}>
+    <Suspense fallback={<p className="text-sm text-slate-600">Abschlusstest wird geladen…</p>}>
       <PruefungContent />
     </Suspense>
   );
@@ -120,155 +118,153 @@ function PruefungContent() {
   }
 
   if (loading) {
-    return <LoadingStatus />;
+    return <p className="text-sm text-slate-600">Abschlusstest wird geladen…</p>;
   }
 
   if (error && questions.length === 0) {
     return (
-      <PageMain className="mx-auto max-w-lg px-4 py-16 text-center">
+      <div className="mx-auto max-w-lg py-8 text-center">
         <ErrorMessage message={error} />
         <ButtonLink href="/schulung" variant="secondary" className="mt-4">
           Zurück
         </ButtonLink>
-      </PageMain>
+      </div>
     );
   }
 
   let questionNum = 0;
 
   return (
-    <div className="min-h-screen pb-16">
-      <EmployeeHeader pageTitle="Abschlusstest" />
-      <PageMain className="mx-auto max-w-2xl px-4 py-8">
-        <p className="readable-text mb-6 text-base text-slate-600">
-          {questions.length} zufällig ausgewählte Fragen (Pool: {poolSize}) · Mindestens{" "}
-          {minCorrect} von {questions.length} richtig ({passingScore} %) zum Bestehen
-        </p>
+    <div className="mx-auto max-w-2xl">
+      <PageHeader title="Abschlusstest" />
+      <p className="readable-text mb-6 text-base text-slate-600">
+        {questions.length} zufällig ausgewählte Fragen (Pool: {poolSize}) · Mindestens{" "}
+        {minCorrect} von {questions.length} richtig ({passingScore} %) zum Bestehen
+      </p>
 
-        <form
-          id={formId}
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit();
-          }}
-          className="space-y-10"
-        >
-          {sections.map((section) => (
-            <section key={section.moduleId} aria-labelledby={`section-${section.moduleId}`}>
-              <h2
-                id={`section-${section.moduleId}`}
-                className="text-brand mb-4 rounded-xl bg-brand-light px-4 py-3 text-lg font-bold"
-              >
-                {section.moduleTitle}
-              </h2>
-              <div className="space-y-6">
-                {section.questions.map((q) => {
-                  questionNum += 1;
-                  const num = questionNum;
-                  const fieldId = `question-${q.id}`;
+      <form
+        id={formId}
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+        className="space-y-10"
+      >
+        {sections.map((section) => (
+          <section key={section.moduleId} aria-labelledby={`section-${section.moduleId}`}>
+            <h2
+              id={`section-${section.moduleId}`}
+              className="text-brand mb-4 rounded-xl bg-brand-light px-4 py-3 text-lg font-bold"
+            >
+              {section.moduleTitle}
+            </h2>
+            <div className="space-y-6">
+              {section.questions.map((q) => {
+                questionNum += 1;
+                const num = questionNum;
+                const fieldId = `question-${q.id}`;
 
-                  return (
-                    <Card key={q.id}>
-                      <fieldset className="border-0 p-0">
-                        <legend
-                          id={fieldId}
-                          className="mb-4 block w-full text-base font-semibold"
+                return (
+                  <Card key={q.id}>
+                    <fieldset className="border-0 p-0">
+                      <legend
+                        id={fieldId}
+                        className="mb-4 block w-full text-base font-semibold"
+                      >
+                        Frage {num}: {q.question}
+                      </legend>
+
+                      {q.type === "boolean" && (
+                        <div
+                          className="flex flex-col gap-2 sm:flex-row"
+                          role="radiogroup"
+                          aria-labelledby={fieldId}
                         >
-                          Frage {num}: {q.question}
-                        </legend>
+                          <label className="flex flex-1 cursor-pointer items-center gap-3 rounded-xl border p-4 has-[:checked]:border-brand has-[:checked]:bg-brand-light min-h-[44px]">
+                            <input
+                              type="radio"
+                              name={`q-${q.id}`}
+                              checked={answers[q.id] === true}
+                              onChange={() => setBoolean(q.id, true)}
+                            />
+                            Richtig
+                          </label>
+                          <label className="flex flex-1 cursor-pointer items-center gap-3 rounded-xl border p-4 has-[:checked]:border-brand has-[:checked]:bg-brand-light min-h-[44px]">
+                            <input
+                              type="radio"
+                              name={`q-${q.id}`}
+                              checked={answers[q.id] === false}
+                              onChange={() => setBoolean(q.id, false)}
+                            />
+                            Falsch
+                          </label>
+                        </div>
+                      )}
 
-                        {q.type === "boolean" && (
-                          <div
-                            className="flex flex-col gap-2 sm:flex-row"
-                            role="radiogroup"
-                            aria-labelledby={fieldId}
-                          >
-                            <label className="flex flex-1 cursor-pointer items-center gap-3 rounded-xl border p-4 has-[:checked]:border-brand has-[:checked]:bg-brand-light min-h-[44px]">
+                      {q.type === "single" && (
+                        <div role="radiogroup" aria-labelledby={fieldId}>
+                          {q.answers?.map((ans, i) => (
+                            <label
+                              key={i}
+                              className="mb-2 flex cursor-pointer items-center gap-3 rounded-xl border p-4 has-[:checked]:border-brand has-[:checked]:bg-brand-light min-h-[44px]"
+                            >
                               <input
                                 type="radio"
                                 name={`q-${q.id}`}
-                                checked={answers[q.id] === true}
-                                onChange={() => setBoolean(q.id, true)}
+                                checked={answers[q.id] === i}
+                                onChange={() => setSingle(q.id, i)}
                               />
-                              Richtig
+                              <span>{ans}</span>
                             </label>
-                            <label className="flex flex-1 cursor-pointer items-center gap-3 rounded-xl border p-4 has-[:checked]:border-brand has-[:checked]:bg-brand-light min-h-[44px]">
+                          ))}
+                        </div>
+                      )}
+
+                      {q.type === "multiple" && (
+                        <div role="group" aria-labelledby={fieldId}>
+                          {q.answers?.map((ans, i) => (
+                            <label
+                              key={i}
+                              className="mb-2 flex cursor-pointer items-center gap-3 rounded-xl border p-4 has-[:checked]:border-brand has-[:checked]:bg-brand-light min-h-[44px]"
+                            >
                               <input
-                                type="radio"
-                                name={`q-${q.id}`}
-                                checked={answers[q.id] === false}
-                                onChange={() => setBoolean(q.id, false)}
+                                type="checkbox"
+                                checked={
+                                  Array.isArray(answers[q.id]) &&
+                                  (answers[q.id] as number[]).includes(i)
+                                }
+                                onChange={() => toggleMultiple(q.id, i)}
                               />
-                              Falsch
+                              <span>{ans}</span>
                             </label>
-                          </div>
-                        )}
+                          ))}
+                        </div>
+                      )}
+                    </fieldset>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </form>
 
-                        {q.type === "single" && (
-                          <div role="radiogroup" aria-labelledby={fieldId}>
-                            {q.answers?.map((ans, i) => (
-                              <label
-                                key={i}
-                                className="mb-2 flex cursor-pointer items-center gap-3 rounded-xl border p-4 has-[:checked]:border-brand has-[:checked]:bg-brand-light min-h-[44px]"
-                              >
-                                <input
-                                  type="radio"
-                                  name={`q-${q.id}`}
-                                  checked={answers[q.id] === i}
-                                  onChange={() => setSingle(q.id, i)}
-                                />
-                                <span>{ans}</span>
-                              </label>
-                            ))}
-                          </div>
-                        )}
+      <ErrorMessage message={error} />
 
-                        {q.type === "multiple" && (
-                          <div role="group" aria-labelledby={fieldId}>
-                            {q.answers?.map((ans, i) => (
-                              <label
-                                key={i}
-                                className="mb-2 flex cursor-pointer items-center gap-3 rounded-xl border p-4 has-[:checked]:border-brand has-[:checked]:bg-brand-light min-h-[44px]"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    Array.isArray(answers[q.id]) &&
-                                    (answers[q.id] as number[]).includes(i)
-                                  }
-                                  onChange={() => toggleMultiple(q.id, i)}
-                                />
-                                <span>{ans}</span>
-                              </label>
-                            ))}
-                          </div>
-                        )}
-                      </fieldset>
-                    </Card>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </form>
-
-        <ErrorMessage message={error} />
-
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <ButtonLink href="/schulung" variant="secondary" className="flex-1">
-            Abbrechen
-          </ButtonLink>
-          <Button
-            type="submit"
-            form={formId}
-            disabled={submitting}
-            className="flex-1 w-full"
-            aria-busy={submitting}
-          >
-            {submitting ? "Wird ausgewertet…" : "Test absenden"}
-          </Button>
-        </div>
-      </PageMain>
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        <ButtonLink href="/schulung" variant="secondary" className="flex-1">
+          Abbrechen
+        </ButtonLink>
+        <Button
+          type="submit"
+          form={formId}
+          disabled={submitting}
+          className="flex-1 w-full"
+          aria-busy={submitting}
+        >
+          {submitting ? "Wird ausgewertet…" : "Test absenden"}
+        </Button>
+      </div>
     </div>
   );
 }

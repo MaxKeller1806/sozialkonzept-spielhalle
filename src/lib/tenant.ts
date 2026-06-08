@@ -1,7 +1,75 @@
 import { getSql } from "./db";
 import { brandingToCssVars as themeBrandingToCssVars } from "./branding-theme";
 import { OPERATOR_COMPANY_SLUG } from "./branding-theme";
+import {
+  buildListMeta,
+  buildOrderBySql,
+  resolveSortColumn,
+  type ListMeta,
+  type ListQueryState,
+} from "./list-query";
 import type { Company, CompanyBranding, PrivacyPolicyVersion, SessionUser } from "./types";
+
+export const COMPANY_SORT_ALLOWLIST = {
+  name: "c.name",
+  industryName: "i.name",
+  businessTypeName: "bt.name",
+  status: "c.status",
+  licenseStatus: "c.license_status",
+  employeeCount: "employee_count",
+  adminCount: "admin_count",
+  createdAt: "c.created_at",
+} as const;
+
+export type CompanySummaryRow = {
+  id: number;
+  name: string;
+  status: string;
+  licenseStatus: string;
+  licenseExpiresAt: string | null;
+  createdAt: string;
+  employeeCount: number;
+  adminCount: number;
+  adminContacts: Array<{ name: string; email: string }>;
+  industryId: number | null;
+  businessTypeId: number | null;
+  industryName: string | null;
+  businessTypeName: string | null;
+};
+
+function mapCompanySummaryRow(row: Record<string, unknown>): CompanySummaryRow {
+  const rawContacts = row.admin_contacts;
+  let adminContacts: Array<{ name: string; email: string }> = [];
+  if (Array.isArray(rawContacts)) {
+    adminContacts = rawContacts as Array<{ name: string; email: string }>;
+  } else if (typeof rawContacts === "string") {
+    try {
+      adminContacts = JSON.parse(rawContacts) as Array<{ name: string; email: string }>;
+    } catch {
+      adminContacts = [];
+    }
+  }
+
+  return {
+    id: Number(row.id),
+    name: String(row.name),
+    status: String(row.status),
+    licenseStatus: String(row.license_status),
+    licenseExpiresAt: row.license_expires_at
+      ? new Date(String(row.license_expires_at)).toISOString()
+      : null,
+    createdAt: new Date(String(row.created_at)).toISOString(),
+    employeeCount: Number(row.employee_count ?? 0),
+    adminCount: Number(row.admin_count ?? 0),
+    adminContacts,
+    industryId: row.industry_id != null ? Number(row.industry_id) : null,
+    businessTypeId:
+      row.business_type_id != null ? Number(row.business_type_id) : null,
+    industryName: row.industry_name != null ? String(row.industry_name) : null,
+    businessTypeName:
+      row.business_type_name != null ? String(row.business_type_name) : null,
+  };
+}
 
 export function mapCompany(row: Record<string, unknown>): Company {
   return {
@@ -25,6 +93,18 @@ export function mapCompany(row: Record<string, unknown>): Company {
       loginBackgroundUrl:
         row.login_background_url != null ? String(row.login_background_url) : null,
     },
+    documentSignature: {
+      responsiblePerson:
+        row.cert_signature_person != null
+          ? String(row.cert_signature_person)
+          : null,
+      position:
+        row.cert_signature_position != null
+          ? String(row.cert_signature_position)
+          : null,
+      customText:
+        row.cert_signature_text != null ? String(row.cert_signature_text) : null,
+    },
     status: row.status as Company["status"],
     licenseStatus: row.license_status as Company["licenseStatus"],
     licenseExpiresAt: row.license_expires_at
@@ -33,13 +113,29 @@ export function mapCompany(row: Record<string, unknown>): Company {
     licenseActivatedAt: row.license_activated_at
       ? new Date(String(row.license_activated_at)).toISOString()
       : null,
+    industryId: row.industry_id != null ? Number(row.industry_id) : null,
+    businessTypeId:
+      row.business_type_id != null ? Number(row.business_type_id) : null,
+    industryName: row.industry_name != null ? String(row.industry_name) : null,
+    businessTypeName:
+      row.business_type_name != null ? String(row.business_type_name) : null,
     createdAt: new Date(String(row.created_at)).toISOString(),
   };
 }
 
 export async function getCompanyById(id: number): Promise<Company | undefined> {
   const sql = getSql();
-  const rows = await sql`SELECT * FROM companies WHERE id = ${id} LIMIT 1`;
+  const rows = await sql`
+    SELECT
+      c.*,
+      i.name AS industry_name,
+      bt.name AS business_type_name
+    FROM companies c
+    LEFT JOIN industries i ON i.id = c.industry_id
+    LEFT JOIN business_types bt ON bt.id = c.business_type_id
+    WHERE c.id = ${id}
+    LIMIT 1
+  `;
   return rows[0] ? mapCompany(rows[0] as Record<string, unknown>) : undefined;
 }
 
@@ -137,20 +233,47 @@ export async function countCompanyUsersStatus(companyId: number): Promise<{
   };
 }
 
-export async function getCompanySummaries(): Promise<
-  Array<{
-    id: number;
-    name: string;
-    status: string;
-    licenseStatus: string;
-    licenseExpiresAt: string | null;
-    createdAt: string;
-    employeeCount: number;
-    adminCount: number;
-    adminContacts: Array<{ name: string; email: string }>;
-  }>
-> {
+export async function listCompanySummaries(
+  query: ListQueryState
+): Promise<{ companies: CompanySummaryRow[]; meta: ListMeta }> {
   const sql = getSql();
+  const search = query.search.trim().toLowerCase();
+  const searchPattern = search ? `%${search}%` : null;
+
+  const statusFilter =
+    query.status === "active"
+      ? sql`AND c.status = 'active'`
+      : query.status === "archived"
+        ? sql`AND c.status != 'active'`
+        : sql``;
+
+  const industryFilter =
+    query.industryId != null
+      ? sql`AND c.industry_id = ${query.industryId}`
+      : sql``;
+
+  const businessTypeFilter =
+    query.businessTypeId != null
+      ? sql`AND c.business_type_id = ${query.businessTypeId}`
+      : sql``;
+
+  const searchFilter = searchPattern
+    ? sql`AND (
+        LOWER(c.name) LIKE ${searchPattern}
+        OR LOWER(COALESCE(i.name, '')) LIKE ${searchPattern}
+        OR LOWER(COALESCE(bt.name, '')) LIKE ${searchPattern}
+      )`
+    : sql``;
+
+  const sort = resolveSortColumn(
+    query.sortBy,
+    query.sortDirection,
+    COMPANY_SORT_ALLOWLIST,
+    "c.created_at",
+    "desc"
+  );
+  const orderBy = buildOrderBySql(sql, sort.column, sort.direction, "last");
+
   const rows = await sql`
     WITH user_stats AS (
       SELECT
@@ -185,43 +308,54 @@ export async function getCompanySummaries(): Promise<
       c.license_status,
       c.license_expires_at,
       c.created_at,
+      c.industry_id,
+      c.business_type_id,
+      i.name AS industry_name,
+      bt.name AS business_type_name,
       COALESCE(us.employee_count, 0) AS employee_count,
       COALESCE(us.admin_count, 0) AS admin_count,
-      COALESCE(ac.admin_contacts, '[]'::json) AS admin_contacts
+      COALESCE(ac.admin_contacts, '[]'::json) AS admin_contacts,
+      COUNT(*) OVER()::int AS total_count
     FROM companies c
+    LEFT JOIN industries i ON i.id = c.industry_id
+    LEFT JOIN business_types bt ON bt.id = c.business_type_id
     LEFT JOIN user_stats us ON us.company_id = c.id
     LEFT JOIN admin_contacts ac ON ac.company_id = c.id
     WHERE c.slug != ${OPERATOR_COMPANY_SLUG}
-    ORDER BY c.created_at DESC
+    ${statusFilter}
+    ${industryFilter}
+    ${businessTypeFilter}
+    ${searchFilter}
+    ORDER BY ${orderBy}, c.name ASC
+    LIMIT ${query.pageSize}
+    OFFSET ${query.offset}
   `;
 
-  return rows.map((row) => {
-    const rawContacts = row.admin_contacts;
-    let adminContacts: Array<{ name: string; email: string }> = [];
-    if (Array.isArray(rawContacts)) {
-      adminContacts = rawContacts as Array<{ name: string; email: string }>;
-    } else if (typeof rawContacts === "string") {
-      try {
-        adminContacts = JSON.parse(rawContacts) as Array<{ name: string; email: string }>;
-      } catch {
-        adminContacts = [];
-      }
-    }
+  const total = rows.length > 0 ? Number(rows[0].total_count ?? 0) : 0;
+  return {
+    companies: rows.map((row) =>
+      mapCompanySummaryRow(row as Record<string, unknown>)
+    ),
+    meta: buildListMeta(query, total),
+  };
+}
 
-    return {
-      id: Number(row.id),
-      name: String(row.name),
-      status: String(row.status),
-      licenseStatus: String(row.license_status),
-      licenseExpiresAt: row.license_expires_at
-        ? new Date(String(row.license_expires_at)).toISOString()
-        : null,
-      createdAt: new Date(String(row.created_at)).toISOString(),
-      employeeCount: Number(row.employee_count ?? 0),
-      adminCount: Number(row.admin_count ?? 0),
-      adminContacts,
-    };
+export async function getCompanySummaries(): Promise<CompanySummaryRow[]> {
+  const { companies } = await listCompanySummaries({
+    page: 1,
+    pageSize: 10000,
+    offset: 0,
+    search: "",
+    sortBy: "createdAt",
+    sortDirection: "desc",
+    status: "all",
+    industryId: null,
+    businessTypeId: null,
+    categoryId: null,
+    companyId: null,
+    role: null,
   });
+  return companies;
 }
 
 export async function deleteCompanyUser(userId: number, companyId: number): Promise<boolean> {

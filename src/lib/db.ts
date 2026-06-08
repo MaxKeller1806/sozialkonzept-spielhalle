@@ -12,17 +12,45 @@ function getDatabaseUrl(): string {
   return url;
 }
 
+function connectionErrorCode(err: unknown): string {
+  if (!err || typeof err !== "object" || !("code" in err)) return "";
+  return String((err as { code: unknown }).code).toUpperCase();
+}
+
 export function isDbConnectionError(err: unknown): boolean {
+  if (isQueryTimeoutError(err)) return false;
+
+  const code = connectionErrorCode(err);
+  if (
+    code === "CONNECTION_DESTROYED" ||
+    code === "ECONNRESET" ||
+    code === "ECONNREFUSED" ||
+    code === "EPIPE" ||
+    code === "ETIMEDOUT" ||
+    code === "57P01" ||
+    code === "08006" ||
+    code === "08003" ||
+    code === "08000" ||
+    code === "XX000"
+  ) {
+    return true;
+  }
+
   const msg = (err instanceof Error ? err.message : String(err)).toUpperCase();
   return (
+    msg.includes("CONNECTION_DESTROYED") ||
     msg.includes("CONNECTION_ENDED") ||
     msg.includes("CONNECTION TERMINATED") ||
     msg.includes("CONNECTION CLOSED") ||
+    msg.includes("CONNECTION DOES NOT EXIST") ||
     msg.includes("ECONNRESET") ||
     msg.includes("ECONNREFUSED") ||
     msg.includes("CONNECT TIMEOUT") ||
+    msg.includes("ETIMEDOUT") ||
+    msg.includes("EPIPE") ||
     msg.includes("SOCKET CLOSED") ||
-    msg.includes("CANNOT USE A POOL AFTER CALLING END")
+    msg.includes("CANNOT USE A POOL AFTER CALLING END") ||
+    msg.includes("CLIENT HAS ENCOUNTERED A CONNECTION ERROR")
   );
 }
 
@@ -45,10 +73,11 @@ function createSql(): postgres.Sql {
     ssl: process.env.NODE_ENV === "production" ? "require" : "prefer",
     prepare: false,
     fetch_types: false,
+    /** Supabase Transaction Pooler (6543): eine Verbindung pro Serverless-Instanz. */
     max: 1,
-    idle_timeout: 10,
-    connect_timeout: 5,
-    max_lifetime: 60,
+    idle_timeout: 20,
+    connect_timeout: 10,
+    max_lifetime: 60 * 5,
     onclose: () => {
       sql = null;
     },
@@ -73,7 +102,14 @@ export async function resetSql(): Promise<void> {
   }
 }
 
-/** Bricht nach ms ab, setzt DB-Client zurück (kein Retry bei Timeout). */
+/** Pool nur bei Verbindungs-/Timeout-Fehlern zurücksetzen (nicht bei 404/Validierung). */
+export async function resetSqlOnFailure(err: unknown): Promise<void> {
+  if (isQueryTimeoutError(err) || isDbConnectionError(err)) {
+    await resetSql();
+  }
+}
+
+/** Bricht nach ms ab, setzt DB-Client bei Timeout/Verbindungsfehler zurück. */
 export async function withQueryTimeout<T>(
   operation: () => Promise<T>,
   timeoutMs = 5000
@@ -87,16 +123,14 @@ export async function withQueryTimeout<T>(
       }),
     ]);
   } catch (err) {
-    if (isQueryTimeoutError(err) || isDbConnectionError(err)) {
-      await resetSql();
-    }
+    await resetSqlOnFailure(err);
     throw err;
   } finally {
     if (timer) clearTimeout(timer);
   }
 }
 
-/** Einmaliger Retry nach CONNECTION_ENDED (Supabase Transaction Pooler). */
+/** Einmaliger Retry nach Pooler-/Verbindungsabbruch (z. B. CONNECTION_DESTROYED). */
 export async function withDbRetry<T>(operation: () => Promise<T>): Promise<T> {
   try {
     return await operation();
@@ -109,7 +143,7 @@ export async function withDbRetry<T>(operation: () => Promise<T>): Promise<T> {
   }
 }
 
-/** Query mit 5s-Timeout; ein Retry nur bei Verbindungsfehler. */
+/** Query mit Timeout; ein Retry nur bei Verbindungsfehler. */
 export async function withDbQuery<T>(
   operation: () => Promise<T>,
   timeoutMs = 5000

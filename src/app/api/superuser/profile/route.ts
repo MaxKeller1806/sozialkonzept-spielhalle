@@ -6,6 +6,7 @@ import {
   toSessionUser,
 } from "@/lib/auth";
 import { ensureSeeded, getSql, resetSql } from "@/lib/db";
+import { bodyIncludesJoinedCompanyAt, bodyIncludesLeftCompanyAt } from "@/lib/user-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,21 @@ export async function PATCH(request: Request) {
   try {
     const sessionUser = await requireSuperuser();
     const body = await request.json();
+
+    if (bodyIncludesJoinedCompanyAt(body as Record<string, unknown>)) {
+      return NextResponse.json(
+        { error: "Eintrittsdatum wird in der Mitarbeiterverwaltung gepflegt." },
+        { status: 403 }
+      );
+    }
+
+    if (bodyIncludesLeftCompanyAt(body as Record<string, unknown>)) {
+      return NextResponse.json(
+        { error: "Austrittsdatum wird in der Mitarbeiterverwaltung gepflegt." },
+        { status: 403 }
+      );
+    }
+
     const { firstName, lastName } = body;
 
     const patch: Record<string, string> = {};

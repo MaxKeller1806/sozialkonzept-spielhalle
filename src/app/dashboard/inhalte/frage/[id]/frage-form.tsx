@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AdminNav } from "@/components/admin-nav";
-import { AppHeader, Button, Card, Input, Select, Textarea } from "@/components/ui";
+import { PageHeader } from "@/components/page-header";
+import { Button, Card, Input, Select, Textarea } from "@/components/ui";
 
 type QuestionType = "single" | "multiple" | "boolean";
 
@@ -162,28 +162,26 @@ export default function FrageForm() {
   }
 
   if (loading && !isNew) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">Lädt…</div>
-    );
+    return <p className="px-4 py-8 text-sm text-slate-600">Lädt…</p>;
   }
 
   return (
-    <div className="min-h-screen pb-16">
-      <AppHeader title={isNew ? "Neue Frage" : `Frage ${idParam} bearbeiten`} />
-      <div className="mx-auto max-w-2xl px-4 py-8">
-        <AdminNav active="seminare" />
+    <div className="mx-auto max-w-2xl px-4 py-8">
+      <PageHeader title={isNew ? "Neue Frage" : `Frage ${idParam} bearbeiten`} />
+      <div className="mb-4 text-sm">
         <Link
           href={`/dashboard/inhalte/modul/${moduleId}${courseQuery}`}
-          className="mb-1 inline-block text-sm font-medium text-brand hover:underline"
+          className="font-medium text-brand hover:underline"
         >
           ← Zum Modul
         </Link>
         <Link
           href={`/dashboard/inhalte${courseQuery}`}
-          className="mb-4 ml-4 inline-block text-sm text-slate-500 hover:underline"
+          className="ml-4 text-slate-500 hover:underline"
         >
           Kursübersicht
         </Link>
+      </div>
 
         <Card>
           <div className="space-y-4">
@@ -329,7 +327,6 @@ export default function FrageForm() {
             )}
           </div>
         </Card>
-      </div>
     </div>
   );
 }

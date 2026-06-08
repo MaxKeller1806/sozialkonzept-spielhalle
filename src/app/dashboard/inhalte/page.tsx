@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { AdminNav } from "@/components/admin-nav";
-import { AppHeader, Button, Card } from "@/components/ui";
+import { PageHeader } from "@/components/page-header";
+import { Button, Card } from "@/components/ui";
 import { isMasterCourseId } from "@/lib/course-editor-id";
 
 interface CourseOverview {
@@ -35,7 +35,7 @@ function DeactivatedBadge() {
 
 export default function InhaltePage() {
   return (
-    <Suspense fallback={<div className="p-8">Lädt…</div>}>
+    <Suspense fallback={<p className="px-4 py-8 text-sm text-slate-600">Lädt…</p>}>
       <InhalteContent />
     </Suspense>
   );
@@ -53,11 +53,7 @@ function InhalteContent() {
   }, [courseId, router]);
 
   if (!courseId) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-slate-600">
-        Weiterleitung…
-      </div>
-    );
+    return <p className="px-4 py-8 text-sm text-slate-600">Weiterleitung…</p>;
   }
 
   return <InhalteEditor courseId={courseId} />;
@@ -190,30 +186,23 @@ function InhalteEditor({ courseId }: { courseId: string }) {
   );
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">Lädt…</div>
-    );
+    return <p className="px-4 py-8 text-sm text-slate-600">Lädt…</p>;
   }
 
   if (error) {
     return (
-      <div className="min-h-screen pb-16">
-        <AppHeader title="Kursinhalte bearbeiten" />
-        <div className="mx-auto max-w-4xl px-4 py-8">
-          <AdminNav active="seminare" />
-          <Card className="border-red-200 bg-red-50">
-            <p className="text-sm text-red-800">{error}</p>
-          </Card>
-        </div>
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <PageHeader title="Kursinhalte bearbeiten" />
+        <Card className="border-red-200 bg-red-50">
+          <p className="text-sm text-red-800">{error}</p>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pb-16">
-      <AppHeader title="Kursinhalte bearbeiten" />
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <AdminNav active="seminare" />
+    <div className="mx-auto max-w-4xl px-4 py-8">
+      <PageHeader title="Kursinhalte bearbeiten" />
 
         <p className="mb-4 text-sm text-slate-600">
           {isMaster ? (
@@ -487,11 +476,10 @@ function InhalteEditor({ courseId }: { courseId: string }) {
           </>
         )}
 
-        <p className="mt-6 text-center text-xs text-slate-500">
-          Änderungen werden in der Firmenkurs-Datenbank gespeichert und sind nach dem
-          Speichern in der Schulung sichtbar (sofern nicht durch Certiano deaktiviert).
-        </p>
-      </div>
+      <p className="mt-6 text-center text-xs text-slate-500">
+        Änderungen werden in der Firmenkurs-Datenbank gespeichert und sind nach dem
+        Speichern in der Schulung sichtbar (sofern nicht durch Certiano deaktiviert).
+      </p>
     </div>
   );
 }

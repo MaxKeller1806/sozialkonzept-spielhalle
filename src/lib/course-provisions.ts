@@ -322,8 +322,8 @@ export async function updateProvision(
       ? status === "disabled"
       : existing.disabledBySuperuser;
 
-  if (status === "disabled") {
-    canDeactivate = false;
+  if (status === "active" && existing.masterCourseId == null) {
+    canDeactivate = true;
   }
 
   await sql`
@@ -375,14 +375,22 @@ export async function assignMasterToCompany(
     INSERT INTO courses (
       id, company_id, slug, title, description, version,
       passing_score, validity_months, validity_type, validity_interval_value,
-      validity_interval_unit, content_json, active, master_course_id
+      validity_interval_unit, content_json, active, master_course_id,
+      main_category, seminar, instruction_code, instruction_title,
+      sort_order, requires_certificate, requires_proof,
+      estimated_duration_minutes
     )
     VALUES (
       ${courseId}, ${companyId}, ${slug}, ${cloned.courseName}, NULL,
       ${cloned.version}, ${cloned.passingScore}, ${masterMeta?.validityMonths ?? cloned.certificateValidityMonths},
       ${masterMeta?.validityType ?? "yearly"}, ${masterMeta?.validityIntervalValue ?? null},
       ${masterMeta?.validityIntervalUnit ?? null},
-      ${JSON.stringify(cloned)}::jsonb, TRUE, ${masterCourseId}
+      ${JSON.stringify(cloned)}::jsonb, TRUE, ${masterCourseId},
+      ${masterMeta?.mainCategory ?? null}, ${masterMeta?.seminar ?? null},
+      ${masterMeta?.instructionCode ?? null}, ${masterMeta?.instructionTitle ?? null},
+      ${masterMeta?.sortOrder ?? 0}, ${masterMeta?.requiresCertificate ?? true},
+      ${masterMeta?.requiresProof ?? true},
+      ${masterMeta?.estimatedDurationMinutes ?? null}
     )
     ON CONFLICT (id) DO UPDATE SET
       title = EXCLUDED.title,
@@ -394,6 +402,15 @@ export async function assignMasterToCompany(
       validity_interval_unit = EXCLUDED.validity_interval_unit,
       content_json = EXCLUDED.content_json,
       master_course_id = EXCLUDED.master_course_id,
+      main_category = EXCLUDED.main_category,
+      seminar = EXCLUDED.seminar,
+      instruction_code = EXCLUDED.instruction_code,
+      instruction_title = EXCLUDED.instruction_title,
+      sort_order = EXCLUDED.sort_order,
+      requires_certificate = EXCLUDED.requires_certificate,
+      requires_proof = EXCLUDED.requires_proof,
+      estimated_duration_minutes = EXCLUDED.estimated_duration_minutes,
+      updated_at = NOW(),
       active = TRUE
   `;
 
@@ -473,19 +490,30 @@ export function provisionPermissions(provision?: CourseProvision) {
       canEditTests: true,
       canAddModules: true,
       canDeactivate: true,
+      canArchive: true,
+      canReactivate: false,
       readOnly: false,
       fromMaster: false,
+      disabledBySuperuser: false,
       status: "active" as CourseProvisionStatus,
     };
   }
   const active = provision.status === "active";
+  const isNative = provision.source === "native";
   return {
     canEditContent: active && provision.canEditContent,
     canEditTests: active && provision.canEditTests,
     canAddModules: active && provision.canAddModules,
-    canDeactivate: active && provision.canDeactivate && !provision.disabledBySuperuser,
+    canDeactivate:
+      active && provision.canDeactivate && !provision.disabledBySuperuser,
+    canArchive:
+      active &&
+      !provision.disabledBySuperuser &&
+      (isNative || provision.canDeactivate),
+    canReactivate: !active && !provision.disabledBySuperuser,
     readOnly: !provision.canEditContent || provision.source === "master",
     fromMaster: provision.source === "master",
+    disabledBySuperuser: provision.disabledBySuperuser,
     status: provision.status,
   };
 }

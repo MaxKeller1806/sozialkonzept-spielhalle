@@ -1,6 +1,20 @@
 import { getSql } from "./db";
 import type { PrivacyPolicyVersion } from "./types";
 
+const ACTIVE_POLICY_CACHE_MS = 60_000;
+const ACCEPTANCE_RESULT_CACHE_MS = 5_000;
+
+let activePolicyCache:
+  | { policy: PrivacyPolicyVersion | undefined; expiresAt: number }
+  | undefined;
+let activePolicyInFlight: Promise<PrivacyPolicyVersion | undefined> | undefined;
+
+const acceptanceResultCache = new Map<
+  number,
+  { accepted: boolean; expiresAt: number }
+>();
+const acceptanceInFlight = new Map<number, Promise<boolean>>();
+
 function mapVersion(row: Record<string, unknown>): PrivacyPolicyVersion {
   return {
     id: Number(row.id),
@@ -23,10 +37,36 @@ const DEFAULT_PRIVACY_CONTENT =
   "Mit Bestätigung erklären Sie, dass Sie diese Datenschutzerklärung gelesen und verstanden haben.";
 
 export async function getActivePrivacyPolicy(): Promise<PrivacyPolicyVersion | undefined> {
+  const now = Date.now();
+  if (activePolicyCache && activePolicyCache.expiresAt > now) {
+    return activePolicyCache.policy;
+  }
+
+  if (activePolicyInFlight) {
+    return activePolicyInFlight;
+  }
+
+  activePolicyInFlight = loadActivePrivacyPolicy()
+    .then((policy) => {
+      activePolicyCache = {
+        policy,
+        expiresAt: Date.now() + ACTIVE_POLICY_CACHE_MS,
+      };
+      return policy;
+    })
+    .finally(() => {
+      activePolicyInFlight = undefined;
+    });
+
+  return activePolicyInFlight;
+}
+
+async function loadActivePrivacyPolicy(): Promise<PrivacyPolicyVersion | undefined> {
   const sql = getSql();
   try {
     const rows = await sql`
-      SELECT * FROM privacy_policy_versions
+      SELECT id, version, title, content, effective_from, active, created_at
+      FROM privacy_policy_versions
       WHERE active = TRUE
       ORDER BY effective_from DESC, id DESC
       LIMIT 1
@@ -45,8 +85,9 @@ export async function getActivePrivacyPolicy(): Promise<PrivacyPolicyVersion | u
         TRUE
       )
       ON CONFLICT (version) DO UPDATE SET active = TRUE
-      RETURNING *
+      RETURNING id, version, title, content, effective_from, active, created_at
     `;
+    activePolicyCache = undefined;
     return inserted[0]
       ? mapVersion(inserted[0] as Record<string, unknown>)
       : undefined;
@@ -56,26 +97,57 @@ export async function getActivePrivacyPolicy(): Promise<PrivacyPolicyVersion | u
   }
 }
 
-export async function hasAcceptedCurrentPolicy(userId: number): Promise<boolean> {
-  try {
-    const sql = getSql();
-    const rows = await sql`
-      SELECT p.id
-      FROM privacy_policy_acceptances p
-      JOIN privacy_policy_versions v ON v.id = p.version_id AND v.active = TRUE
-      WHERE p.user_id = ${userId}
-      LIMIT 1
-    `;
-    if (rows.length > 0) return true;
+function invalidateAcceptanceCache(userId: number): void {
+  acceptanceResultCache.delete(userId);
+}
 
-    const policyRows = await sql`
-      SELECT id FROM privacy_policy_versions WHERE active = TRUE LIMIT 1
-    `;
-    return policyRows.length === 0;
-  } catch (err) {
-    console.error("[privacy] hasAcceptedCurrentPolicy Fehler:", err);
-    return false;
+/** Bei DB-Fehler true: kein fälschlicher Redirect zu /datenschutz/bestaetigen. */
+async function queryCurrentPolicyAcceptance(userId: number): Promise<boolean> {
+  const policy = await getActivePrivacyPolicy();
+  if (!policy) return true;
+
+  const sql = getSql();
+  const rows = await sql`
+    SELECT 1 AS ok
+    FROM privacy_policy_acceptances
+    WHERE user_id = ${userId}
+      AND version_id = ${policy.id}
+    LIMIT 1
+  `;
+  return rows.length > 0;
+}
+
+export async function hasAcceptedCurrentPolicy(userId: number): Promise<boolean> {
+  const now = Date.now();
+  const cached = acceptanceResultCache.get(userId);
+  if (cached && cached.expiresAt > now) {
+    return cached.accepted;
   }
+
+  const inFlight = acceptanceInFlight.get(userId);
+  if (inFlight) return inFlight;
+
+  const promise = (async () => {
+    try {
+      const accepted = await queryCurrentPolicyAcceptance(userId);
+      acceptanceResultCache.set(userId, {
+        accepted,
+        expiresAt: Date.now() + ACCEPTANCE_RESULT_CACHE_MS,
+      });
+      return accepted;
+    } catch (err) {
+      console.error(
+        "[privacy] hasAcceptedCurrentPolicy Fehler – kein Redirect erzwungen:",
+        err
+      );
+      return true;
+    }
+  })().finally(() => {
+    acceptanceInFlight.delete(userId);
+  });
+
+  acceptanceInFlight.set(userId, promise);
+  return promise;
 }
 
 export async function recordPrivacyAcceptance(
@@ -100,6 +172,9 @@ export async function recordPrivacyAcceptance(
       user_agent = COALESCE(EXCLUDED.user_agent, privacy_policy_acceptances.user_agent)
     RETURNING id
   `;
+  if (rows.length > 0) {
+    invalidateAcceptanceCache(userId);
+  }
   return rows.length > 0;
 }
 
@@ -138,8 +213,11 @@ export async function getCompanyPrivacyStats(companyId: number): Promise<{
   const sql = getSql();
 
   const totalRows = await sql`
-    SELECT COUNT(*)::int AS cnt FROM users
-    WHERE company_id = ${companyId} AND role = 'employee' AND active = TRUE
+    SELECT COUNT(*)::int AS cnt FROM users u
+    WHERE u.company_id = ${companyId}
+      AND u.role = 'employee'
+      AND u.active = TRUE
+      AND (u.left_company_at IS NULL OR u.left_company_at > CURRENT_DATE)
   `;
   const totalEmployees = Number(totalRows[0]?.cnt ?? 0);
 
@@ -154,6 +232,7 @@ export async function getCompanyPrivacyStats(companyId: number): Promise<{
     WHERE u.company_id = ${companyId}
       AND u.role = 'employee'
       AND u.active = TRUE
+      AND (u.left_company_at IS NULL OR u.left_company_at > CURRENT_DATE)
       AND p.version_id = ${policy.id}
   `;
 

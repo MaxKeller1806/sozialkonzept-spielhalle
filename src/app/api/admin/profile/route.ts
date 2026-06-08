@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth";
 import { getSql } from "@/lib/db";
 import { mapUserWithPassword } from "@/lib/db/row-mappers";
+import { bodyIncludesJoinedCompanyAt, bodyIncludesLeftCompanyAt } from "@/lib/user-profile";
 
 export async function GET() {
   try {
@@ -42,6 +43,21 @@ export async function PATCH(request: Request) {
   try {
     const sessionUser = await requireAdmin();
     const body = await request.json();
+
+    if (bodyIncludesJoinedCompanyAt(body as Record<string, unknown>)) {
+      return NextResponse.json(
+        { error: "Eintrittsdatum wird nur in der Mitarbeiterverwaltung gepflegt." },
+        { status: 403 }
+      );
+    }
+
+    if (bodyIncludesLeftCompanyAt(body as Record<string, unknown>)) {
+      return NextResponse.json(
+        { error: "Austrittsdatum wird nur in der Mitarbeiterverwaltung gepflegt." },
+        { status: 403 }
+      );
+    }
+
     const { email, password, currentPassword } = body;
 
     if (!currentPassword) {

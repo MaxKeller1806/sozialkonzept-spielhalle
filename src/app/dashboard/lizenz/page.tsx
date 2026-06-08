@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { AdminNav } from "@/components/admin-nav";
-import { AppHeader, Button, Card, Input } from "@/components/ui";
+import { PageHeader } from "@/components/page-header";
+import { Button, Card, Input } from "@/components/ui";
 
 export default function LizenzPage() {
   const router = useRouter();
@@ -30,31 +30,27 @@ export default function LizenzPage() {
   }
 
   return (
-    <div className="min-h-screen pb-16">
-      <AppHeader title="Lizenz aktivieren" />
-      <div className="mx-auto max-w-lg px-4 py-8">
-        <AdminNav active="firma" />
-        <Card>
-          <h2 className="text-lg font-bold">Lizenzschlüssel eingeben</h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Ihre Firma wurde noch nicht freigeschaltet. Bitte geben Sie den
-            Lizenzschlüssel ein, den Sie von Ihrem Anbieter erhalten haben.
-          </p>
-          <form onSubmit={activate} className="mt-6 space-y-4">
-            <Input
-              label="Lizenzschlüssel"
-              required
-              value={licenseKey}
-              onChange={(e) => setLicenseKey(e.target.value)}
-            />
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            {message && <p className="text-sm text-brand">{message}</p>}
-            <Button type="submit" className="w-full">
-              Firma freischalten
-            </Button>
-          </form>
-        </Card>
-      </div>
+    <div className="mx-auto max-w-lg px-4 py-8">
+      <PageHeader
+        title="Lizenz aktivieren"
+        description="Ihre Firma wurde noch nicht freigeschaltet. Bitte geben Sie den Lizenzschlüssel ein, den Sie von Ihrem Anbieter erhalten haben."
+      />
+      <Card>
+        <h2 className="text-lg font-bold">Lizenzschlüssel eingeben</h2>
+        <form onSubmit={activate} className="mt-6 space-y-4">
+          <Input
+            label="Lizenzschlüssel"
+            required
+            value={licenseKey}
+            onChange={(e) => setLicenseKey(e.target.value)}
+          />
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {message && <p className="text-sm text-brand">{message}</p>}
+          <Button type="submit" className="w-full">
+            Firma freischalten
+          </Button>
+        </form>
+      </Card>
     </div>
   );
 }

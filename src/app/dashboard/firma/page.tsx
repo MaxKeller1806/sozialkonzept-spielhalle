@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { AdminNav } from "@/components/admin-nav";
+import { PageHeader } from "@/components/page-header";
 import { invalidateTenantBrandingCache } from "@/components/tenant-branding-loader";
-import { AppHeader, Button, Card, Input } from "@/components/ui";
+import { Button, Card, Input, Textarea } from "@/components/ui";
 import { applyBrandingCssVars } from "@/lib/branding-theme";
 
 export default function FirmaPage() {
@@ -23,6 +23,9 @@ export default function FirmaPage() {
     backgroundColor: "#f8fafc",
     accentColor: "#2563eb",
     logoUrl: "",
+    certSignaturePerson: "",
+    certSignaturePosition: "",
+    certSignatureText: "",
   });
   const [message, setMessage] = useState("");
 
@@ -52,6 +55,9 @@ export default function FirmaPage() {
           backgroundColor: c.branding.backgroundColor,
           accentColor: c.branding.accentColor,
           logoUrl: c.branding.logoUrl ?? "",
+          certSignaturePerson: c.documentSignature?.responsiblePerson ?? "",
+          certSignaturePosition: c.documentSignature?.position ?? "",
+          certSignatureText: c.documentSignature?.customText ?? "",
         });
       });
   }, [router]);
@@ -80,35 +86,71 @@ export default function FirmaPage() {
   }
 
   return (
-    <div className="min-h-screen pb-16">
-      <AppHeader title="Meine Firma" />
-      <div className="mx-auto max-w-3xl px-4 py-8">
-        <AdminNav active="firma" />
-        {message && (
-          <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">{message}</p>
-        )}
-        <Card>
-          <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
-            <Input label="Firmenname" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <Input label="E-Mail" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            <Input label="Straße" value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
-            <Input label="PLZ" value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} />
-            <Input label="Ort" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-            <Input label="Land" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
-            <Input label="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            <Input label="Website" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
-            <Input label="Logo-URL" value={form.logoUrl} onChange={(e) => setForm({ ...form, logoUrl: e.target.value })} />
-            <Input label="Primärfarbe" type="color" value={form.primaryColor} onChange={(e) => setForm({ ...form, primaryColor: e.target.value })} />
-            <Input label="Sekundärfarbe" type="color" value={form.secondaryColor} onChange={(e) => setForm({ ...form, secondaryColor: e.target.value })} />
-            <div className="sm:col-span-2 rounded-xl border p-4" style={{ backgroundColor: form.backgroundColor }}>
-              <p className="text-lg font-bold" style={{ color: form.primaryColor }}>{form.name} – Vorschau</p>
+    <div className="mx-auto max-w-3xl px-4 py-8">
+      <PageHeader title="Meine Firma" />
+      {message && (
+        <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">{message}</p>
+      )}
+      <Card>
+        <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
+          <Input label="Firmenname" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <Input label="E-Mail" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Input label="Straße" value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
+          <Input label="PLZ" value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} />
+          <Input label="Ort" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+          <Input label="Land" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+          <Input label="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <Input label="Website" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
+          <Input label="Logo-URL" value={form.logoUrl} onChange={(e) => setForm({ ...form, logoUrl: e.target.value })} />
+          <Input label="Primärfarbe" type="color" value={form.primaryColor} onChange={(e) => setForm({ ...form, primaryColor: e.target.value })} />
+          <Input label="Sekundärfarbe" type="color" value={form.secondaryColor} onChange={(e) => setForm({ ...form, secondaryColor: e.target.value })} />
+          <div className="sm:col-span-2 rounded-xl border p-4" style={{ backgroundColor: form.backgroundColor }}>
+            <p className="text-lg font-bold" style={{ color: form.primaryColor }}>{form.name} – Vorschau</p>
+          </div>
+
+          <div className="sm:col-span-2 mt-2 border-t border-slate-200 pt-6">
+            <h2 className="mb-1 text-base font-bold text-slate-900">
+              Zertifikate &amp; Nachweise – Signatur
+            </h2>
+            <p className="mb-4 text-sm text-slate-600">
+              Diese Angaben erscheinen auf ausgestellten Zertifikaten und Nachweisen,
+              wenn der Signaturbereich in der globalen Vorlage aktiviert ist.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label="Verantwortliche Person"
+                placeholder="z. B. Max Mustermann"
+                value={form.certSignaturePerson}
+                onChange={(e) =>
+                  setForm({ ...form, certSignaturePerson: e.target.value })
+                }
+              />
+              <Input
+                label="Position / Funktion"
+                placeholder="z. B. Geschäftsführer"
+                value={form.certSignaturePosition}
+                onChange={(e) =>
+                  setForm({ ...form, certSignaturePosition: e.target.value })
+                }
+              />
+              <div className="sm:col-span-2">
+                <Textarea
+                  label="Zusätzlicher Signaturtext (optional)"
+                  placeholder="z. B. Im Auftrag der Spielhallenleitung"
+                  value={form.certSignatureText}
+                  onChange={(e) =>
+                    setForm({ ...form, certSignatureText: e.target.value })
+                  }
+                />
+              </div>
             </div>
-            <div className="sm:col-span-2">
-              <Button type="submit">Speichern</Button>
-            </div>
-          </form>
-        </Card>
-      </div>
+          </div>
+
+          <div className="sm:col-span-2">
+            <Button type="submit">Speichern</Button>
+          </div>
+        </form>
+      </Card>
     </div>
   );
 }

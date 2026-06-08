@@ -1,82 +1,106 @@
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import {
+  IconBadge,
+  IconBook,
+  IconBuilding,
+  IconCertificate,
+  IconDashboard,
+  IconPalette,
+  IconSettings,
+  IconUser,
+  IconUsers,
+} from "@/components/shell/nav-icons";
+import type { SidebarNavItem } from "@/components/shell/sidebar-nav";
 
-const links = [
-  { href: "/certiano", label: "Firmen", match: (p: string) => p === "/certiano" },
-  {
-    href: "/certiano/users",
-    label: "Benutzer",
-    match: (p: string) => p === "/certiano/users",
-  },
-  {
-    href: "/certiano/master-courses",
-    label: "Seminarverwaltung",
-    match: (p: string) => p.startsWith("/certiano/master-courses"),
-  },
-  {
-    href: "/certiano/branding",
-    label: "Branding",
-    match: (p: string) => p.startsWith("/certiano/branding"),
-  },
-  {
-    href: "/certiano/konto",
-    label: "Mein Konto",
-    match: (p: string) => p === "/certiano/konto",
-  },
-];
+export function getCertianoSidebarItems(companyId?: number): SidebarNavItem[] {
+  const items: SidebarNavItem[] = [
+    {
+      href: "/certiano/uebersicht",
+      label: "Dashboard",
+      icon: <IconDashboard />,
+      match: (p) => p === "/certiano/uebersicht",
+    },
+    {
+      href: "/certiano",
+      label: "Firmen",
+      icon: <IconBuilding />,
+      match: (p) =>
+        p === "/certiano" ||
+        (p.startsWith("/certiano/companies") &&
+          !p.includes("/courses") &&
+          !p.endsWith("/users")),
+    },
+    {
+      href: "/certiano/users",
+      label: "Benutzer",
+      icon: <IconUsers />,
+      match: (p) => p === "/certiano/users",
+    },
+    {
+      href: "/certiano/industries",
+      label: "Branchen",
+      icon: <IconBook />,
+      match: (p) => p.startsWith("/certiano/industries"),
+    },
+    {
+      href: "/certiano/verantwortlichkeiten",
+      label: "Verantwortlichkeiten",
+      icon: <IconBadge />,
+      match: (p) => p.startsWith("/certiano/verantwortlichkeiten"),
+    },
+    {
+      href: "/certiano/master-courses",
+      label: "Seminarverwaltung",
+      icon: <IconBook />,
+      match: (p) => p.startsWith("/certiano/master-courses"),
+    },
+    {
+      href: "/certiano/branding",
+      label: "Branding",
+      icon: <IconPalette />,
+      match: (p) => p.startsWith("/certiano/branding"),
+    },
+    {
+      href: "/certiano/zertifikate",
+      label: "Zertifikate & Nachweise",
+      icon: <IconCertificate />,
+      match: (p) => p.startsWith("/certiano/zertifikate"),
+    },
+    {
+      href: "/certiano/einstellungen",
+      label: "Plattform-Einstellungen",
+      icon: <IconSettings />,
+      match: (p) => p.startsWith("/certiano/einstellungen"),
+    },
+    {
+      href: "/certiano/konto",
+      label: "Mein Konto",
+      icon: <IconUser />,
+      match: (p) => p === "/certiano/konto",
+    },
+  ];
 
-export function CertianoNav({ companyId }: { companyId?: number }) {
-  const pathname = usePathname();
+  if (companyId != null) {
+    items.splice(3, 0, {
+      href: `/certiano/companies/${companyId}`,
+      label: "Firma bearbeiten",
+      icon: <IconBuilding />,
+      match: (p) => p === `/certiano/companies/${companyId}`,
+    });
+    items.splice(4, 0, {
+      href: `/certiano/companies/${companyId}/users`,
+      label: "Benutzer (Firma)",
+      icon: <IconUsers />,
+      match: (p) =>
+        p === `/certiano/companies/${companyId}/users` ||
+        (p.endsWith("/users") &&
+          p.includes(`/certiano/companies/${companyId}/`)),
+    });
+  }
 
-  return (
-    <nav className="mb-6 flex flex-wrap items-center gap-2" aria-label="Certiano">
-      {links.map((l) => (
-        <Link
-          key={l.href}
-          href={l.href}
-          className={`rounded-lg px-4 py-2 text-sm font-semibold ${
-            l.match(pathname)
-              ? "bg-slate-900 text-white"
-              : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
-          }`}
-        >
-          {l.label}
-        </Link>
-      ))}
-      {companyId != null && (
-        <>
-          <Link
-            href={`/certiano/companies/${companyId}`}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold ${
-              pathname === `/certiano/companies/${companyId}`
-                ? "bg-slate-900 text-white"
-                : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            Firma bearbeiten
-          </Link>
-          <Link
-            href={`/certiano/companies/${companyId}/users`}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold ${
-              pathname.endsWith("/users")
-                ? "bg-slate-900 text-white"
-                : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            Benutzer (Firma)
-          </Link>
-          <Link
-            href={`/certiano/companies/${companyId}/courses`}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold ${
-              pathname.endsWith("/courses")
-                ? "bg-slate-900 text-white"
-                : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            Kursfreigaben
-          </Link>
-        </>
-      )}
-    </nav>
-  );
+  return items;
+}
+
+/** @deprecated Layout nutzt Sidebar */
+export function CertianoNav({ companyId: _companyId }: { companyId?: number }) {
+  return null;
 }

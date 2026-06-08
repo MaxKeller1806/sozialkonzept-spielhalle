@@ -19,6 +19,7 @@ import {
   assertUserCourseAccess,
 } from "@/lib/training";
 import { getUserAssignedCourses } from "@/lib/course-db";
+import { MAIN_CATEGORIES } from "@/lib/course-hierarchy";
 import { resolveEmployeeCourse } from "@/lib/course-context";
 import { isDbConnectionError, resetSql, withDbRetry } from "@/lib/db";
 
@@ -41,7 +42,16 @@ export async function GET(request: Request) {
           enriched.push({
             id: c.id,
             title: c.title,
+            fullTitle: c.title,
+            code: c.instructionCode,
+            instructionTitle: c.instructionTitle,
+            mainCategory: c.mainCategory,
+            seminar: c.seminar,
+            sortOrder: c.sortOrder,
+            requiresCertificate: c.requiresCertificate,
+            requiresProof: c.requiresProof,
             slug: c.slug,
+            estimatedDurationMinutes: c.estimatedDurationMinutes,
             certificate: cert
               ? {
                   id: cert.id,
@@ -57,7 +67,10 @@ export async function GET(request: Request) {
             inProgress: !!attempt,
           });
         }
-        return NextResponse.json({ courses: enriched });
+        return NextResponse.json({
+          courses: enriched,
+          mainCategories: Object.values(MAIN_CATEGORIES),
+        });
       }
 
       await assertUserCourseAccess(user.id, user.companyId, courseIdParam);

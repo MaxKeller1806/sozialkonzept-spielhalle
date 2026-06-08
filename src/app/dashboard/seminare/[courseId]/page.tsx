@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { AdminNav } from "@/components/admin-nav";
+import { PageHeader } from "@/components/page-header";
 import { ValidityRuleForm, type ValidityRuleFormValue } from "@/components/validity-rule-form";
-import { AppHeader, Button, Card } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { formatValidityRuleLabel } from "@/lib/course-validity";
 import type { ValidityType } from "@/lib/course-validity";
 
@@ -120,23 +120,21 @@ export default function SeminarDetailPage() {
   }
 
   return (
-    <div className="min-h-screen pb-16">
-      <AppHeader title={course?.title ?? "Seminar"} />
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <AdminNav active="seminare" />
+    <div className="mx-auto max-w-4xl px-4 py-8">
+      <PageHeader title={course?.title ?? "Seminar"} />
 
-        <p className="mb-4 text-sm text-slate-600">
-          <Link href="/dashboard/seminare" className="text-brand underline">
-            ← Zur Seminarliste
-          </Link>
-          {" · "}
-          <Link
-            href={`/dashboard/seminare/${encodeURIComponent(courseId)}/inhalte`}
-            className="text-brand underline"
-          >
-            Inhalte bearbeiten
-          </Link>
-        </p>
+      <p className="mb-4 text-sm text-slate-600">
+        <Link href="/dashboard/seminare" className="text-brand underline">
+          ← Zur Seminarliste
+        </Link>
+        {" · "}
+        <Link
+          href={`/dashboard/seminare/${encodeURIComponent(courseId)}/inhalte`}
+          className="text-brand underline"
+        >
+          Inhalte bearbeiten
+        </Link>
+      </p>
 
         {loading ? (
           <p className="text-sm text-slate-600">Lädt…</p>
@@ -210,7 +208,6 @@ export default function SeminarDetailPage() {
             )}
           </>
         )}
-      </div>
     </div>
   );
 }

@@ -196,7 +196,7 @@ export async function getAuthState(user: SessionUser): Promise<AuthState> {
     } else if (!companyActive || !licenseActive) {
       redirect = "/dashboard/gesperrt";
     } else {
-      redirect = "/dashboard";
+      redirect = "/dashboard/uebersicht";
     }
   } else {
     if (!companyActive || !licenseActive) {
@@ -219,6 +219,6 @@ export async function getAuthState(user: SessionUser): Promise<AuthState> {
 
 export function defaultRedirectForRole(role: UserRole): string {
   if (role === "superuser") return "/certiano";
-  if (role === "admin") return "/dashboard";
+  if (role === "admin") return "/dashboard/uebersicht";
   return "/schulung";
 }

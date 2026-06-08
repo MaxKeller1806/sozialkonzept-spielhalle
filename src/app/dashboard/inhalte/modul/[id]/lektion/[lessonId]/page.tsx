@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { AdminNav } from "@/components/admin-nav";
+import { PageHeader } from "@/components/page-header";
 import {
   createEmptyEditorBlock,
   LessonBlockEditor,
 } from "@/components/lesson-block-editor";
 import { LessonContent } from "@/components/lesson-content";
-import { AppHeader, Button, Card, Input } from "@/components/ui";
+import { Button, Card, Input } from "@/components/ui";
 import {
   editorRowsToLessonBlocks,
   lessonToEditorRows,
@@ -20,7 +20,7 @@ import type { Lesson } from "@/lib/types";
 
 export default function LektionEditPage() {
   return (
-    <Suspense fallback={<div className="p-8">Lädt…</div>}>
+    <Suspense fallback={<p className="px-4 py-8 text-sm text-slate-600">Lädt…</p>}>
       <LektionEditContent />
     </Suspense>
   );
@@ -132,22 +132,20 @@ function LektionEditContent() {
   }
 
   if (loading && !isNew) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">Lädt…</div>
-    );
+    return <p className="px-4 py-8 text-sm text-slate-600">Lädt…</p>;
   }
 
   return (
-    <div className="min-h-screen pb-16">
-      <AppHeader title={isNew ? "Neuer Lerninhalt" : "Lerninhalt bearbeiten"} />
-      <div className="mx-auto max-w-3xl px-4 py-8">
-        <AdminNav active="seminare" />
+    <div className="mx-auto max-w-3xl px-4 py-8">
+      <PageHeader title={isNew ? "Neuer Lerninhalt" : "Lerninhalt bearbeiten"} />
+      <p className="mb-1 text-sm text-slate-600">
         <Link
           href={`/dashboard/inhalte/modul/${moduleId}${courseQuery}`}
-          className="mb-1 inline-block text-sm font-medium text-brand hover:underline"
+          className="font-medium text-brand hover:underline"
         >
           ← Zurück zu Modul{moduleTitle ? `: ${moduleTitle}` : ""}
         </Link>
+      </p>
 
         <Card className="mt-4">
           <p className="mb-4 text-sm text-slate-600">
@@ -207,7 +205,6 @@ function LektionEditContent() {
             )}
           </div>
         </Card>
-      </div>
     </div>
   );
 }

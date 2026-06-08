@@ -77,6 +77,20 @@ export default function CertianoUsersPage() {
     onError: (msg) => setError(msg),
   });
 
+  const hasActiveFilters =
+    filter !== "all" ||
+    roleFilter !== "all" ||
+    companyFilter !== "all" ||
+    search.trim() !== "";
+
+  function resetFilters() {
+    setFilter("all");
+    setRoleFilter("all");
+    setCompanyFilter("all");
+    setSearch("");
+    setSearchInput("");
+  }
+
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
     p.set("filter", filter);
@@ -435,6 +449,19 @@ export default function CertianoUsersPage() {
               <option value="archived">Archiviert</option>
             </select>
           </label>
+
+          {hasActiveFilters && (
+            <div className="flex items-end sm:col-span-2 lg:col-span-4">
+              <Button
+                type="button"
+                variant="secondary"
+                className="!w-auto"
+                onClick={resetFilters}
+              >
+                Filter zurücksetzen
+              </Button>
+            </div>
+          )}
         </form>
       </Card>
 
@@ -462,7 +489,13 @@ export default function CertianoUsersPage() {
       ) : users.length === 0 && !error ? (
         <Card>
           <p className="text-sm text-slate-600">
-            Keine Benutzer für die gewählten Filter gefunden.
+            {search.trim() || roleFilter !== "all" || companyFilter !== "all"
+              ? "Keine Treffer für die aktuelle Suche oder Filter."
+              : filter === "archived"
+                ? "Keine archivierten Benutzer."
+                : filter === "active"
+                  ? "Keine aktiven Benutzer."
+                  : "Keine Benutzer gefunden."}
           </p>
         </Card>
       ) : (

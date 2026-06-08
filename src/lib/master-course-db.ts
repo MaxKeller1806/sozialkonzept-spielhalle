@@ -9,6 +9,8 @@ import {
   type ValidityIntervalUnit,
   type ValidityType,
 } from "./course-validity";
+import { parseInstructionMetaFromRow } from "./course-instruction-meta";
+import type { CourseListFilters } from "./course-hierarchy";
 import { migrateCourse } from "./course-migrate";
 import { getSql } from "./db";
 import type {
@@ -69,9 +71,100 @@ function mapListItem(row: Record<string, unknown>): MasterCourseListItem {
     status: row.status as MasterCourseStatus,
     validityType: rule.validityType,
     validityLabel: formatValidityRuleLabel(rule),
+    active: row.status !== "disabled",
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at ?? row.created_at)).toISOString(),
+    ...parseInstructionMetaFromRow(row),
   };
+}
+
+function filterMasterRows(
+  rows: Record<string, unknown>[],
+  filters?: CourseListFilters
+) {
+  if (!filters) return rows;
+  return rows.filter((row) => {
+    const meta = parseInstructionMetaFromRow(row);
+    const rule = parseValidityRuleFromRow(row);
+    if (filters.mainCategory && meta.mainCategory !== filters.mainCategory) {
+      return false;
+    }
+    if (filters.seminar && meta.seminar !== filters.seminar) return false;
+    if (filters.validityType && rule.validityType !== filters.validityType) {
+      return false;
+    }
+    if (filters.active !== undefined) {
+      const active = row.status !== "disabled";
+      if (active !== filters.active) return false;
+    }
+    if (
+      filters.requiresCertificate !== undefined &&
+      meta.requiresCertificate !== filters.requiresCertificate
+    ) {
+      return false;
+    }
+    if (
+      filters.requiresProof !== undefined &&
+      meta.requiresProof !== filters.requiresProof
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function sortMasterRows(rows: Record<string, unknown>[], filters?: CourseListFilters) {
+  if (filters?.sort) {
+    const dir = filters.sortDir === "desc" ? -1 : 1;
+    return [...rows].sort((a, b) => {
+      let cmp = 0;
+      switch (filters.sort) {
+        case "code":
+          cmp = String(a.instruction_code ?? "").localeCompare(
+            String(b.instruction_code ?? ""),
+            "de"
+          );
+          break;
+        case "createdAt":
+          cmp =
+            new Date(String(a.created_at)).getTime() -
+            new Date(String(b.created_at)).getTime();
+          break;
+        case "updatedAt":
+          cmp =
+            new Date(String(a.updated_at ?? a.created_at)).getTime() -
+            new Date(String(b.updated_at ?? b.created_at)).getTime();
+          break;
+        case "validity": {
+          const ruleA = parseValidityRuleFromRow(a);
+          const ruleB = parseValidityRuleFromRow(b);
+          cmp = ruleA.validityType.localeCompare(ruleB.validityType, "de");
+          if (cmp === 0) {
+            cmp =
+              (ruleA.validityMonths ?? 0) - (ruleB.validityMonths ?? 0);
+          }
+          break;
+        }
+        case "name":
+        default:
+          cmp = String(a.title).localeCompare(String(b.title), "de");
+      }
+      return cmp * dir;
+    });
+  }
+
+  return [...rows].sort((a, b) => {
+    const mainA = String(a.main_category ?? a.category ?? "");
+    const mainB = String(b.main_category ?? b.category ?? "");
+    if (mainA !== mainB) return mainA.localeCompare(mainB, "de");
+    const semA = String(a.seminar ?? "");
+    const semB = String(b.seminar ?? "");
+    if (semA !== semB) return semA.localeCompare(semB, "de");
+    const orderA = Number(a.sort_order ?? 0);
+    const orderB = Number(b.sort_order ?? 0);
+    if (orderA !== orderB) return orderA - orderB;
+    return String(a.title).localeCompare(String(b.title), "de");
+  });
 }
 
 function mapMeta(row: Record<string, unknown>): MasterCourseMeta {
@@ -90,6 +183,11 @@ function mapMeta(row: Record<string, unknown>): MasterCourseMeta {
     status: row.status as MasterCourseStatus,
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at ?? row.created_at)).toISOString(),
+    estimatedDurationMinutes:
+      row.estimated_duration_minutes != null
+        ? Number(row.estimated_duration_minutes)
+        : null,
+    ...parseInstructionMetaFromRow(row),
   };
 }
 
@@ -116,27 +214,39 @@ export type MasterCourseListItem = {
   status: MasterCourseStatus;
   validityType: ValidityType;
   validityLabel: string;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
+  mainCategory: string | null;
+  seminar: string | null;
+  instructionCode: string | null;
+  instructionTitle: string | null;
+  sortOrder: number;
+  requiresCertificate: boolean;
+  requiresProof: boolean;
 };
 
 /** Übersichtsliste – ohne content_json, Module oder Prüfungsfragen. */
-export async function listMasterCoursesMetadata(): Promise<MasterCourseListItem[]> {
+export async function listMasterCoursesMetadata(
+  filters?: CourseListFilters
+): Promise<MasterCourseListItem[]> {
   const sql = getSql();
   try {
     const rows = await sql`
       SELECT id, title, description, status, validity_type, validity_interval_value,
-             validity_interval_unit, validity_months, created_at, updated_at
+             validity_interval_unit, validity_months, created_at, updated_at,
+             main_category, seminar, instruction_code, instruction_title,
+             sort_order, requires_certificate, requires_proof
       FROM master_courses
-      ORDER BY created_at DESC, title ASC
     `;
-    return rows.map((r) => mapListItem(r as Record<string, unknown>));
+    const filtered = filterMasterRows(rows as Record<string, unknown>[], filters);
+    const sorted = sortMasterRows(filtered, filters);
+    return sorted.map((r) => mapListItem(r));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("does not exist") && msg.includes("master_courses")) {
       return [];
     }
-    // Migration noch nicht angewendet: ohne validity_*-Spalten laden
     if (
       msg.includes("validity_type") ||
       msg.includes("validity_interval") ||
@@ -145,16 +255,16 @@ export async function listMasterCoursesMetadata(): Promise<MasterCourseListItem[
       const rows = await sql`
         SELECT id, title, description, status, validity_months, created_at, updated_at
         FROM master_courses
-        ORDER BY created_at DESC, title ASC
       `;
-      return rows.map((r) =>
-        mapListItem({
-          ...(r as Record<string, unknown>),
-          validity_type: "yearly",
-          validity_interval_value: null,
-          validity_interval_unit: null,
-        })
-      );
+      const enriched = (rows as Record<string, unknown>[]).map((r) => ({
+        ...r,
+        validity_type: "yearly",
+        validity_interval_value: null,
+        validity_interval_unit: null,
+      }));
+      const filtered = filterMasterRows(enriched, filters);
+      const sorted = sortMasterRows(filtered, filters);
+      return sorted.map((r) => mapListItem(r));
     }
     throw e;
   }
@@ -209,7 +319,10 @@ export async function getMasterCourseMeta(
       SELECT
         id, slug, title, description, version,
         passing_score, validity_type, validity_interval_value, validity_interval_unit,
-        validity_months, status, created_at, updated_at
+        validity_months, status, created_at, updated_at,
+        main_category, seminar, instruction_code, instruction_title,
+        sort_order, requires_certificate, requires_proof,
+        estimated_duration_minutes
       FROM master_courses
       WHERE id = ${id}
       LIMIT 1
@@ -428,13 +541,107 @@ export async function updateMasterCourseSettings(
 }
 
 export async function deleteMasterCourse(id: string): Promise<boolean> {
+  const result = await removeMasterCourse(id);
+  return result.mode === "deleted";
+}
+
+export type MasterCourseDependencySummary = {
+  provisionCount: number;
+  companyCourseCount: number;
+  assignmentCount: number;
+  certificateCount: number;
+  trainingAttemptCount: number;
+  hasAny: boolean;
+};
+
+export async function getMasterCourseDependencySummary(
+  id: string
+): Promise<MasterCourseDependencySummary> {
   const sql = getSql();
-  const prov = await sql`
-    SELECT 1 FROM company_course_provisions WHERE master_course_id = ${id} LIMIT 1
+  const rows = await sql`
+    SELECT
+      (SELECT COUNT(*)::int FROM company_course_provisions WHERE master_course_id = ${id}) AS provisions,
+      (SELECT COUNT(*)::int FROM courses WHERE master_course_id = ${id}) AS company_courses,
+      (
+        SELECT COUNT(*)::int FROM user_course_assignments uca
+        JOIN courses co ON co.id = uca.course_id
+        WHERE co.master_course_id = ${id}
+      ) AS assignments,
+      (
+        SELECT COUNT(*)::int FROM certificates c
+        JOIN courses co ON co.id = c.course_id
+        WHERE co.master_course_id = ${id}
+      ) AS certificates,
+      (
+        SELECT COUNT(*)::int FROM training_attempts t
+        JOIN courses co ON co.id = t.course_id
+        WHERE co.master_course_id = ${id}
+      ) AS training_attempts
   `;
-  if (prov.length > 0) return false;
-  const rows = await sql`DELETE FROM master_courses WHERE id = ${id} RETURNING id`;
+  const r = rows[0] ?? {};
+  const provisionCount = Number(r.provisions ?? 0);
+  const companyCourseCount = Number(r.company_courses ?? 0);
+  const assignmentCount = Number(r.assignments ?? 0);
+  const certificateCount = Number(r.certificates ?? 0);
+  const trainingAttemptCount = Number(r.training_attempts ?? 0);
+  const hasAny =
+    provisionCount > 0 ||
+    companyCourseCount > 0 ||
+    assignmentCount > 0 ||
+    certificateCount > 0 ||
+    trainingAttemptCount > 0;
+  return {
+    provisionCount,
+    companyCourseCount,
+    assignmentCount,
+    certificateCount,
+    trainingAttemptCount,
+    hasAny,
+  };
+}
+
+export async function setMasterCourseActive(
+  id: string,
+  active: boolean
+): Promise<boolean> {
+  const sql = getSql();
+  const status = active ? "published" : "disabled";
+  const rows = await sql`
+    UPDATE master_courses
+    SET status = ${status}, updated_at = NOW()
+    WHERE id = ${id}
+    RETURNING id
+  `;
   return rows.length > 0;
+}
+
+/** Löscht Masterkurs endgültig. Firmenkurse bleiben erhalten (FK SET NULL). */
+export async function permanentlyDeleteMasterCourse(id: string): Promise<void> {
+  const sql = getSql();
+  await sql.begin(async (tx) => {
+    const rows = await tx`
+      DELETE FROM master_courses WHERE id = ${id} RETURNING id
+    `;
+    if (rows.length === 0) throw new Error("NOT_FOUND");
+  });
+}
+
+/** @deprecated Nur für Legacy-Aufrufer – bevorzugt setMasterCourseActive / permanentlyDeleteMasterCourse. */
+export async function removeMasterCourse(
+  id: string
+): Promise<{ mode: "deactivated" | "deleted" }> {
+  const meta = await getMasterCourseMeta(id);
+  if (!meta) throw new Error("NOT_FOUND");
+
+  const deps = await getMasterCourseDependencySummary(id);
+  if (deps.hasAny) {
+    const ok = await setMasterCourseActive(id, false);
+    if (!ok) throw new Error("NOT_FOUND");
+    return { mode: "deactivated" };
+  }
+
+  await permanentlyDeleteMasterCourse(id);
+  return { mode: "deleted" };
 }
 
 async function load(id: string): Promise<CourseData> {

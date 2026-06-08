@@ -14,6 +14,13 @@ export interface CompanyBranding {
   loginBackgroundUrl: string | null;
 }
 
+/** Signaturangaben für ausgestellte Zertifikate/Nachweise – je Firma. */
+export interface CompanyDocumentSignature {
+  responsiblePerson: string | null;
+  position: string | null;
+  customText: string | null;
+}
+
 export interface Company {
   id: number;
   slug: string;
@@ -27,11 +34,78 @@ export interface Company {
   website: string | null;
   loginDomain: string | null;
   branding: CompanyBranding;
+  documentSignature: CompanyDocumentSignature;
   status: CompanyStatus;
   licenseStatus: LicenseStatus;
   licenseExpiresAt: string | null;
   licenseActivatedAt: string | null;
+  industryId: number | null;
+  businessTypeId: number | null;
+  industryName?: string | null;
+  businessTypeName?: string | null;
   createdAt: string;
+}
+
+export interface Industry {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  active: boolean;
+  sortOrder: number;
+  businessTypeCount: number;
+  companyCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BusinessType {
+  id: number;
+  industryId: number;
+  industryName: string | null;
+  industrySlug: string | null;
+  name: string;
+  slug: string;
+  description: string | null;
+  active: boolean;
+  sortOrder: number;
+  companyCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResponsibilityType {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  active: boolean;
+  sortOrder: number;
+  assignmentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CompanyResponsibilityAssignment {
+  id: number | null;
+  companyId: number;
+  responsibilityTypeId: number;
+  responsibilityTypeName: string;
+  responsibilityTypeSlug: string;
+  responsibilityTypeDescription: string | null;
+  sortOrder: number;
+  userId: number | null;
+  userFirstName: string | null;
+  userLastName: string | null;
+  userEmail: string | null;
+  assignedAt: string | null;
+}
+
+export interface EmployeeResponsibility {
+  responsibilityTypeId: number;
+  name: string;
+  slug: string;
+  assignedAt: string;
 }
 
 export interface CompanySummary {
@@ -44,6 +118,10 @@ export interface CompanySummary {
   employeeCount: number;
   adminCount: number;
   adminName: string | null;
+  industryId?: number | null;
+  businessTypeId?: number | null;
+  industryName?: string | null;
+  businessTypeName?: string | null;
 }
 
 export interface User {
@@ -64,6 +142,9 @@ export interface User {
   location: string | null;
   active: number;
   mustChangePassword: number;
+  employeeCategoryId: number | null;
+  joinedCompanyAt: string | null;
+  leftCompanyAt: string | null;
   createdAt: string;
 }
 
@@ -141,6 +222,7 @@ export interface CourseMeta {
   id: string;
   companyId: number;
   slug: string;
+  /** Vollständiger Anzeigetitel (z. B. „N7 Verhalten bei einem Überfall“). */
   title: string;
   description: string | null;
   version: string;
@@ -152,6 +234,20 @@ export interface CourseMeta {
   active: boolean;
   masterCourseId: string | null;
   createdAt: string;
+  updatedAt: string;
+  /** Ebene 1 – Hauptkategorie, z. B. „Sicherheitskonzept“. */
+  mainCategory: string | null;
+  /** Ebene 2 – Seminar, z. B. „Überfallprävention“. */
+  seminar: string | null;
+  /** Persistierter BAV-Code (Ebene 3), z. B. „N7“. */
+  instructionCode: string | null;
+  /** Kurztitel ohne Code. */
+  instructionTitle: string | null;
+  sortOrder: number;
+  requiresCertificate: boolean;
+  requiresProof: boolean;
+  /** Geschätzte Bearbeitungsdauer in Minuten. */
+  estimatedDurationMinutes: number | null;
 }
 
 export type MasterCourseStatus = "draft" | "published" | "disabled";
@@ -169,6 +265,28 @@ export interface MasterCourseMeta {
   validityIntervalValue: number | null;
   validityIntervalUnit: ValidityIntervalUnit | null;
   status: MasterCourseStatus;
+  createdAt: string;
+  updatedAt: string;
+  mainCategory: string | null;
+  seminar: string | null;
+  instructionCode: string | null;
+  instructionTitle: string | null;
+  sortOrder: number;
+  requiresCertificate: boolean;
+  requiresProof: boolean;
+  estimatedDurationMinutes: number | null;
+}
+
+export interface EmployeeCategory {
+  id: number;
+  companyId: number;
+  name: string;
+  description: string | null;
+  active: boolean;
+  /** Reserviert für spätere Superuser-Standardvorlagen. */
+  masterTemplateId: number | null;
+  courseCount: number;
+  totalDurationMinutes: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -216,6 +334,7 @@ export interface Certificate {
   score: number;
   verificationToken: string;
   revoked: number;
+  templateRevisionId: number | null;
 }
 
 export interface SessionUser {

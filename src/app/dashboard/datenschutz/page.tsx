@@ -1,48 +1,30 @@
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
-import { getCompanyPrivacyStats } from "@/lib/privacy";
-import { AdminNav } from "@/components/admin-nav";
-import { AppHeader, Card } from "@/components/ui";
+"use client";
 
-export const dynamic = "force-dynamic";
+import { PageHeader } from "@/components/page-header";
+import { PrivacyStatusTable } from "@/components/privacy-status-table";
 
-export default async function AdminDatenschutzPage() {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "admin" || !user.companyId) {
-    redirect("/login");
-  }
-
-  const stats = await getCompanyPrivacyStats(user.companyId);
-
+export default function AdminDatenschutzPage() {
   return (
-    <div className="min-h-screen pb-16">
-      <AppHeader title="Datenschutzstatus" />
-      <div className="mx-auto max-w-2xl px-4 py-8">
-        <AdminNav active="datenschutz" />
-        <Card>
-          <h2 className="text-lg font-bold">Bestätigungsstatus Mitarbeiter</h2>
-          <dl className="mt-4 space-y-3 text-sm">
-            <div>
-              <dt className="text-slate-500">Aktuelle Version</dt>
-              <dd className="font-semibold">{stats.currentVersion ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Mitarbeiter gesamt (aktiv)</dt>
-              <dd className="font-semibold">{stats.totalEmployees}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Aktuelle Version bestätigt</dt>
-              <dd className="font-semibold">
-                {stats.acceptedCurrent} von {stats.totalEmployees}
-              </dd>
-            </div>
-          </dl>
-          <p className="mt-6 text-xs text-slate-500">
-            Einzelne Bestätigungsdetails mit IP/User-Agent sind in der
-            Mitarbeiterliste als Status sichtbar.
-          </p>
-        </Card>
+    <>
+      <PageHeader
+        title="Datenschutzstatus"
+        description="Übersicht, welche Mitarbeiter die Datenschutzerklärung bestätigt haben, wann die Bestätigung erfolgte und wer noch offen ist."
+      />
+      <div className="mb-6 flex flex-wrap gap-3 text-xs text-slate-600">
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" />
+          Bestätigt
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-orange-500" />
+          Offen
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-slate-400" />
+          Ausgeschieden
+        </span>
       </div>
-    </div>
+      <PrivacyStatusTable />
+    </>
   );
 }

@@ -5,7 +5,18 @@ import { mapUser } from "@/lib/db/row-mappers";
 import { getLatestCertificate } from "@/lib/certificate";
 import { getCertificateStatus, statusLabel } from "@/lib/status";
 import { assignUserToCourse, setUserCourseAssignments } from "@/lib/course-db";
-import { syncCityFields } from "@/lib/user-profile";
+import { assertEmployeeCategoryBelongsToCompany } from "@/lib/employee-categories";
+import {
+  assertCompanyEmploymentDatesValid,
+  parseJoinedCompanyAtForAdmin,
+  parseLeftCompanyAtForAdmin,
+  syncCityFields,
+} from "@/lib/user-profile";
+import {
+  listAdminEmployees,
+  parseAdminEmployeeListQuery,
+  ADMIN_EMPLOYEE_SORT_ALLOWLIST,
+} from "@/lib/admin-users-list";
 import type { User } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -43,25 +54,17 @@ async function mapUserRow(row: User) {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const admin = await requireAdmin();
-    const sql = getSql();
-    const rows = await sql`
-      SELECT id, first_name, last_name, email, birth_date, birth_place,
-             place_of_residence, street, house_number, postal_code, city,
-             role, location, active, must_change_password, created_at
-      FROM users
-      WHERE company_id = ${admin.companyId} AND role = 'employee'
-      ORDER BY last_name, first_name
-    `;
-    const users = rows.map((row) => mapUser(row as Record<string, unknown>));
-    const mapped: Awaited<ReturnType<typeof mapUserRow>>[] = [];
-    for (const u of users) {
-      mapped.push(await mapUserRow(u));
-    }
-
-    return NextResponse.json({ users: mapped });
+    const params = new URL(request.url).searchParams;
+    const query = parseAdminEmployeeListQuery(params);
+    const result = await listAdminEmployees(admin.companyId!, query);
+    return NextResponse.json({
+      users: result.users,
+      meta: result.meta,
+      sortFields: Object.keys(ADMIN_EMPLOYEE_SORT_ALLOWLIST),
+    });
   } catch (e) {
     console.error("[admin/users] GET Fehler:", e);
     await resetSql();
@@ -90,6 +93,9 @@ export async function POST(request: Request) {
       city,
       location,
       courseIds,
+      employeeCategoryId,
+      joinedCompanyAt,
+      leftCompanyAt,
     } = body;
 
     if (!firstName || !lastName || !email || !password) {
@@ -122,11 +128,62 @@ export async function POST(request: Request) {
 
     const { city: syncedCity, placeOfResidence } = syncCityFields(city);
 
+    let categoryId: number | null = null;
+    if (employeeCategoryId != null && employeeCategoryId !== "") {
+      await assertEmployeeCategoryBelongsToCompany(
+        admin.companyId!,
+        Number(employeeCategoryId)
+      );
+      categoryId = Number(employeeCategoryId);
+    }
+
+    let parsedJoinedCompanyAt: string | null = null;
+    if (joinedCompanyAt != null && joinedCompanyAt !== "") {
+      try {
+        parsedJoinedCompanyAt = parseJoinedCompanyAtForAdmin(joinedCompanyAt);
+      } catch {
+        return NextResponse.json(
+          { error: "Ungültiges Eintrittsdatum." },
+          { status: 400 }
+        );
+      }
+    }
+
+    let parsedLeftCompanyAt: string | null = null;
+    if (leftCompanyAt != null && leftCompanyAt !== "") {
+      try {
+        parsedLeftCompanyAt = parseLeftCompanyAtForAdmin(leftCompanyAt);
+      } catch {
+        return NextResponse.json(
+          { error: "Ungültiges Austrittsdatum." },
+          { status: 400 }
+        );
+      }
+    }
+
+    try {
+      assertCompanyEmploymentDatesValid(
+        parsedJoinedCompanyAt,
+        parsedLeftCompanyAt
+      );
+    } catch (e) {
+      if (e instanceof Error && e.message === "LEFT_BEFORE_JOINED") {
+        return NextResponse.json(
+          {
+            error: "Austrittsdatum darf nicht vor dem Eintrittsdatum liegen.",
+          },
+          { status: 400 }
+        );
+      }
+      throw e;
+    }
+
     const rows = await sql`
       INSERT INTO users (
         first_name, last_name, email, password_hash, birth_date, birth_place,
         place_of_residence, street, house_number, postal_code, city,
-        role, company_id, location, active, must_change_password
+        role, company_id, location, active, must_change_password,
+        employee_category_id, joined_company_at, left_company_at
       )
       VALUES (
         ${firstName}, ${lastName}, ${normalizedEmail}, ${hashPassword(password)},
@@ -141,14 +198,23 @@ export async function POST(request: Request) {
         ${admin.companyId},
         ${location || null},
         TRUE,
-        TRUE
+        TRUE,
+        ${categoryId},
+        ${parsedJoinedCompanyAt},
+        ${parsedLeftCompanyAt}
       )
       RETURNING *
     `;
 
     const user = mapUser(rows[0] as Record<string, unknown>);
 
-    if (Array.isArray(courseIds) && courseIds.length > 0) {
+    if ("courseIds" in body && Array.isArray(courseIds)) {
+      await setUserCourseAssignments(
+        user.id,
+        admin.companyId!,
+        courseIds.map(String)
+      );
+    } else if (Array.isArray(courseIds) && courseIds.length > 0) {
       await setUserCourseAssignments(user.id, admin.companyId!, courseIds);
     } else {
       const companyCourses = await sql`

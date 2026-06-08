@@ -3,6 +3,11 @@ import { ensureSeeded, getSql } from "./db";
 import { mapCertificate, mapUser } from "./db/row-mappers";
 import { getCourseMeta } from "./course-db";
 import { calculateValidUntil, addMonths } from "./course-validity";
+import {
+  getDefaultPublishedDocumentTemplateRevision,
+  resolveDocumentTypeFromCourseMeta,
+} from "./document-template";
+import { getCertificateStatus, statusLabel } from "./status";
 import type { Certificate, User } from "./types";
 
 export async function nextCertificateNumber(companyId: number): Promise<string> {
@@ -58,16 +63,22 @@ export async function createCertificate(
   });
   const certificateNumber = await nextCertificateNumber(companyId);
   const verificationToken = randomUUID();
+  const documentType = resolveDocumentTypeFromCourseMeta(meta);
+  const templateRevision = await getDefaultPublishedDocumentTemplateRevision(
+    companyId,
+    documentType
+  );
+  const templateRevisionId = templateRevision?.id ?? null;
 
   const rows = await sql`
     INSERT INTO certificates (
       certificate_number, user_id, company_id, course_id, issued_at, valid_until,
-      score, verification_token, revoked
+      score, verification_token, revoked, template_revision_id
     )
     VALUES (
       ${certificateNumber}, ${userId}, ${companyId}, ${courseId},
       ${issuedAt.toISOString()}, ${validUntil ? validUntil.toISOString() : null},
-      ${score}, ${verificationToken}, FALSE
+      ${score}, ${verificationToken}, FALSE, ${templateRevisionId}
     )
     RETURNING *
   `;
@@ -97,6 +108,114 @@ export async function getLatestCertificate(
   return rows[0]
     ? mapCertificate(rows[0] as Record<string, unknown>)
     : undefined;
+}
+
+export type EmployeeCertificateListRow = {
+  id: number;
+  certificateNumber: string;
+  courseId: string;
+  courseTitle: string;
+  issuedAt: string;
+  validUntil: string | null;
+  pdfUrl: string;
+};
+
+export async function listUserCertificates(
+  userId: number
+): Promise<EmployeeCertificateListRow[]> {
+  await ensureSeeded();
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT
+      cert.id,
+      cert.certificate_number,
+      cert.course_id,
+      cert.issued_at,
+      cert.valid_until,
+      c.title AS course_title
+    FROM certificates cert
+    JOIN courses c ON c.id = cert.course_id
+    WHERE cert.user_id = ${userId}
+      AND cert.revoked = FALSE
+    ORDER BY cert.issued_at DESC
+  `) as Record<string, unknown>[];
+
+  return rows.map((row) => {
+    const id = Number(row.id);
+    return {
+      id,
+      certificateNumber: String(row.certificate_number),
+      courseId: String(row.course_id),
+      courseTitle: String(row.course_title),
+      issuedAt: new Date(String(row.issued_at)).toISOString(),
+      validUntil:
+        row.valid_until != null
+          ? new Date(String(row.valid_until)).toISOString()
+          : null,
+      pdfUrl: `/api/certificates/${id}/pdf`,
+    };
+  });
+}
+
+export type AdminCertificateListRow = {
+  id: number;
+  employeeName: string;
+  courseTitle: string;
+  certificateNumber: string;
+  issuedAt: string;
+  validUntil: string | null;
+  status: "green" | "yellow" | "red";
+  statusLabel: string;
+  pdfUrl: string;
+};
+
+export async function listCompanyCertificates(
+  companyId: number
+): Promise<AdminCertificateListRow[]> {
+  await ensureSeeded();
+  const sql = getSql();
+
+  const rows = (await sql`
+    SELECT
+      cert.id,
+      cert.certificate_number,
+      cert.issued_at,
+      cert.valid_until,
+      cert.revoked,
+      c.title AS course_title,
+      u.first_name,
+      u.last_name
+    FROM certificates cert
+    JOIN courses c ON c.id = cert.course_id AND c.company_id = ${companyId}
+    JOIN users u ON u.id = cert.user_id AND u.company_id = ${companyId}
+    WHERE cert.company_id = ${companyId}
+      AND u.role = 'employee'
+    ORDER BY cert.issued_at DESC
+  `) as Record<string, unknown>[];
+
+  return rows.map((row) => {
+    const id = Number(row.id);
+    const validUntil =
+      row.valid_until != null
+        ? new Date(String(row.valid_until)).toISOString()
+        : null;
+    const status = getCertificateStatus({
+      validUntil,
+      revoked: row.revoked ? 1 : 0,
+    });
+
+    return {
+      id,
+      employeeName: `${String(row.first_name)} ${String(row.last_name)}`.trim(),
+      courseTitle: String(row.course_title),
+      certificateNumber: String(row.certificate_number),
+      issuedAt: new Date(String(row.issued_at)).toISOString(),
+      validUntil,
+      status,
+      statusLabel: statusLabel(status),
+      pdfUrl: `/api/certificates/${id}/pdf`,
+    };
+  });
 }
 
 export async function getCertificateByToken(

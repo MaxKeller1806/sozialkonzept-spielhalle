@@ -3,7 +3,7 @@ import { requireSuperuser } from "@/lib/auth";
 import {
   isDbConnectionError,
   isQueryTimeoutError,
-  resetSql,
+  resetSqlOnFailure,
   withDbQuery,
 } from "@/lib/db";
 import { fetchSuperuserUsersList } from "@/lib/superuser-users-list";
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
     return body;
   } catch (e) {
     console.error("[superuser/users] GET:", e);
-    await resetSql();
+    await resetSqlOnFailure(e);
     const auth = superuserErrorResponse(e);
     if (auth) return auth;
     if (isQueryTimeoutError(e)) {

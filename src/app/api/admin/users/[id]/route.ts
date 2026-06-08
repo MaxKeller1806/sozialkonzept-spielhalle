@@ -1,7 +1,81 @@
 import { NextResponse } from "next/server";
 import { hashPassword, requireAdmin, validatePassword } from "@/lib/auth";
 import { ensureSeeded, getSql } from "@/lib/db";
-import { syncCityFields } from "@/lib/user-profile";
+import { mapUser } from "@/lib/db/row-mappers";
+import {
+  getUserAssignedCourseIds,
+  setUserCourseAssignments,
+} from "@/lib/course-db";
+import {
+  assertEmployeeCategoryBelongsToCompany,
+} from "@/lib/employee-categories";
+import {
+  assertCompanyEmploymentDatesValid,
+  parseJoinedCompanyAtForAdmin,
+  parseLeftCompanyAtForAdmin,
+  syncCityFields,
+} from "@/lib/user-profile";
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const admin = await requireAdmin();
+    const { id } = await params;
+    const userId = Number(id);
+
+    await ensureSeeded();
+    const sql = getSql();
+
+    const rows = await sql`
+      SELECT id, first_name, last_name, email, birth_date, birth_place,
+             place_of_residence, street, house_number, postal_code, city,
+             role, location, active, must_change_password, created_at,
+             employee_category_id, joined_company_at, left_company_at
+      FROM users
+      WHERE id = ${userId} AND company_id = ${admin.companyId}
+      LIMIT 1
+    `;
+
+    if (rows.length === 0) {
+      return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
+    }
+
+    const user = mapUser(rows[0] as Record<string, unknown>);
+    const assignedCourseIds = await getUserAssignedCourseIds(
+      userId,
+      admin.companyId!
+    );
+
+    return NextResponse.json({
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        birthDate: user.birthDate,
+        birthPlace: user.birthPlace,
+        street: user.street,
+        houseNumber: user.houseNumber,
+        postalCode: user.postalCode,
+        city: user.city ?? user.placeOfResidence,
+        location: user.location,
+        active: !!user.active,
+        employeeCategoryId: user.employeeCategoryId,
+        joinedCompanyAt: user.joinedCompanyAt,
+        leftCompanyAt: user.leftCompanyAt,
+      },
+      assignedCourseIds,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
+      return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
+    return NextResponse.json({ error: "Fehler." }, { status: 500 });
+  }
+}
 
 export async function PATCH(
   request: Request,
@@ -17,7 +91,7 @@ export async function PATCH(
     const sql = getSql();
 
     const existing = await sql`
-      SELECT id FROM users
+      SELECT id, role, joined_company_at, left_company_at FROM users
       WHERE id = ${userId} AND company_id = ${admin.companyId}
       LIMIT 1
     `;
@@ -25,6 +99,8 @@ export async function PATCH(
     if (existing.length === 0) {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }
+
+    const targetRole = String(existing[0].role);
 
     const {
       firstName,
@@ -40,9 +116,22 @@ export async function PATCH(
       location,
       role,
       active,
+      courseIds,
+      employeeCategoryId,
+      joinedCompanyAt,
+      leftCompanyAt,
     } = body;
 
-    const patch: Record<string, string | boolean | null> = {};
+    const existingJoined =
+      existing[0].joined_company_at != null
+        ? new Date(String(existing[0].joined_company_at)).toISOString().slice(0, 10)
+        : null;
+    const existingLeft =
+      existing[0].left_company_at != null
+        ? new Date(String(existing[0].left_company_at)).toISOString().slice(0, 10)
+        : null;
+
+    const patch: Record<string, string | boolean | null | number> = {};
     if (firstName !== undefined) patch.first_name = firstName;
     if (lastName !== undefined) patch.last_name = lastName;
     if (email !== undefined) patch.email = String(email).trim().toLowerCase();
@@ -57,8 +146,51 @@ export async function PATCH(
       patch.place_of_residence = synced.placeOfResidence;
     }
     if (location !== undefined) patch.location = location || null;
+    if (joinedCompanyAt !== undefined) {
+      if (targetRole !== "employee") {
+        return NextResponse.json(
+          { error: "Eintrittsdatum kann nur für Mitarbeiter gesetzt werden." },
+          { status: 400 }
+        );
+      }
+      try {
+        patch.joined_company_at = parseJoinedCompanyAtForAdmin(joinedCompanyAt);
+      } catch {
+        return NextResponse.json(
+          { error: "Ungültiges Eintrittsdatum." },
+          { status: 400 }
+        );
+      }
+    }
+    if (leftCompanyAt !== undefined) {
+      if (targetRole !== "employee") {
+        return NextResponse.json(
+          { error: "Austrittsdatum kann nur für Mitarbeiter gesetzt werden." },
+          { status: 400 }
+        );
+      }
+      try {
+        patch.left_company_at = parseLeftCompanyAtForAdmin(leftCompanyAt);
+      } catch {
+        return NextResponse.json(
+          { error: "Ungültiges Austrittsdatum." },
+          { status: 400 }
+        );
+      }
+    }
     if (role !== undefined) patch.role = role === "admin" ? "admin" : "employee";
     if (active !== undefined) patch.active = Boolean(active);
+    if (employeeCategoryId !== undefined) {
+      if (employeeCategoryId == null || employeeCategoryId === "") {
+        patch.employee_category_id = null;
+      } else {
+        await assertEmployeeCategoryBelongsToCompany(
+          admin.companyId!,
+          Number(employeeCategoryId)
+        );
+        patch.employee_category_id = Number(employeeCategoryId);
+      }
+    }
     if (password) {
       const pwError = validatePassword(password);
       if (pwError) {
@@ -68,15 +200,56 @@ export async function PATCH(
       patch.must_change_password = true;
     }
 
+    let courseIdsUpdated = false;
+    if (courseIds !== undefined) {
+      if (!Array.isArray(courseIds)) {
+        return NextResponse.json(
+          { error: "courseIds muss ein Array sein." },
+          { status: 400 }
+        );
+      }
+      await setUserCourseAssignments(
+        userId,
+        admin.companyId!,
+        courseIds.map(String)
+      );
+      courseIdsUpdated = true;
+    }
+
     const keys = Object.keys(patch) as (keyof typeof patch)[];
-    if (keys.length === 0) {
+    if (keys.length === 0 && !courseIdsUpdated) {
       return NextResponse.json({ error: "Keine Änderungen." }, { status: 400 });
     }
 
-    await sql`
-      UPDATE users SET ${sql(patch, ...keys)}
-      WHERE id = ${userId} AND company_id = ${admin.companyId}
-    `;
+    if (keys.length > 0) {
+      const finalJoined =
+        patch.joined_company_at !== undefined
+          ? (patch.joined_company_at as string | null)
+          : existingJoined;
+      const finalLeft =
+        patch.left_company_at !== undefined
+          ? (patch.left_company_at as string | null)
+          : existingLeft;
+      try {
+        assertCompanyEmploymentDatesValid(finalJoined, finalLeft);
+      } catch (e) {
+        if (e instanceof Error && e.message === "LEFT_BEFORE_JOINED") {
+          return NextResponse.json(
+            {
+              error:
+                "Austrittsdatum darf nicht vor dem Eintrittsdatum liegen.",
+            },
+            { status: 400 }
+          );
+        }
+        throw e;
+      }
+
+      await sql`
+        UPDATE users SET ${sql(patch, ...keys)}
+        WHERE id = ${userId} AND company_id = ${admin.companyId}
+      `;
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e) {

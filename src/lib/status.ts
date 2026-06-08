@@ -2,6 +2,9 @@ import type { Certificate, TrainingStatus } from "./types";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/** Schwellenwert „bald fällig“ in Tagen (identisch zur Mitarbeiterlisten-Legende). */
+export const DUE_SOON_DAYS = 30;
+
 export function getCertificateStatus(
   cert: Pick<Certificate, "validUntil" | "revoked"> | null | undefined,
   now = new Date()
@@ -13,7 +16,7 @@ export function getCertificateStatus(
   if (validUntil < now) return "red";
 
   const daysLeft = (validUntil.getTime() - now.getTime()) / MS_PER_DAY;
-  if (daysLeft <= 30) return "yellow";
+  if (daysLeft <= DUE_SOON_DAYS) return "yellow";
 
   return "green";
 }

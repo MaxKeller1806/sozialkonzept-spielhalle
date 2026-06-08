@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { AdminNav } from "@/components/admin-nav";
-import { AppHeader, Button, Card, Input } from "@/components/ui";
+import { PageHeader } from "@/components/page-header";
+import { Button, Card, Input } from "@/components/ui";
 
 interface LessonItem {
   id: number;
@@ -19,7 +19,7 @@ interface ExamItem {
 
 export default function ModulEditPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Lädt…</div>}>
+    <Suspense fallback={<p className="px-4 py-8 text-sm text-slate-600">Lädt…</p>}>
       <ModulEditContent />
     </Suspense>
   );
@@ -112,22 +112,20 @@ function ModulEditContent() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">Lädt…</div>
-    );
+    return <p className="px-4 py-8 text-sm text-slate-600">Lädt…</p>;
   }
 
   return (
-    <div className="min-h-screen pb-16">
-      <AppHeader title={isNew ? "Neues Modul" : `Modul ${idParam}`} />
-      <div className="mx-auto max-w-2xl px-4 py-8">
-        <AdminNav active="seminare" />
+    <div className="mx-auto max-w-2xl px-4 py-8">
+      <PageHeader title={isNew ? "Neues Modul" : `Modul ${idParam}`} />
+      <p className="mb-4 text-sm text-slate-600">
         <Link
           href={`/dashboard/inhalte${courseQuery}`}
-          className="mb-4 inline-block text-sm font-medium text-brand hover:underline"
+          className="font-medium text-brand hover:underline"
         >
           ← Zurück zur Übersicht
         </Link>
+      </p>
 
         <Card className="mb-6">
           <h2 className="mb-4 text-lg font-bold">Modul-Stammdaten</h2>
@@ -249,7 +247,6 @@ function ModulEditContent() {
             )}
           </Card>
         )}
-      </div>
     </div>
   );
 }

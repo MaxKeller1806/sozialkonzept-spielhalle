@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AdminNav } from "@/components/admin-nav";
-import { AppHeader, Button, Card, Input } from "@/components/ui";
+import { PageHeader } from "@/components/page-header";
+import { Button, Card, Input } from "@/components/ui";
 
 export default function AdminKontoPage() {
   const router = useRouter();
@@ -62,63 +62,57 @@ export default function AdminKontoPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">Lädt…</div>
-    );
+    return <p className="px-4 py-8 text-sm text-slate-600">Lädt…</p>;
   }
 
   return (
-    <div className="min-h-screen pb-16">
-      <AppHeader title="Mein Konto" />
-      <div className="mx-auto max-w-2xl px-4 py-8">
-        <AdminNav active="konto" />
+    <div className="mx-auto max-w-2xl px-4 py-8">
+      <PageHeader
+        title="Mein Konto"
+        description="E-Mail und Passwort für die Anmeldung ändern. Zur Bestätigung ist das aktuelle Passwort erforderlich."
+      />
 
-        <Card>
-          <h2 className="mb-2 text-lg font-bold">Mein Admin-Konto</h2>
-          <p className="mb-6 text-sm text-slate-600">
-            E-Mail und Passwort für die Anmeldung ändern. Zur Bestätigung ist
-            das aktuelle Passwort erforderlich.
+      <Card>
+        <h2 className="mb-2 text-lg font-bold">Mein Admin-Konto</h2>
+
+        {message && (
+          <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">
+            {message}
           </p>
+        )}
+        {error && (
+          <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
 
-          {message && (
-            <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">
-              {message}
-            </p>
-          )}
-          {error && (
-            <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          )}
-
-          <form onSubmit={save} className="grid gap-4">
-            <Input
-              label="Login-E-Mail"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="username"
-            />
-            <Input
-              label="Neues Passwort (optional)"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-            />
-            <Input
-              label="Aktuelles Passwort"
-              type="password"
-              required
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-            <Button type="submit">Speichern</Button>
-          </form>
-        </Card>
-      </div>
+        <form onSubmit={save} className="grid gap-4">
+          <Input
+            label="Login-E-Mail"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username"
+          />
+          <Input
+            label="Neues Passwort (optional)"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            autoComplete="new-password"
+          />
+          <Input
+            label="Aktuelles Passwort"
+            type="password"
+            required
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            autoComplete="current-password"
+          />
+          <Button type="submit">Speichern</Button>
+        </form>
+      </Card>
     </div>
   );
 }

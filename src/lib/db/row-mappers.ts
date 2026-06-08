@@ -19,6 +19,14 @@ export function mapUser(row: Record<string, unknown>): User {
     city: row.city != null ? String(row.city) : null,
     role: row.role as User["role"],
     location: row.location != null ? String(row.location) : null,
+    employeeCategoryId:
+      row.employee_category_id != null ? Number(row.employee_category_id) : null,
+    joinedCompanyAt: row.joined_company_at
+      ? new Date(String(row.joined_company_at)).toISOString().slice(0, 10)
+      : null,
+    leftCompanyAt: row.left_company_at
+      ? new Date(String(row.left_company_at)).toISOString().slice(0, 10)
+      : null,
     active: row.active ? 1 : 0,
     mustChangePassword: row.must_change_password ? 1 : 0,
     createdAt: new Date(String(row.created_at)).toISOString(),
@@ -48,6 +56,8 @@ export function mapCertificate(row: Record<string, unknown>): Certificate {
     score: Number(row.score),
     verificationToken: String(row.verification_token),
     revoked: row.revoked ? 1 : 0,
+    templateRevisionId:
+      row.template_revision_id != null ? Number(row.template_revision_id) : null,
   };
 }
 

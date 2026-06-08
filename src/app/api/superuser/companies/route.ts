@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
-import { isDbConnectionError, getSql, resetSql, withDbQuery } from "@/lib/db";
+import { isDbConnectionError, getSql, resetSqlOnFailure, withDbQuery } from "@/lib/db";
 import { generateLicenseKey, hashLicenseKey } from "@/lib/license";
-import { getCompanySummaries, mapCompany } from "@/lib/tenant";
+import {
+  validateCompanyIndustryAssignment,
+} from "@/lib/industries";
+import { parseListQueryFromUrl } from "@/lib/list-query";
+import { listCompanySummaries, mapCompany, COMPANY_SORT_ALLOWLIST } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
@@ -15,24 +19,31 @@ function superuserErrorResponse(e: unknown) {
   return null;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const tag = `[superuser/companies] ${Date.now()}`;
   try {
     console.time(`${tag} auth`);
     await requireSuperuser();
     console.timeEnd(`${tag} auth`);
 
+    const params = new URL(request.url).searchParams;
+    const query = parseListQueryFromUrl(params, {
+      sortBy: "createdAt",
+      sortDirection: "desc",
+    });
+
     console.time(`${tag} query`);
-    const companies = await withDbQuery(() => getCompanySummaries());
+    const result = await withDbQuery(() => listCompanySummaries(query));
     console.timeEnd(`${tag} query`);
 
-    console.time(`${tag} response`);
-    const body = NextResponse.json({ companies });
-    console.timeEnd(`${tag} response`);
-    return body;
+    return NextResponse.json({
+      companies: result.companies,
+      meta: result.meta,
+      sortFields: Object.keys(COMPANY_SORT_ALLOWLIST),
+    });
   } catch (e) {
     console.error("[superuser/companies] GET:", e);
-    await resetSql();
+    await resetSqlOnFailure(e);
     const auth = superuserErrorResponse(e);
     if (auth) return auth;
     if (isDbConnectionError(e)) {
@@ -56,6 +67,8 @@ export async function POST(request: Request) {
       phone,
       website,
       licenseExpiresAt,
+      industryId,
+      businessTypeId,
     } = body;
 
     if (!name || !slug) {
@@ -85,15 +98,44 @@ export async function POST(request: Request) {
       );
     }
 
+    let industryFields = { industryId: null as number | null, businessTypeId: null as number | null };
+    try {
+      industryFields = await validateCompanyIndustryAssignment(
+        industryId,
+        businessTypeId
+      );
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "BUSINESS_TYPE_REQUIRES_INDUSTRY") {
+        return NextResponse.json(
+          { error: "Betriebstyp erfordert eine Branche." },
+          { status: 400 }
+        );
+      }
+      if (
+        code === "INDUSTRY_NOT_FOUND" ||
+        code === "BUSINESS_TYPE_NOT_FOUND" ||
+        code === "BUSINESS_TYPE_INDUSTRY_MISMATCH"
+      ) {
+        return NextResponse.json(
+          { error: "Ungültige Branche oder Betriebstyp." },
+          { status: 400 }
+        );
+      }
+      throw err;
+    }
+
     const rows = await sql`
       INSERT INTO companies (
         slug, name, email, phone, website,
-        status, license_status, license_key_hash, license_expires_at
+        status, license_status, license_key_hash, license_expires_at,
+        industry_id, business_type_id
       )
       VALUES (
         ${normalizedSlug}, ${name}, ${email ?? null}, ${phone ?? null}, ${website ?? null},
         'pending', 'unlicensed', ${licenseHash},
-        ${licenseExpiresAt ? new Date(licenseExpiresAt).toISOString() : null}
+        ${licenseExpiresAt ? new Date(licenseExpiresAt).toISOString() : null},
+        ${industryFields.industryId}, ${industryFields.businessTypeId}
       )
       RETURNING *
     `;

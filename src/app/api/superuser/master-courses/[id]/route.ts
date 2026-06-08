@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { requireSuperuser, getCurrentUser } from "@/lib/auth";
 import { assignMasterToAllCompanies } from "@/lib/course-provisions";
 import {
-  deleteMasterCourse,
   getMasterCourseDetail,
   getMasterCourseMeta,
   importCompanyCourseIntoMaster,
+  setMasterCourseActive,
   updateMasterCourseSettings,
 } from "@/lib/master-course-db";
+import { executePermanentMasterCourseDelete } from "@/lib/master-course-delete";
 
 export async function GET(
   _request: Request,
@@ -43,6 +44,27 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
+    if (body.active === true) {
+      const ok = await setMasterCourseActive(id, true);
+      if (!ok) {
+        return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
+      }
+      const meta = await getMasterCourseMeta(id);
+      return NextResponse.json({ meta, message: "Masterkurs reaktiviert." });
+    }
+
+    if (body.active === false) {
+      const ok = await setMasterCourseActive(id, false);
+      if (!ok) {
+        return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
+      }
+      const meta = await getMasterCourseMeta(id);
+      return NextResponse.json({
+        meta,
+        message: "Masterkurs deaktiviert.",
+      });
+    }
+
     const course = await updateMasterCourseSettings(id, {
       passingScore: body.passingScore,
       status: body.status,
@@ -63,7 +85,7 @@ export async function PATCH(
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
-    return NextResponse.json({ error: "Fehler." }, { status: 500 });
+    return NextResponse.json({ error: "Speichern fehlgeschlagen." }, { status: 500 });
   }
 }
 
@@ -123,25 +145,67 @@ export async function POST(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireSuperuser();
     const { id } = await params;
-    const ok = await deleteMasterCourse(id);
-    if (!ok) {
+    const body = await request.json().catch(() => ({}));
+    const mode = body.mode === "permanent" ? "permanent" : body.mode === "archive" ? "archive" : null;
+
+    if (!mode) {
       return NextResponse.json(
-        { error: "Löschen nicht möglich (noch Firmen zugewiesen?)." },
-        { status: 409 }
+        { error: "Bitte mode „archive“ oder „permanent“ angeben." },
+        { status: 400 }
       );
     }
-    return NextResponse.json({ ok: true });
+
+    if (mode === "archive") {
+      const ok = await setMasterCourseActive(id, false);
+      if (!ok) {
+        return NextResponse.json({ error: "Masterkurs nicht gefunden." }, { status: 404 });
+      }
+      return NextResponse.json({
+        ok: true,
+        mode: "archived",
+        message:
+          "Masterkurs deaktiviert. Bereits provisionierte Firmenkurse und bestehende Nachweise bleiben erhalten.",
+      });
+    }
+
+    const confirmTitle =
+      typeof body.confirmTitle === "string" ? body.confirmTitle : "";
+    if (!confirmTitle.trim()) {
+      return NextResponse.json(
+        { error: "Zur Bestätigung muss der exakte Masterkurs-Titel eingegeben werden." },
+        { status: 400 }
+      );
+    }
+
+    const result = await executePermanentMasterCourseDelete(id, confirmTitle);
+    return NextResponse.json({
+      ok: true,
+      mode: "deleted",
+      hadDependencies: result.hadDependencies,
+      message: result.hadDependencies
+        ? "Masterkurs wurde endgültig gelöscht. Bestehende Firmenkurse bleiben ohne Master-Verknüpfung erhalten."
+        : "Masterkurs wurde endgültig gelöscht.",
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
+    if (msg === "NOT_FOUND") {
+      return NextResponse.json({ error: "Masterkurs nicht gefunden." }, { status: 404 });
+    }
+    if (msg === "CONFIRM_TITLE_MISMATCH") {
+      return NextResponse.json(
+        { error: "Der eingegebene Titel stimmt nicht überein." },
+        { status: 400 }
+      );
+    }
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
-    return NextResponse.json({ error: "Fehler." }, { status: 500 });
+    return NextResponse.json({ error: "Löschen fehlgeschlagen." }, { status: 500 });
   }
 }

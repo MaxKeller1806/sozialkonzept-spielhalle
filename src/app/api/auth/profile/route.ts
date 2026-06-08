@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, getUserById } from "@/lib/auth";
 import { ensureSeeded, getSql } from "@/lib/db";
-import { syncCityFields } from "@/lib/user-profile";
+import {
+  bodyIncludesJoinedCompanyAt,
+  bodyIncludesLeftCompanyAt,
+  syncCityFields,
+} from "@/lib/user-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +23,8 @@ function profilePayload(user: Awaited<ReturnType<typeof getUserById>>) {
     postalCode: user.postalCode,
     city: user.city ?? user.placeOfResidence,
     location: user.location,
+    joinedCompanyAt: user.joinedCompanyAt,
+    leftCompanyAt: user.leftCompanyAt,
   };
 }
 
@@ -54,6 +60,21 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
+
+    if (bodyIncludesJoinedCompanyAt(body as Record<string, unknown>)) {
+      return NextResponse.json(
+        { error: "Das Eintrittsdatum darf nicht selbst geändert werden." },
+        { status: 403 }
+      );
+    }
+
+    if (bodyIncludesLeftCompanyAt(body as Record<string, unknown>)) {
+      return NextResponse.json(
+        { error: "Das Austrittsdatum darf nicht selbst geändert werden." },
+        { status: 403 }
+      );
+    }
+
     const { birthPlace, street, houseNumber, postalCode, city } = body;
 
     await ensureSeeded();

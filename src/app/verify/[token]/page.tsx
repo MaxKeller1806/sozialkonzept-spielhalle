@@ -1,5 +1,6 @@
 import { getCertificateByToken, getUserForCertificate } from "@/lib/certificate";
 import { getCourseForContext } from "@/lib/course";
+import { getCourseMeta } from "@/lib/course-db";
 import { getCompanyById } from "@/lib/tenant";
 import { verificationStatus } from "@/lib/status";
 
@@ -46,10 +47,13 @@ export default async function VerifyPage({
   const status = verificationStatus(cert);
   const company = cert.companyId ? await getCompanyById(cert.companyId) : undefined;
   let courseName = "Schulung";
+  let instructionCode: string | null = null;
   if (cert.companyId) {
     try {
       const course = await getCourseForContext(cert.companyId, cert.courseId);
       courseName = course.courseName;
+      const meta = await getCourseMeta(cert.companyId, cert.courseId);
+      instructionCode = meta?.instructionCode ?? null;
     } catch {
       /* ignore */
     }
@@ -92,6 +96,12 @@ export default async function VerifyPage({
             <dt className="text-slate-500">Kursname</dt>
             <dd className="font-semibold">{courseName}</dd>
           </div>
+          {instructionCode && (
+            <div>
+              <dt className="text-slate-500">BAV-Code</dt>
+              <dd className="font-semibold">{instructionCode}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-slate-500">Abschlussdatum</dt>
             <dd className="font-semibold">{formatDate(cert.issuedAt)}</dd>

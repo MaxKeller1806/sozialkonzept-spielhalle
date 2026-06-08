@@ -1,27 +1,71 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser, getCurrentUser } from "@/lib/auth";
-import { resetSql } from "@/lib/db";
+import { isDbConnectionError, resetSqlOnFailure, withDbQuery } from "@/lib/db";
 import { assignMasterToAllCompanies } from "@/lib/course-provisions";
 import {
   createMasterCourse,
   importExistingCoursesAsMasters,
   listMasterCoursesMetadata,
 } from "@/lib/master-course-db";
+import {
+  MAIN_CATEGORIES,
+  parseCourseListFilters,
+} from "@/lib/course-hierarchy";
+import {
+  listMasterCoursesPaginated,
+  MASTER_COURSE_SORT_KEYS,
+} from "@/lib/master-courses-list";
+import { parseListQueryFromUrl } from "@/lib/list-query";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireSuperuser();
-    const courses = await listMasterCoursesMetadata();
-    return NextResponse.json({ courses });
+    const params = new URL(request.url).searchParams;
+    const hierarchyFilters = parseCourseListFilters(params);
+
+    if (
+      !params.has("page") &&
+      !params.has("search") &&
+      !params.has("sortBy") &&
+      Object.keys(hierarchyFilters).length === 0
+    ) {
+      const courses = await withDbQuery(() =>
+        listMasterCoursesMetadata(hierarchyFilters)
+      );
+      return NextResponse.json({
+        courses,
+        mainCategories: Object.values(MAIN_CATEGORIES),
+      });
+    }
+
+    const query = parseListQueryFromUrl(params, {
+      sortBy: "title",
+      sortDirection: "asc",
+    });
+    const result = await withDbQuery(() =>
+      listMasterCoursesPaginated(query, hierarchyFilters)
+    );
+    return NextResponse.json({
+      courses: result.courses,
+      meta: result.meta,
+      sortFields: MASTER_COURSE_SORT_KEYS,
+      mainCategories: Object.values(MAIN_CATEGORIES),
+    });
   } catch (e) {
     console.error("[superuser/master-courses] GET:", e);
-    await resetSql();
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
+    if (isDbConnectionError(e)) {
+      return NextResponse.json(
+        { error: "Datenbankverbindung unterbrochen. Bitte erneut versuchen." },
+        { status: 503 }
+      );
     }
     return NextResponse.json(
       { error: msg.includes("master_courses") ? "Migration fehlt: npm run db:migrate" : msg || "Fehler." },
@@ -67,7 +111,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ course }, { status: 201 });
   } catch (e) {
     console.error("[superuser/master-courses] POST:", e);
-    await resetSql();
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });

@@ -1,101 +1,114 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AdminNav } from "@/components/admin-nav";
+import type { AssignableCourse } from "@/components/course-assignment-picker";
+import { AdminDrawer } from "@/components/admin-drawer";
 import {
-  AppHeader,
+  EmployeeEditForm,
+  type EmployeeFormState,
+} from "@/components/employee-edit-form";
+import { EmployeeListTable } from "@/components/employee-list-table";
+import { PageHeader } from "@/components/page-header";
+import {
   Button,
-  Card,
-  Input,
   StatusDot,
 } from "@/components/ui";
-import type { TrainingStatus } from "@/lib/types";
-import { formatUserAddress } from "@/lib/user-profile";
+import type { AdminEmployeeRow } from "@/lib/admin-users-list";
 
-interface AdminUser {
+interface EmployeeCategoryOption {
   id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  birthDate: string | null;
-  birthPlace: string | null;
-  street: string | null;
-  houseNumber: string | null;
-  postalCode: string | null;
-  city: string | null;
-  location: string | null;
-  active: boolean;
-  status: TrainingStatus;
-  statusLabel: string;
-  certificate: {
-    id: number;
-    certificateNumber: string;
-    validUntil: string;
-    score: number;
-  } | null;
+  name: string;
+  courseCount: number;
+  totalDurationMinutes: number;
 }
 
+interface AdminCourseRow {
+  id: string;
+  title: string;
+  slug: string;
+  mainCategory?: string | null;
+  seminar?: string | null;
+  instructionCode?: string | null;
+  instructionTitle?: string | null;
+  sortOrder?: number;
+  estimatedDurationMinutes?: number | null;
+}
+
+function toAssignableCourse(c: AdminCourseRow): AssignableCourse {
+  return {
+    id: c.id,
+    title: c.title,
+    fullTitle: c.title,
+    code: c.instructionCode ?? null,
+    instructionTitle: c.instructionTitle ?? null,
+    mainCategory: c.mainCategory ?? null,
+    seminar: c.seminar ?? null,
+    sortOrder: c.sortOrder ?? 0,
+    slug: c.slug,
+    estimatedDurationMinutes: c.estimatedDurationMinutes ?? null,
+  };
+}
+
+const EMPTY_FORM: EmployeeFormState = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  password: "",
+  birthDate: "",
+  birthPlace: "",
+  street: "",
+  houseNumber: "",
+  postalCode: "",
+  city: "",
+  location: "",
+  joinedCompanyAt: "",
+  leftCompanyAt: "",
+};
+
 export default function DashboardPage() {
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [listRefreshKey, setListRefreshKey] = useState(0);
+  const [assignableCourses, setAssignableCourses] = useState<AssignableCourse[]>(
+    []
+  );
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [employeeCategories, setEmployeeCategories] = useState<
+    EmployeeCategoryOption[]
+  >([]);
+  const [employeeCategoryId, setEmployeeCategoryId] = useState<number | "">("");
+  const [loadedCategoryId, setLoadedCategoryId] = useState<number | null>(null);
+  const [categoryPrompt, setCategoryPrompt] = useState<string[] | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    birthDate: "",
-    birthPlace: "",
-    street: "",
-    houseNumber: "",
-    postalCode: "",
-    city: "",
-    location: "",
-  });
+  const [form, setForm] = useState<EmployeeFormState>(EMPTY_FORM);
   const [message, setMessage] = useState("");
-  const [companyName, setCompanyName] = useState("");
+  const [formError, setFormError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const loadUsers = useCallback(() => {
+  const loadFormData = useCallback(() => {
     setLoading(true);
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((auth) => {
-        if (!auth.user) {
-          window.location.replace("/login");
-          return null;
-        }
-        const redirect = auth.authState?.redirect as string | undefined;
-        const allowed = ["/dashboard", "/dashboard/lizenz", "/dashboard/gesperrt"];
-        if (redirect && !allowed.includes(redirect)) {
-          window.location.replace(redirect);
-          return null;
-        }
-        return fetch("/api/admin/company")
-          .then((r) => r.json())
-          .then((c) => {
-            if (c.company?.name) setCompanyName(c.company.name);
-            return fetch("/api/admin/users");
-          });
+    Promise.all([
+      fetch("/api/admin/courses?filter=active"),
+      fetch("/api/admin/employee-categories?filter=active"),
+    ])
+      .then((results) => {
+        const [coursesRes, categoriesRes] = results;
+        return Promise.all([
+          coursesRes.ok ? coursesRes.json() : { courses: [] },
+          categoriesRes.ok ? categoriesRes.json() : { categories: [] },
+        ]);
       })
-      .then((r) => {
-        if (!r) return null;
-        if (r.status === 403 || r.status === 401) {
-          window.location.replace("/login");
-          return null;
+      .then((data) => {
+        if (!data) return;
+        const [coursesData, categoriesData] = data;
+        if (coursesData.courses) {
+          setAssignableCourses(
+            coursesData.courses.map((c: AdminCourseRow) => toAssignableCourse(c))
+          );
         }
-        if (!r.ok) {
-          return r.json().then((d) => {
-            throw new Error(d.error ?? "Laden fehlgeschlagen.");
-          });
-        }
-        return r.json();
-      })
-      .then((d) => {
-        if (!d) return;
-        if (d.users) {
-          setUsers(d.users.filter((u: AdminUser) => u.role === "employee"));
+        if (categoriesData.categories) {
+          setEmployeeCategories(categoriesData.categories);
         }
       })
       .catch((e) => {
@@ -107,28 +120,55 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    loadFormData();
+  }, [loadFormData]);
 
   function resetForm() {
-    setForm({
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      birthDate: "",
-      birthPlace: "",
-      street: "",
-      houseNumber: "",
-      postalCode: "",
-      city: "",
-      location: "",
-    });
+    setForm(EMPTY_FORM);
     setEditId(null);
     setShowForm(false);
+    setSelectedCourseIds([]);
+    setEmployeeCategoryId("");
+    setLoadedCategoryId(null);
+    setCategoryPrompt(null);
+    setFormLoading(false);
+    setFormError("");
+    setSaving(false);
   }
 
-  function startEdit(u: AdminUser) {
+  async function loadCategoryCourseIds(categoryId: number): Promise<string[]> {
+    const res = await fetch(`/api/admin/employee-categories/${categoryId}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const assignableIds = new Set(assignableCourses.map((c) => c.id));
+    return (data.courseIds as string[]).filter((id) => assignableIds.has(id));
+  }
+
+  async function handleCategoryChange(value: string) {
+    if (value === "") {
+      setEmployeeCategoryId("");
+      setCategoryPrompt(null);
+      return;
+    }
+    const newId = Number(value);
+    setEmployeeCategoryId(newId);
+    const standardIds = await loadCategoryCourseIds(newId);
+
+    if (
+      editId &&
+      loadedCategoryId != null &&
+      loadedCategoryId !== newId &&
+      selectedCourseIds.length > 0
+    ) {
+      setCategoryPrompt(standardIds);
+      return;
+    }
+
+    setSelectedCourseIds(standardIds);
+    setCategoryPrompt(null);
+  }
+
+  async function startEdit(u: AdminEmployeeRow) {
     setEditId(u.id);
     setForm({
       firstName: u.firstName,
@@ -142,94 +182,129 @@ export default function DashboardPage() {
       postalCode: u.postalCode ?? "",
       city: u.city ?? "",
       location: u.location ?? "",
+      joinedCompanyAt: u.joinedCompanyAt ?? "",
+      leftCompanyAt: u.leftCompanyAt ?? "",
     });
+    setFormError("");
     setShowForm(true);
+    setFormLoading(true);
+    setSelectedCourseIds([]);
+    setEmployeeCategoryId("");
+    setLoadedCategoryId(null);
+    setCategoryPrompt(null);
+
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}`);
+      if (!res.ok) {
+        setFormError("Kurszuweisungen konnten nicht geladen werden.");
+        return;
+      }
+      const data = await res.json();
+      const assignableIds = new Set(assignableCourses.map((c) => c.id));
+      const assigned = (data.assignedCourseIds as string[]).filter((id) =>
+        assignableIds.has(id)
+      );
+      setSelectedCourseIds(assigned);
+      const catId = data.user?.employeeCategoryId as number | null | undefined;
+      if (catId) {
+        setEmployeeCategoryId(catId);
+        setLoadedCategoryId(catId);
+      }
+      const joined = data.user?.joinedCompanyAt as string | null | undefined;
+      const left = data.user?.leftCompanyAt as string | null | undefined;
+      setForm((prev) => ({
+        ...prev,
+        joinedCompanyAt: joined ?? "",
+        leftCompanyAt: left ?? "",
+      }));
+    } catch {
+      setFormError("Kurszuweisungen konnten nicht geladen werden.");
+    } finally {
+      setFormLoading(false);
+    }
   }
 
   async function saveUser(e: React.FormEvent) {
     e.preventDefault();
-    setMessage("");
+    setFormError("");
+    setSaving(true);
 
-    if (editId) {
-      const body: Record<string, unknown> = {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
-        birthDate: form.birthDate || null,
-        birthPlace: form.birthPlace || null,
-        street: form.street || null,
-        houseNumber: form.houseNumber || null,
-        postalCode: form.postalCode || null,
+    try {
+      if (editId) {
+        const body: Record<string, unknown> = {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          birthDate: form.birthDate || null,
+          birthPlace: form.birthPlace || null,
+          street: form.street || null,
+          houseNumber: form.houseNumber || null,
+          postalCode: form.postalCode || null,
         city: form.city || null,
         location: form.location || null,
-      };
-      if (form.password) body.password = form.password;
+        joinedCompanyAt: form.joinedCompanyAt || null,
+        leftCompanyAt: form.leftCompanyAt || null,
+        courseIds: selectedCourseIds,
+          employeeCategoryId: employeeCategoryId === "" ? null : employeeCategoryId,
+        };
+        if (form.password) body.password = form.password;
 
-      const res = await fetch(`/api/admin/users/${editId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        setMessage("Speichern fehlgeschlagen.");
-        return;
+        const res = await fetch(`/api/admin/users/${editId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          setFormError(d.error ?? "Speichern fehlgeschlagen.");
+          return;
+        }
+      } else {
+        const res = await fetch("/api/admin/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          joinedCompanyAt: form.joinedCompanyAt || null,
+          leftCompanyAt: form.leftCompanyAt || null,
+          courseIds: selectedCourseIds,
+            employeeCategoryId: employeeCategoryId === "" ? null : employeeCategoryId,
+          }),
+        });
+        if (!res.ok) {
+          const d = await res.json();
+          setFormError(d.error ?? "Anlegen fehlgeschlagen.");
+          return;
+        }
       }
-    } else {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        setMessage(d.error ?? "Anlegen fehlgeschlagen.");
-        return;
-      }
+
+      resetForm();
+      setListRefreshKey((k) => k + 1);
+      setMessage("Gespeichert.");
+    } finally {
+      setSaving(false);
     }
-
-    resetForm();
-    loadUsers();
-    setMessage("Gespeichert.");
   }
 
-  async function toggleActive(u: AdminUser) {
+  async function toggleActive(u: AdminEmployeeRow) {
     await fetch(`/api/admin/users/${u.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ active: !u.active }),
     });
-    loadUsers();
+    setListRefreshKey((k) => k + 1);
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">Lädt…</div>
-    );
+    return <p className="px-4 py-8 text-sm text-slate-600">Lädt…</p>;
   }
 
-  const employees = users;
-
   return (
-    <div className="min-h-screen pb-16">
-      <AppHeader
-        title={companyName ? `Admin-Dashboard – ${companyName}` : "Admin-Dashboard"}
-      />
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        <AdminNav active="mitarbeiter" />
-
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2 text-sm text-slate-600">
-            <span className="flex items-center gap-1">
-              <StatusDot status="green" /> Gültig
-            </span>
-            <span className="flex items-center gap-1">
-              <StatusDot status="yellow" /> Läuft in 30 Tagen ab
-            </span>
-            <span className="flex items-center gap-1">
-              <StatusDot status="red" /> Nicht geschult / abgelaufen
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
+    <div className="mx-auto max-w-6xl px-4 py-8">
+      <PageHeader
+        title="Mitarbeiter"
+        actions={
+          <>
             <a href="/api/admin/export">
               <Button variant="secondary">CSV-Export</Button>
             </a>
@@ -241,192 +316,73 @@ export default function DashboardPage() {
             >
               Mitarbeiter anlegen
             </Button>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        {message && (
-          <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">
-            {message}
-          </p>
-        )}
-
-        {showForm && (
-          <Card className="mb-6">
-            <h2 className="mb-4 text-lg font-bold">
-              {editId ? "Mitarbeiter bearbeiten" : "Neuer Mitarbeiter"}
-            </h2>
-            <form onSubmit={saveUser} className="grid gap-4 sm:grid-cols-2">
-              <Input
-                label="Vorname"
-                required
-                value={form.firstName}
-                onChange={(e) =>
-                  setForm({ ...form, firstName: e.target.value })
-                }
-              />
-              <Input
-                label="Nachname"
-                required
-                value={form.lastName}
-                onChange={(e) =>
-                  setForm({ ...form, lastName: e.target.value })
-                }
-              />
-              <Input
-                label="E-Mail"
-                type="email"
-                required
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-              <Input
-                label={editId ? "Neues Passwort (optional)" : "Passwort"}
-                type="password"
-                required={!editId}
-                value={form.password}
-                onChange={(e) =>
-                  setForm({ ...form, password: e.target.value })
-                }
-              />
-              <Input
-                label="Geburtsdatum"
-                type="date"
-                value={form.birthDate}
-                onChange={(e) =>
-                  setForm({ ...form, birthDate: e.target.value })
-                }
-              />
-              <Input
-                label="Geburtsort"
-                value={form.birthPlace}
-                onChange={(e) =>
-                  setForm({ ...form, birthPlace: e.target.value })
-                }
-              />
-              <Input
-                label="Straße"
-                value={form.street}
-                onChange={(e) =>
-                  setForm({ ...form, street: e.target.value })
-                }
-              />
-              <Input
-                label="Hausnummer"
-                value={form.houseNumber}
-                onChange={(e) =>
-                  setForm({ ...form, houseNumber: e.target.value })
-                }
-              />
-              <Input
-                label="Postleitzahl"
-                value={form.postalCode}
-                onChange={(e) =>
-                  setForm({ ...form, postalCode: e.target.value })
-                }
-              />
-              <Input
-                label="Ort"
-                value={form.city}
-                onChange={(e) =>
-                  setForm({ ...form, city: e.target.value })
-                }
-              />
-              <Input
-                label="Spielhalle"
-                value={form.location}
-                onChange={(e) =>
-                  setForm({ ...form, location: e.target.value })
-                }
-              />
-              <div className="sm:col-span-2 flex gap-3">
-                <Button type="submit">Speichern</Button>
-                <Button type="button" variant="secondary" onClick={resetForm}>
-                  Abbrechen
-                </Button>
-              </div>
-            </form>
-          </Card>
-        )}
-
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead className="border-b bg-slate-50 text-slate-600">
-              <tr>
-                <th className="p-4">Status</th>
-                <th className="p-4">Name</th>
-                <th className="p-4">E-Mail</th>
-                <th className="p-4">Anschrift</th>
-                <th className="p-4">Spielhalle</th>
-                <th className="p-4">Zertifikat</th>
-                <th className="p-4">Aktionen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((u) => (
-                  <tr key={u.id} className="border-b last:border-0">
-                    <td className="p-4">
-                      <span className="flex items-center gap-2">
-                        <StatusDot status={u.status} />
-                        <span className="text-xs">{u.statusLabel}</span>
-                      </span>
-                    </td>
-                    <td className="p-4 font-medium">
-                      {u.firstName} {u.lastName}
-                      {!u.active && (
-                        <span className="ml-2 text-xs text-red-600">
-                          (deaktiviert)
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4">{u.email}</td>
-                    <td className="p-4 text-xs text-slate-600">
-                      {formatUserAddress(u)}
-                    </td>
-                    <td className="p-4">{u.location ?? "—"}</td>
-                    <td className="p-4">
-                      {u.certificate ? (
-                        <div>
-                          <p className="text-xs">{u.certificate.certificateNumber}</p>
-                          <a
-                            href={`/api/certificates/${u.certificate.id}/pdf`}
-                            className="text-brand underline"
-                          >
-                            PDF
-                          </a>
-                        </div>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex flex-col gap-1">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(u)}
-                          className="text-left text-brand hover:underline"
-                        >
-                          Bearbeiten
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => toggleActive(u)}
-                          className="text-left text-slate-600 hover:underline"
-                        >
-                          {u.active ? "Archivieren" : "Reaktivieren"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-          {employees.length === 0 && (
-            <p className="p-8 text-center text-slate-500">
-              Noch keine Mitarbeiter angelegt.
-            </p>
-          )}
-        </Card>
+      <div className="mb-6 flex flex-wrap gap-2 text-sm text-slate-600">
+        <span className="flex items-center gap-1">
+          <StatusDot status="green" /> Gültig
+        </span>
+        <span className="flex items-center gap-1">
+          <StatusDot status="yellow" /> Läuft in 30 Tagen ab
+        </span>
+        <span className="flex items-center gap-1">
+          <StatusDot status="red" /> Nicht geschult / abgelaufen
+        </span>
       </div>
+
+      {message && (
+        <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">
+          {message}
+        </p>
+      )}
+
+      <AdminDrawer
+        open={showForm}
+        onClose={resetForm}
+        title={editId ? "Mitarbeiter bearbeiten" : "Neuer Mitarbeiter"}
+        error={formError}
+        saving={saving}
+        footer={
+          <div className="flex gap-3">
+            <Button type="submit" form="employee-edit-form" disabled={saving || formLoading}>
+              {saving ? "Speichern…" : "Speichern"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={resetForm} disabled={saving}>
+              Abbrechen
+            </Button>
+          </div>
+        }
+      >
+        <EmployeeEditForm
+          editId={editId}
+          form={form}
+          onFormChange={setForm}
+          employeeCategories={employeeCategories}
+          employeeCategoryId={employeeCategoryId}
+          onCategoryChange={handleCategoryChange}
+          categoryPrompt={categoryPrompt}
+          onAcceptCategoryPrompt={() => {
+            if (categoryPrompt) setSelectedCourseIds(categoryPrompt);
+            setCategoryPrompt(null);
+          }}
+          onDismissCategoryPrompt={() => setCategoryPrompt(null)}
+          formLoading={formLoading}
+          assignableCourses={assignableCourses}
+          selectedCourseIds={selectedCourseIds}
+          onSelectedCourseIdsChange={setSelectedCourseIds}
+          onSubmit={saveUser}
+          hideActions
+        />
+      </AdminDrawer>
+
+      <EmployeeListTable
+        refreshKey={listRefreshKey}
+        categories={employeeCategories}
+        onEdit={startEdit}
+        onToggleActive={toggleActive}
+      />
     </div>
   );
 }

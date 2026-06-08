@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireEmployee } from "@/lib/auth";
 import { createCertificate, getLatestCertificate } from "@/lib/certificate";
+import { getCourseMeta } from "@/lib/course-db";
 import { getCertificateStatus } from "@/lib/status";
 import {
   scoreExam,
@@ -94,12 +95,15 @@ export async function POST(request: Request) {
 
     let certificate = null;
     if (result.passed) {
-      certificate = await createCertificate(
-        user.id,
-        user.companyId,
-        courseId,
-        result.scorePercent
-      );
+      const meta = await getCourseMeta(user.companyId, courseId);
+      if (meta?.requiresCertificate !== false) {
+        certificate = await createCertificate(
+          user.id,
+          user.companyId,
+          courseId,
+          result.scorePercent
+        );
+      }
     }
 
     return NextResponse.json({

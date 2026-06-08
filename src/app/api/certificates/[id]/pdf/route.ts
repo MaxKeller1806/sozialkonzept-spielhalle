@@ -6,6 +6,8 @@ import {
   getUserForCertificate,
 } from "@/lib/certificate";
 import { getCourseForContext } from "@/lib/course";
+import { getCourseMeta } from "@/lib/course-db";
+import { getDocumentTemplateRevisionById } from "@/lib/document-template";
 import { getCompanyById } from "@/lib/tenant";
 import { generateCertificatePdf } from "@/lib/pdf";
 
@@ -44,10 +46,24 @@ export async function GET(
     }
 
     const course = await getCourseForContext(cert.companyId, cert.courseId);
+    const courseMeta = await getCourseMeta(cert.companyId, cert.courseId);
     const company = await getCompanyById(cert.companyId);
+
+    let templateConfig;
+    if (cert.templateRevisionId != null) {
+      const revision = await getDocumentTemplateRevisionById(
+        cert.templateRevisionId
+      );
+      templateConfig = revision?.config;
+    }
+
     const pdf = await generateCertificatePdf(certUser, cert, course, {
       companyName: company?.name,
       branding: company?.branding,
+      documentSignature: company?.documentSignature,
+      instructionCode: courseMeta?.instructionCode ?? null,
+      instructionTitle: courseMeta?.instructionTitle ?? null,
+      templateConfig,
     });
 
     return new NextResponse(new Uint8Array(pdf), {

@@ -6,6 +6,7 @@ import {
   permanentlyDeleteCompanyUser,
   removeOrArchiveCompanyUser,
 } from "@/lib/tenant";
+import { resolveCompanyIndustryFields } from "@/lib/industries";
 import { ConfirmDeleteRequiredError } from "@/lib/user-delete";
 
 export async function GET(
@@ -35,6 +36,10 @@ export async function GET(
         email: company.email,
         phone: company.phone,
         website: company.website,
+        industryId: company.industryId,
+        businessTypeId: company.businessTypeId,
+        industryName: company.industryName ?? null,
+        businessTypeName: company.businessTypeName ?? null,
         createdAt: company.createdAt,
       },
     });
@@ -56,7 +61,7 @@ export async function PATCH(
     const { id } = await params;
     const companyId = Number(id);
     const body = await request.json();
-    const patch: Record<string, string | boolean | null> = {};
+    const patch: Record<string, string | boolean | null | number> = {};
 
     if (body.status !== undefined) patch.status = body.status;
     if (body.licenseStatus !== undefined) patch.license_status = body.licenseStatus;
@@ -86,6 +91,47 @@ export async function PATCH(
 
     for (const [jsKey, dbKey] of fields) {
       if (body[jsKey] !== undefined) patch[dbKey] = body[jsKey] || null;
+    }
+
+    const current = await getCompanyById(companyId);
+    if (!current) {
+      return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
+    }
+
+    try {
+      const industryFields = await resolveCompanyIndustryFields(
+        {
+          industryId: current.industryId,
+          businessTypeId: current.businessTypeId,
+        },
+        {
+          industryId: body.industryId,
+          businessTypeId: body.businessTypeId,
+        }
+      );
+      if (industryFields) {
+        patch.industry_id = industryFields.industryId;
+        patch.business_type_id = industryFields.businessTypeId;
+      }
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "BUSINESS_TYPE_REQUIRES_INDUSTRY") {
+        return NextResponse.json(
+          { error: "Betriebstyp erfordert eine Branche." },
+          { status: 400 }
+        );
+      }
+      if (
+        code === "INDUSTRY_NOT_FOUND" ||
+        code === "BUSINESS_TYPE_NOT_FOUND" ||
+        code === "BUSINESS_TYPE_INDUSTRY_MISMATCH"
+      ) {
+        return NextResponse.json(
+          { error: "Ungültige Branche oder Betriebstyp." },
+          { status: 400 }
+        );
+      }
+      throw err;
     }
 
     const keys = Object.keys(patch);

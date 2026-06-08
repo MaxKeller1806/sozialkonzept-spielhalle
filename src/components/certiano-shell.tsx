@@ -1,12 +1,18 @@
 "use client";
 
-import { APP_NAME, OPERATOR_NAME } from "@/lib/branding";
-import { AccountMenu } from "@/components/account-menu";
+import { getCertianoSidebarItems } from "@/components/certiano-nav";
+import { AppShell } from "@/components/shell/app-shell";
 import {
   CertianoBrandingLoader,
   useCertianoBranding,
 } from "@/components/certiano-branding-loader";
-import { CertianoNav } from "@/components/certiano-nav";
+import { APP_NAME } from "@/lib/branding";
+
+const CERTIANO_QUICK_LINKS = [
+  { href: "/certiano/konto", label: "Mein Konto" },
+  { href: "/certiano/uebersicht", label: "Dashboard" },
+  { href: "/certiano", label: "Firmen" },
+];
 
 function CertianoShellInner({
   children,
@@ -16,45 +22,28 @@ function CertianoShellInner({
   companyId?: number;
 }) {
   const { branding, name } = useCertianoBranding();
+  const navItems = getCertianoSidebarItems(companyId);
 
   return (
-    <div className="min-h-screen pb-16" style={{ backgroundColor: branding.backgroundColor }}>
-      <header
-        className="border-b text-white"
-        style={{
-          backgroundColor: branding.primaryColor,
-          borderColor: branding.secondaryColor,
-        }}
-      >
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5">
-          <div className="flex items-center gap-4">
-            {branding.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={branding.logoUrl}
-                alt=""
-                className="h-10 w-auto max-w-[120px] object-contain"
-              />
-            ) : null}
-            <div>
-              <p
-                className="text-xs font-semibold uppercase tracking-wide opacity-80"
-                style={{ color: branding.backgroundColor }}
-              >
-                {OPERATOR_NAME}
-              </p>
-              <h1 className="text-xl font-bold">{name || APP_NAME}</h1>
-              <p className="text-sm opacity-80">Betreiberbereich</p>
-            </div>
-          </div>
-          <AccountMenu variant="dark" />
-        </div>
-      </header>
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        <CertianoNav companyId={companyId} />
-        {children}
-      </div>
-    </div>
+    <AppShell
+      storageKey="certiano-sidebar-collapsed"
+      navItems={navItems}
+      brand={{
+        logoUrl: branding.logoUrl,
+        companyName: name || APP_NAME,
+        productName: "Certiano Campus",
+        areaLabel: "Betreiberbereich",
+      }}
+      quickLinks={CERTIANO_QUICK_LINKS}
+      navAriaLabel="Certiano"
+      contentClassName="app-content mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-8"
+      topbar={{
+        showSearch: true,
+        searchPlaceholder: "Firma oder Benutzer suchen…",
+      }}
+    >
+      {children}
+    </AppShell>
   );
 }
 
@@ -67,7 +56,9 @@ export function CertianoShell({
 }) {
   return (
     <CertianoBrandingLoader>
-      <CertianoShellInner companyId={companyId}>{children}</CertianoShellInner>
+      <CertianoShellInner companyId={companyId}>
+        {children}
+      </CertianoShellInner>
     </CertianoBrandingLoader>
   );
 }

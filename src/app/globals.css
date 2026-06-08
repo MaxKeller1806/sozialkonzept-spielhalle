@@ -51,6 +51,87 @@ body {
   line-height: 1.5;
 }
 
+/* App-Shell: Sidebar + Hauptbereich */
+.app-shell {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.app-sidebar {
+  flex-shrink: 0;
+  width: 260px;
+  min-width: 260px;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.app-sidebar--collapsed {
+  width: 72px;
+  min-width: 72px;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  background: var(--background);
+}
+
+.app-topbar {
+  background-color: #ffffff;
+}
+
+.app-content {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+/* App-Layout-Shell: Sidebar + Main nebeneinander (Flex, kein Overlay) */
+.app-layout-shell,
+.admin-shell {
+  --app-sidebar-width: 260px;
+  --admin-sidebar-width: 260px;
+}
+
+.app-layout-shell[data-sidebar-collapsed="true"],
+.admin-shell[data-sidebar-collapsed="true"] {
+  --app-sidebar-width: 80px;
+  --admin-sidebar-width: 80px;
+}
+
+.app-layout-sidebar,
+.admin-sidebar {
+  flex-shrink: 0;
+  width: var(--app-sidebar-width);
+  min-width: var(--app-sidebar-width);
+  max-width: var(--app-sidebar-width);
+  transition:
+    width 200ms ease,
+    min-width 200ms ease,
+    max-width 200ms ease;
+}
+
+.app-layout-main,
+.admin-main {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-layout-sidebar,
+  .admin-sidebar {
+    transition: none;
+  }
+}
+
+@media (min-width: 640px) {
+  .app-content {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
