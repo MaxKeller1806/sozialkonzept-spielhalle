@@ -11,6 +11,8 @@ import { OPERATOR_COMPANY_SLUG } from "./branding-theme";
 import { getLatestCertificate } from "./certificate";
 import { getCertificateStatus, statusLabel } from "./status";
 import { mapUser } from "./db/row-mappers";
+import { sqlUserAssignedToLocationFilter } from "./user-locations";
+import { formatCompanyLocationLabel } from "./company-locations";
 import type { TrainingStatus } from "./types";
 
 export const ADMIN_EMPLOYEE_SORT_ALLOWLIST = {
@@ -18,6 +20,7 @@ export const ADMIN_EMPLOYEE_SORT_ALLOWLIST = {
   lastName: "u.last_name",
   email: "u.email",
   categoryName: "ec.name",
+  locationName: "cl.name",
   active: "u.active",
   lastLoginAt: "u.last_login_at",
   createdAt: "u.created_at",
@@ -35,6 +38,9 @@ export type AdminEmployeeRow = {
   postalCode: string | null;
   city: string | null;
   location: string | null;
+  locationId: number | null;
+  locationLabel: string | null;
+  additionalLocationLabels: string | null;
   role: string;
   active: boolean;
   employeeCategoryId: number | null;
@@ -69,6 +75,18 @@ function mapEmployeeRow(row: Record<string, unknown>): Omit<
     postalCode: row.postal_code != null ? String(row.postal_code) : null,
     city: row.city != null ? String(row.city) : null,
     location: row.location != null ? String(row.location) : null,
+    locationId: row.location_id != null ? Number(row.location_id) : null,
+    locationLabel:
+      row.location_name != null
+        ? formatCompanyLocationLabel({
+            name: String(row.location_name),
+            city: row.location_city != null ? String(row.location_city) : null,
+          })
+        : null,
+    additionalLocationLabels:
+      row.other_location_labels != null
+        ? String(row.other_location_labels)
+        : null,
     role: String(row.role),
     active: Boolean(row.active),
     employeeCategoryId:
@@ -92,7 +110,8 @@ function mapEmployeeRow(row: Record<string, unknown>): Omit<
 
 export async function listAdminEmployees(
   companyId: number,
-  query: ListQueryState
+  query: ListQueryState,
+  effectiveLocationId: number | null = null
 ): Promise<{ users: AdminEmployeeRow[]; meta: ListMeta }> {
   const sql = getSql();
   const search = query.search.trim().toLowerCase();
@@ -109,6 +128,8 @@ export async function listAdminEmployees(
     query.categoryId != null
       ? sql`AND u.employee_category_id = ${query.categoryId}`
       : sql``;
+
+  const locationFilter = sqlUserAssignedToLocationFilter(sql, effectiveLocationId);
 
   const searchFilter = searchPattern
     ? sql`AND (
@@ -145,6 +166,7 @@ export async function listAdminEmployees(
         u.city,
         u.role,
         u.location,
+        u.location_id,
         u.active,
         u.employee_category_id,
         u.joined_company_at,
@@ -152,13 +174,30 @@ export async function listAdminEmployees(
         u.created_at,
         u.last_login_at,
         ec.name AS category_name,
+        cl.name AS location_name,
+        cl.city AS location_city,
+        (
+          SELECT string_agg(
+            CASE
+              WHEN cl2.city IS NOT NULL AND cl2.city <> cl2.name
+              THEN cl2.city || ' – ' || cl2.name
+              ELSE COALESCE(cl2.city, cl2.name)
+            END,
+            ', ' ORDER BY cl2.sort_order ASC, cl2.city ASC NULLS LAST, cl2.name ASC
+          )
+          FROM user_locations ul2
+          JOIN company_locations cl2 ON cl2.id = ul2.location_id
+          WHERE ul2.user_id = u.id AND ul2.is_primary = FALSE
+        ) AS other_location_labels,
         COUNT(*) OVER()::int AS total_count
       FROM users u
       LEFT JOIN employee_categories ec ON ec.id = u.employee_category_id
+      LEFT JOIN company_locations cl ON cl.id = u.location_id
       WHERE u.company_id = ${companyId}
         AND u.role = 'employee'
       ${activeFilter}
       ${categoryFilter}
+      ${locationFilter}
       ${searchFilter}
       ORDER BY ${orderBy}, u.first_name ASC
       LIMIT ${query.pageSize}

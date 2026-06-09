@@ -79,7 +79,9 @@ export async function listAdminCoursesPaginated(
     courses = courses.filter(
       (c) =>
         c.title.toLowerCase().includes(search) ||
-        c.slug.toLowerCase().includes(search)
+        c.slug.toLowerCase().includes(search) ||
+        (c.instructionCode?.toLowerCase().includes(search) ?? false) ||
+        (c.topicName?.toLowerCase().includes(search) ?? false)
     );
   }
 

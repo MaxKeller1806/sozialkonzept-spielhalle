@@ -2,6 +2,8 @@ import type { ValidityType, ValidityIntervalUnit } from "./course-validity";
 
 export type UserRole = "superuser" | "admin" | "employee";
 
+export type AdminScope = "company" | "location";
+
 export type CompanyStatus = "pending" | "active" | "disabled" | "expired";
 export type LicenseStatus = "unlicensed" | "active" | "expired" | "disabled";
 
@@ -19,6 +21,21 @@ export interface CompanyDocumentSignature {
   responsiblePerson: string | null;
   position: string | null;
   customText: string | null;
+}
+
+export interface CompanyLocation {
+  id: number;
+  companyId: number;
+  name: string;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  postalCode: string | null;
+  city: string | null;
+  country: string;
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Company {
@@ -139,7 +156,11 @@ export interface User {
   postalCode: string | null;
   city: string | null;
   role: UserRole;
+  /** Freitext-Standort (Legacy) */
   location: string | null;
+  locationId: number | null;
+  adminScope: AdminScope;
+  adminLocationId: number | null;
   active: number;
   mustChangePassword: number;
   employeeCategoryId: number | null;
@@ -248,6 +269,10 @@ export interface CourseMeta {
   requiresProof: boolean;
   /** Geschätzte Bearbeitungsdauer in Minuten. */
   estimatedDurationMinutes: number | null;
+  /** Hauptthema (Gruppierung). */
+  topicId: number | null;
+  topicName?: string | null;
+  topicSortOrder?: number;
 }
 
 export type MasterCourseStatus = "draft" | "published" | "disabled";
@@ -275,6 +300,9 @@ export interface MasterCourseMeta {
   requiresCertificate: boolean;
   requiresProof: boolean;
   estimatedDurationMinutes: number | null;
+  topicId: number | null;
+  topicName?: string | null;
+  topicSortOrder?: number;
 }
 
 export interface EmployeeCategory {
@@ -345,6 +373,9 @@ export interface SessionUser {
   role: UserRole;
   companyId: number | null;
   mustChangePassword: boolean;
+  adminScope?: AdminScope;
+  adminLocationId?: number | null;
+  locationId?: number | null;
 }
 
 export type FeedbackCategory = "frage" | "anregung";

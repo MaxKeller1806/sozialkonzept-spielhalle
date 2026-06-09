@@ -12,11 +12,13 @@ import type { AdminEmployeeRow } from "@/lib/admin-users-list";
 import { formatUserAddress } from "@/lib/user-profile";
 
 type CategoryOption = { id: number; name: string };
+type LocationOption = { id: number; label: string };
 
 type Props = {
   onEdit: (user: AdminEmployeeRow) => void;
   onToggleActive: (user: AdminEmployeeRow) => void;
   categories: CategoryOption[];
+  locations: LocationOption[];
   refreshKey?: number;
 };
 
@@ -24,6 +26,7 @@ function EmployeeListTableInner({
   onEdit,
   onToggleActive,
   categories,
+  locations,
   refreshKey = 0,
 }: Props) {
   const {
@@ -113,9 +116,15 @@ function EmployeeListTableInner({
       ),
     },
     {
-      key: "location",
-      header: "Spielhalle",
-      render: (u) => u.location ?? "—",
+      key: "locationName",
+      header: "Hauptstandort",
+      sortable: true,
+      render: (u) => u.locationLabel ?? u.location ?? "—",
+    },
+    {
+      key: "otherLocations",
+      header: "Weitere Standorte",
+      render: (u) => u.additionalLocationLabels ?? "—",
     },
     {
       key: "certificate",
@@ -182,6 +191,20 @@ function EmployeeListTableInner({
           ],
           onChange: (value) =>
             updateParams({ categoryId: value || null }, { resetPage: true }),
+        },
+        {
+          key: "locationId",
+          label: "Standort",
+          value: state.locationId ? String(state.locationId) : "",
+          options: [
+            { value: "", label: "Alle Standorte" },
+            ...locations.map((loc) => ({
+              value: String(loc.id),
+              label: loc.label,
+            })),
+          ],
+          onChange: (value) =>
+            updateParams({ locationId: value || null }, { resetPage: true }),
         },
       ]}
       page={meta?.page ?? state.page}

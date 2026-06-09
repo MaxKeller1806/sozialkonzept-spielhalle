@@ -19,6 +19,10 @@ export function mapUser(row: Record<string, unknown>): User {
     city: row.city != null ? String(row.city) : null,
     role: row.role as User["role"],
     location: row.location != null ? String(row.location) : null,
+    locationId: row.location_id != null ? Number(row.location_id) : null,
+    adminScope: (row.admin_scope as User["adminScope"]) ?? "company",
+    adminLocationId:
+      row.admin_location_id != null ? Number(row.admin_location_id) : null,
     employeeCategoryId:
       row.employee_category_id != null ? Number(row.employee_category_id) : null,
     joinedCompanyAt: row.joined_company_at

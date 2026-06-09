@@ -352,6 +352,7 @@ export async function getCompanySummaries(): Promise<CompanySummaryRow[]> {
     industryId: null,
     businessTypeId: null,
     categoryId: null,
+    locationId: null,
     companyId: null,
     role: null,
   });

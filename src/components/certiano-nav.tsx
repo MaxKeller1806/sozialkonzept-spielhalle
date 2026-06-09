@@ -48,6 +48,12 @@ export function getCertianoSidebarItems(companyId?: number): SidebarNavItem[] {
       match: (p) => p.startsWith("/certiano/verantwortlichkeiten"),
     },
     {
+      href: "/certiano/hauptthemen",
+      label: "Hauptthemen",
+      icon: <IconBook />,
+      match: (p) => p.startsWith("/certiano/hauptthemen"),
+    },
+    {
       href: "/certiano/master-courses",
       label: "Seminarverwaltung",
       icon: <IconBook />,

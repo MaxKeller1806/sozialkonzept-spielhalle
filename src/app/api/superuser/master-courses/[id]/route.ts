@@ -7,6 +7,7 @@ import {
   importCompanyCourseIntoMaster,
   setMasterCourseActive,
   updateMasterCourseSettings,
+  updateMasterCourseTopicId,
 } from "@/lib/master-course-db";
 import { executePermanentMasterCourseDelete } from "@/lib/master-course-delete";
 
@@ -65,15 +66,45 @@ export async function PATCH(
       });
     }
 
-    const course = await updateMasterCourseSettings(id, {
-      passingScore: body.passingScore,
-      status: body.status,
-      title: body.title,
-      description: body.description,
-      validityType: body.validityType,
-      validityIntervalValue: body.validityIntervalValue,
-      validityIntervalUnit: body.validityIntervalUnit,
-    });
+    if (body.topicId !== undefined) {
+      let parsedTopicId: number | null = null;
+      if (body.topicId != null && body.topicId !== "") {
+        parsedTopicId = Number(body.topicId);
+        if (!Number.isFinite(parsedTopicId)) {
+          return NextResponse.json(
+            { error: "Ungültiges Hauptthema." },
+            { status: 400 }
+          );
+        }
+      }
+      await updateMasterCourseTopicId(id, parsedTopicId);
+    }
+
+    const hasSettings =
+      body.passingScore != null ||
+      body.status != null ||
+      body.title != null ||
+      body.description !== undefined ||
+      body.validityType != null ||
+      body.validityIntervalValue != null ||
+      body.validityIntervalUnit != null;
+
+    if (!hasSettings && body.topicId === undefined) {
+      return NextResponse.json({ error: "Keine Änderungen." }, { status: 400 });
+    }
+
+    let course;
+    if (hasSettings) {
+      course = await updateMasterCourseSettings(id, {
+        passingScore: body.passingScore,
+        status: body.status,
+        title: body.title,
+        description: body.description,
+        validityType: body.validityType,
+        validityIntervalValue: body.validityIntervalValue,
+        validityIntervalUnit: body.validityIntervalUnit,
+      });
+    }
 
     const meta = await getMasterCourseMeta(id);
     return NextResponse.json({ meta, course });

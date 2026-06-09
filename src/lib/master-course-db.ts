@@ -90,6 +90,12 @@ function filterMasterRows(
       return false;
     }
     if (filters.seminar && meta.seminar !== filters.seminar) return false;
+    if (
+      filters.topicId != null &&
+      (row.topic_id == null || Number(row.topic_id) !== filters.topicId)
+    ) {
+      return false;
+    }
     if (filters.validityType && rule.validityType !== filters.validityType) {
       return false;
     }
@@ -187,6 +193,10 @@ function mapMeta(row: Record<string, unknown>): MasterCourseMeta {
       row.estimated_duration_minutes != null
         ? Number(row.estimated_duration_minutes)
         : null,
+    topicId: row.topic_id != null ? Number(row.topic_id) : null,
+    topicName: row.topic_name != null ? String(row.topic_name) : null,
+    topicSortOrder:
+      row.topic_sort_order != null ? Number(row.topic_sort_order) : undefined,
     ...parseInstructionMetaFromRow(row),
   };
 }
@@ -317,14 +327,12 @@ export async function getMasterCourseMeta(
   try {
     const rows = await sql`
       SELECT
-        id, slug, title, description, version,
-        passing_score, validity_type, validity_interval_value, validity_interval_unit,
-        validity_months, status, created_at, updated_at,
-        main_category, seminar, instruction_code, instruction_title,
-        sort_order, requires_certificate, requires_proof,
-        estimated_duration_minutes
-      FROM master_courses
-      WHERE id = ${id}
+        mc.*,
+        ct.name AS topic_name,
+        ct.sort_order AS topic_sort_order
+      FROM master_courses mc
+      LEFT JOIN course_topics ct ON ct.id = mc.topic_id
+      WHERE mc.id = ${id}
       LIMIT 1
     `;
     return rows[0] ? mapMeta(rows[0] as Record<string, unknown>) : undefined;
@@ -538,6 +546,18 @@ export async function updateMasterCourseSettings(
 
   course.certificateValidityMonths = validityMonths;
   return saveMasterCourseData(course);
+}
+
+export async function updateMasterCourseTopicId(
+  id: string,
+  topicId: number | null
+): Promise<MasterCourseMeta | undefined> {
+  const sql = getSql();
+  await sql`
+    UPDATE master_courses SET topic_id = ${topicId}, updated_at = NOW()
+    WHERE id = ${id}
+  `;
+  return getMasterCourseMeta(id);
 }
 
 export async function deleteMasterCourse(id: string): Promise<boolean> {

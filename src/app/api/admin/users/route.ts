@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hashPassword, requireAdmin } from "@/lib/auth";
+import { adminAccessFromSession, resolveListLocationId } from "@/lib/admin-access";
 import { getSql, resetSql } from "@/lib/db";
 import { mapUser } from "@/lib/db/row-mappers";
 import { getLatestCertificate } from "@/lib/certificate";
@@ -17,6 +18,11 @@ import {
   parseAdminEmployeeListQuery,
   ADMIN_EMPLOYEE_SORT_ALLOWLIST,
 } from "@/lib/admin-users-list";
+import {
+  setUserLocationAssignments,
+  validateUserLocationAssignments,
+} from "@/lib/user-locations";
+import { parseOptionalId } from "@/lib/list-query";
 import type { User } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -57,9 +63,18 @@ async function mapUserRow(row: User) {
 export async function GET(request: Request) {
   try {
     const admin = await requireAdmin();
+    const access = adminAccessFromSession(admin)!;
     const params = new URL(request.url).searchParams;
     const query = parseAdminEmployeeListQuery(params);
-    const result = await listAdminEmployees(admin.companyId!, query);
+    const effectiveLocationId = resolveListLocationId(
+      access,
+      query.locationId ?? parseOptionalId(params.get("locationId"))
+    );
+    const result = await listAdminEmployees(
+      admin.companyId!,
+      query,
+      effectiveLocationId
+    );
     return NextResponse.json({
       users: result.users,
       meta: result.meta,
@@ -92,6 +107,9 @@ export async function POST(request: Request) {
       postalCode,
       city,
       location,
+      locationId,
+      locationIds,
+      primaryLocationId,
       courseIds,
       employeeCategoryId,
       joinedCompanyAt,
@@ -178,11 +196,61 @@ export async function POST(request: Request) {
       throw e;
     }
 
+    const access = adminAccessFromSession(admin)!;
+
+    const parsedLocationIds =
+      Array.isArray(locationIds)
+        ? locationIds.map(Number).filter((id) => Number.isFinite(id) && id > 0)
+        : locationId != null && locationId !== ""
+          ? [Number(locationId)]
+          : [];
+
+    let parsedPrimaryLocationId: number | null = null;
+    if (parsedLocationIds.length === 1) {
+      parsedPrimaryLocationId = parsedLocationIds[0]!;
+    } else if (parsedLocationIds.length > 1) {
+      if (primaryLocationId != null && primaryLocationId !== "") {
+        parsedPrimaryLocationId = Number(primaryLocationId);
+        if (!parsedLocationIds.includes(parsedPrimaryLocationId)) {
+          return NextResponse.json(
+            { error: "Hauptstandort muss einer der zugewiesenen Standorte sein." },
+            { status: 400 }
+          );
+        }
+      } else if (locationId != null && locationId !== "") {
+        parsedPrimaryLocationId = Number(locationId);
+        if (!parsedLocationIds.includes(parsedPrimaryLocationId)) {
+          return NextResponse.json(
+            { error: "Hauptstandort muss einer der zugewiesenen Standorte sein." },
+            { status: 400 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { error: "Bitte einen Hauptstandort wählen." },
+          { status: 400 }
+        );
+      }
+    }
+
+    try {
+      await validateUserLocationAssignments(
+        admin.companyId!,
+        parsedLocationIds,
+        access
+      );
+    } catch {
+      return NextResponse.json(
+        { error: "Standortzuordnung nicht erlaubt." },
+        { status: 403 }
+      );
+    }
+
     const rows = await sql`
       INSERT INTO users (
         first_name, last_name, email, password_hash, birth_date, birth_place,
         place_of_residence, street, house_number, postal_code, city,
-        role, company_id, location, active, must_change_password,
+        role, company_id, location, location_id, active, must_change_password,
         employee_category_id, joined_company_at, left_company_at
       )
       VALUES (
@@ -197,6 +265,7 @@ export async function POST(request: Request) {
         'employee',
         ${admin.companyId},
         ${location || null},
+        ${parsedPrimaryLocationId},
         TRUE,
         TRUE,
         ${categoryId},
@@ -207,6 +276,18 @@ export async function POST(request: Request) {
     `;
 
     const user = mapUser(rows[0] as Record<string, unknown>);
+
+    if (parsedLocationIds.length > 0) {
+      await setUserLocationAssignments(
+        user.id,
+        admin.companyId!,
+        {
+          locationIds: parsedLocationIds,
+          primaryLocationId: parsedPrimaryLocationId,
+        },
+        access
+      );
+    }
 
     if ("courseIds" in body && Array.isArray(courseIds)) {
       await setUserCourseAssignments(
@@ -235,6 +316,12 @@ export async function POST(request: Request) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
+    if (msg === "PRIMARY_LOCATION_INVALID") {
+      return NextResponse.json(
+        { error: "Hauptstandort muss einer der zugewiesenen Standorte sein." },
+        { status: 400 }
+      );
     }
     return NextResponse.json({ error: "Fehler." }, { status: 500 });
   }

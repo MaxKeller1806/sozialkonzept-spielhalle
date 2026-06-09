@@ -6,7 +6,8 @@ import { mapUserWithPassword } from "./db/row-mappers";
 import { getCompanyById } from "./tenant";
 import { isLicenseValid } from "./license";
 import { hasAcceptedCurrentPolicy } from "./privacy";
-import type { AuthState, SessionUser, User, UserRole } from "./types";
+import type { AdminScope, AuthState, SessionUser, User, UserRole } from "./types";
+import { adminAccessFromSession, type AdminAccess } from "./admin-access";
 
 export interface SessionData {
   user?: SessionUser;
@@ -51,10 +52,28 @@ export async function requireSuperuser(): Promise<SessionUser> {
 
 export type TenantSessionUser = SessionUser & { companyId: number };
 
-export async function requireAdmin(): Promise<TenantSessionUser> {
+export type AdminSessionUser = TenantSessionUser & {
+  adminScope: AdminScope;
+  adminLocationId: number | null;
+};
+
+export async function requireAdmin(): Promise<AdminSessionUser> {
   const user = await requireUser("admin");
   if (!user.companyId) throw new Error("FORBIDDEN");
-  return { ...user, companyId: user.companyId };
+  const access = adminAccessFromSession(user);
+  if (!access) throw new Error("FORBIDDEN");
+  return {
+    ...user,
+    companyId: user.companyId,
+    adminScope: access.adminScope,
+    adminLocationId: access.adminLocationId,
+  };
+}
+
+export function requireAdminAccess(user: SessionUser): AdminAccess {
+  const access = adminAccessFromSession(user);
+  if (!access) throw new Error("FORBIDDEN");
+  return access;
 }
 
 export async function requireEmployee(): Promise<TenantSessionUser> {
@@ -107,6 +126,10 @@ export function toSessionUser(user: User): SessionUser {
     role: user.role,
     companyId: user.companyId,
     mustChangePassword: !!user.mustChangePassword,
+    adminScope: user.role === "admin" ? user.adminScope : undefined,
+    adminLocationId:
+      user.role === "admin" ? user.adminLocationId : undefined,
+    locationId: user.role === "employee" ? user.locationId : undefined,
   };
 }
 

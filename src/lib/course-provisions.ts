@@ -378,7 +378,7 @@ export async function assignMasterToCompany(
       validity_interval_unit, content_json, active, master_course_id,
       main_category, seminar, instruction_code, instruction_title,
       sort_order, requires_certificate, requires_proof,
-      estimated_duration_minutes
+      estimated_duration_minutes, topic_id
     )
     VALUES (
       ${courseId}, ${companyId}, ${slug}, ${cloned.courseName}, NULL,
@@ -390,7 +390,8 @@ export async function assignMasterToCompany(
       ${masterMeta?.instructionCode ?? null}, ${masterMeta?.instructionTitle ?? null},
       ${masterMeta?.sortOrder ?? 0}, ${masterMeta?.requiresCertificate ?? true},
       ${masterMeta?.requiresProof ?? true},
-      ${masterMeta?.estimatedDurationMinutes ?? null}
+      ${masterMeta?.estimatedDurationMinutes ?? null},
+      ${masterMeta?.topicId ?? null}
     )
     ON CONFLICT (id) DO UPDATE SET
       title = EXCLUDED.title,
@@ -410,6 +411,7 @@ export async function assignMasterToCompany(
       requires_certificate = EXCLUDED.requires_certificate,
       requires_proof = EXCLUDED.requires_proof,
       estimated_duration_minutes = EXCLUDED.estimated_duration_minutes,
+      topic_id = COALESCE(courses.topic_id, EXCLUDED.topic_id),
       updated_at = NOW(),
       active = TRUE
   `;

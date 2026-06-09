@@ -73,6 +73,12 @@ export function useListQuery(options: UseListQueryOptions = {}) {
         const n = Number(v);
         return Number.isFinite(n) && n > 0 ? n : null;
       })(),
+      locationId: (() => {
+        const v = searchParams.get(paramKey(prefix, "locationId"));
+        if (!v) return null;
+        const n = Number(v);
+        return Number.isFinite(n) && n > 0 ? n : null;
+      })(),
       companyId: (() => {
         const v = searchParams.get(paramKey(prefix, "companyId"));
         if (!v) return null;

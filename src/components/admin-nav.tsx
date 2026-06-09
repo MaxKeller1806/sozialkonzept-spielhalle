@@ -83,6 +83,12 @@ export const ADMIN_SIDEBAR_ITEMS: SidebarNavItem[] = [
     match: (p) => p.startsWith("/dashboard/zertifikate"),
   },
   {
+    href: "/dashboard/standorte",
+    label: "Standorte",
+    icon: <IconBuilding />,
+    match: (p) => p.startsWith("/dashboard/standorte"),
+  },
+  {
     href: "/dashboard/firma",
     label: "Meine Firma",
     icon: <IconBuilding />,

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { KpiCard } from "@/components/kpi-card";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui";
@@ -18,56 +18,79 @@ type OverviewStats = {
 
 type LoadState = "loading" | "ok" | "error";
 
+type LocationOption = { id: number; label: string };
+
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState<OverviewStats | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [adminScope, setAdminScope] = useState<"company" | "location">("company");
+  const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [locationId, setLocationId] = useState<number | "">("");
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    void (async () => {
-      try {
-        const res = await fetch("/api/admin/dashboard-summary", {
-          signal: controller.signal,
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(
-            typeof data.error === "string"
-              ? data.error
-              : "Kennzahlen konnten nicht geladen werden."
-          );
-        }
-        if (!data.summary) {
-          throw new Error("Kennzahlen konnten nicht geladen werden.");
-        }
-        const { summary } = data;
-        setStats({
-          companyName: summary.companyName ?? "",
-          employees: Number(summary.activeEmployees ?? 0),
-          privacyOpen: Number(summary.privacy?.open ?? 0),
-          privacyAccepted: Number(summary.privacy?.accepted ?? 0),
-          trainingExpired: Number(summary.training?.expired ?? 0),
-          trainingDueSoon: Number(summary.training?.dueSoon ?? 0),
-          trainingNotStarted: Number(summary.training?.notStarted ?? 0),
-        });
-        setErrorMessage("");
-        setLoadState("ok");
-      } catch (e) {
-        if (e instanceof DOMException && e.name === "AbortError") return;
-        setStats(null);
-        setLoadState("error");
-        setErrorMessage(
-          e instanceof Error
-            ? e.message
+  const loadSummary = useCallback(async (signal?: AbortSignal) => {
+    setLoadState("loading");
+    try {
+      const qs =
+        locationId !== "" ? `?locationId=${encodeURIComponent(String(locationId))}` : "";
+      const res = await fetch(`/api/admin/dashboard-summary${qs}`, { signal });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
             : "Kennzahlen konnten nicht geladen werden."
         );
       }
-    })();
+      if (!data.summary) {
+        throw new Error("Kennzahlen konnten nicht geladen werden.");
+      }
+      const { summary } = data;
+      if (data.adminScope) setAdminScope(data.adminScope);
+      setStats({
+        companyName: summary.companyName ?? "",
+        employees: Number(summary.activeEmployees ?? 0),
+        privacyOpen: Number(summary.privacy?.open ?? 0),
+        privacyAccepted: Number(summary.privacy?.accepted ?? 0),
+        trainingExpired: Number(summary.training?.expired ?? 0),
+        trainingDueSoon: Number(summary.training?.dueSoon ?? 0),
+        trainingNotStarted: Number(summary.training?.notStarted ?? 0),
+      });
+      setErrorMessage("");
+      setLoadState("ok");
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      setStats(null);
+      setLoadState("error");
+      setErrorMessage(
+        e instanceof Error
+          ? e.message
+          : "Kennzahlen konnten nicht geladen werden."
+      );
+    }
+  }, [locationId]);
 
-    return () => controller.abort();
+  useEffect(() => {
+    fetch("/api/admin/locations?filter=active")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        if (d.adminScope) setAdminScope(d.adminScope);
+        setLocations(
+          (d.locations ?? []).map((loc: { id: number; label: string }) => ({
+            id: loc.id,
+            label: loc.label,
+          }))
+        );
+      })
+      .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadSummary(controller.signal);
+    return () => controller.abort();
+  }, [loadSummary]);
 
   const title = stats?.companyName
     ? `Dashboard – ${stats.companyName}`
@@ -84,6 +107,28 @@ export default function AdminOverviewPage() {
           </Link>
         }
       />
+
+      {adminScope === "company" && locations.length > 0 && (
+        <div className="mb-6 max-w-sm">
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-slate-700">Standort</span>
+            <select
+              className="w-full rounded-xl border border-slate-300 px-3 py-2"
+              value={locationId === "" ? "" : String(locationId)}
+              onChange={(e) =>
+                setLocationId(e.target.value ? Number(e.target.value) : "")
+              }
+            >
+              <option value="">Gesamte Firma</option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
 
       {loadState === "loading" && (
         <p className="text-sm text-slate-600">Kennzahlen werden geladen…</p>
@@ -152,6 +197,11 @@ export default function AdminOverviewPage() {
               <Link href="/dashboard">
                 <Button variant="secondary" className="!w-auto">
                   Mitarbeiter verwalten
+                </Button>
+              </Link>
+              <Link href="/dashboard/standorte">
+                <Button variant="secondary" className="!w-auto">
+                  Standorte
                 </Button>
               </Link>
               <Link href="/dashboard/seminare">

@@ -1,11 +1,13 @@
 import { getSql } from "./db";
 import { DUE_SOON_DAYS } from "./status";
+import { sqlUserAssignedToLocationFilter } from "./user-locations";
 import type { AdminTrainingDashboardCounts } from "./admin-training-status-list";
 
 export type AdminDashboardSummary = {
   companyId: number;
   companyName: string;
   activeEmployees: number;
+  locationId: number | null;
   privacy: {
     open: number;
     accepted: number;
@@ -24,12 +26,14 @@ function isMissingColumnError(err: unknown, column: string): boolean {
 /** Ein DB-Roundtrip für alle Dashboard-Kennzahlen (Serverless/Pooler-tauglich). */
 async function queryDashboardSummary(
   companyId: number,
-  useLeftCompanyFilter: boolean
+  useLeftCompanyFilter: boolean,
+  locationId: number | null
 ): Promise<AdminDashboardSummary> {
   const sql = getSql();
   const employmentFilter = useLeftCompanyFilter
     ? sql`AND (u.left_company_at IS NULL OR u.left_company_at > CURRENT_DATE)`
     : sql``;
+  const locationFilter = sqlUserAssignedToLocationFilter(sql, locationId);
 
   const rows = (await sql`
     WITH active_policy AS (
@@ -48,6 +52,7 @@ async function queryDashboardSummary(
       WHERE u.company_id = ${companyId}
         AND u.role = 'employee'
         AND u.active = TRUE
+        ${locationFilter}
     ),
     privacy_counts AS (
       SELECT
@@ -61,6 +66,7 @@ async function queryDashboardSummary(
         AND u.role = 'employee'
         AND u.active = TRUE
         ${employmentFilter}
+        ${locationFilter}
     ),
     company_assignments AS (
       SELECT uca.user_id, uca.course_id
@@ -70,6 +76,7 @@ async function queryDashboardSummary(
         AND u.role = 'employee'
         AND u.active = TRUE
         ${employmentFilter}
+        ${locationFilter}
     ),
     latest_certs AS (
       SELECT DISTINCT ON (cert.user_id, cert.course_id)
@@ -162,6 +169,7 @@ async function queryDashboardSummary(
     companyId,
     companyName: row.company_name != null ? String(row.company_name) : "",
     activeEmployees: Number(row.active_employees ?? 0),
+    locationId,
     privacy: {
       open: Number(row.privacy_open ?? 0),
       accepted: Number(row.privacy_accepted ?? 0),
@@ -175,12 +183,13 @@ async function queryDashboardSummary(
 }
 
 export async function getAdminDashboardSummary(
-  companyId: number
+  companyId: number,
+  locationId: number | null = null
 ): Promise<AdminDashboardSummary> {
   try {
-    return await queryDashboardSummary(companyId, true);
+    return await queryDashboardSummary(companyId, true, locationId);
   } catch (err) {
     if (!isMissingColumnError(err, "left_company_at")) throw err;
-    return queryDashboardSummary(companyId, false);
+    return queryDashboardSummary(companyId, false, locationId);
   }
 }

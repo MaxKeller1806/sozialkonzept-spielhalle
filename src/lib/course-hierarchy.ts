@@ -19,6 +19,7 @@ export type CourseListSort =
 export type CourseListFilters = {
   mainCategory?: string;
   seminar?: string;
+  topicId?: number;
   validityType?: ValidityType;
   active?: boolean;
   requiresCertificate?: boolean;
@@ -37,6 +38,9 @@ export type CourseHierarchyItem = {
   seminar?: string | null;
   sortOrder?: number;
   slug: string;
+  topicId?: number | null;
+  topicName?: string | null;
+  topicSortOrder?: number;
   estimatedDurationMinutes?: number | null;
   inProgress?: boolean;
   seminarStatusLabel?: string;
@@ -64,6 +68,7 @@ export function parseCourseListFilters(
   params: URLSearchParams
 ): CourseListFilters {
   const filters: CourseListFilters = {};
+  const topicId = params.get("topicId");
   const mainCategory = params.get("mainCategory");
   const seminar = params.get("seminar");
   const validityType = params.get("validityType");
@@ -73,6 +78,10 @@ export function parseCourseListFilters(
   const sort = params.get("sort");
   const sortDir = params.get("sortDir");
 
+  if (topicId) {
+    const n = Number(topicId);
+    if (Number.isFinite(n) && n > 0) filters.topicId = n;
+  }
   if (mainCategory) filters.mainCategory = mainCategory;
   if (seminar) filters.seminar = seminar;
   if (
@@ -167,4 +176,58 @@ export function groupCoursesForEmployeeView(courses: CourseHierarchyItem[]): {
     });
 
   return { uncategorized, hierarchies };
+}
+
+export type CourseTopicGroup<T extends CourseHierarchyItem = CourseHierarchyItem> = {
+  topicId: number | null;
+  name: string;
+  sortOrder: number;
+  courses: T[];
+};
+
+export const UNCategorized_TOPIC_LABEL = "Ohne Hauptthema";
+
+/** Gruppierung nach Hauptthema (course_topics). */
+export function groupCoursesByTopic<T extends CourseHierarchyItem>(
+  courses: T[]
+): { uncategorized: T[]; groups: CourseTopicGroup<T>[] } {
+  const uncategorized: T[] = [];
+  const byTopic = new Map<string, CourseTopicGroup<T>>();
+
+  for (const course of courses) {
+    if (course.topicId == null) {
+      uncategorized.push(course);
+      continue;
+    }
+    const key = String(course.topicId);
+    if (!byTopic.has(key)) {
+      byTopic.set(key, {
+        topicId: course.topicId,
+        name: course.topicName?.trim() || "Hauptthema",
+        sortOrder: course.topicSortOrder ?? 0,
+        courses: [],
+      });
+    }
+    byTopic.get(key)!.courses.push(course);
+  }
+
+  for (const group of byTopic.values()) {
+    group.courses.sort(
+      (a, b) =>
+        (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+        String(a.title).localeCompare(String(b.title), "de")
+    );
+  }
+
+  const groups = [...byTopic.values()].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, "de")
+  );
+
+  uncategorized.sort(
+    (a, b) =>
+      (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+      String(a.title).localeCompare(String(b.title), "de")
+  );
+
+  return { uncategorized, groups };
 }

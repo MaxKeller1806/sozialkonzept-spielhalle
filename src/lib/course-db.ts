@@ -80,6 +80,10 @@ function mapCourseMeta(row: Record<string, unknown>): CourseMeta {
       row.estimated_duration_minutes != null
         ? Number(row.estimated_duration_minutes)
         : null,
+    topicId: row.topic_id != null ? Number(row.topic_id) : null,
+    topicName: row.topic_name != null ? String(row.topic_name) : null,
+    topicSortOrder:
+      row.topic_sort_order != null ? Number(row.topic_sort_order) : undefined,
     ...parseInstructionMetaFromRow(row),
   };
 }
@@ -156,6 +160,12 @@ function applyCourseFilters(
       return false;
     }
     if (filters.seminar && meta.seminar !== filters.seminar) return false;
+    if (
+      filters.topicId != null &&
+      (row.topic_id == null || Number(row.topic_id) !== filters.topicId)
+    ) {
+      return false;
+    }
     if (filters.validityType && rule.validityType !== filters.validityType) {
       return false;
     }
@@ -208,8 +218,13 @@ export async function listCompanyCourses(
         ? sql`AND active = FALSE`
         : sql``;
   const rows = await sql`
-    SELECT * FROM courses
-    WHERE company_id = ${companyId}
+    SELECT
+      c.*,
+      ct.name AS topic_name,
+      ct.sort_order AS topic_sort_order
+    FROM courses c
+    LEFT JOIN course_topics ct ON ct.id = c.topic_id
+    WHERE c.company_id = ${companyId}
     ${activeFilter}
   `;
   let filtered = applyCourseFilters(
@@ -262,8 +277,13 @@ export async function getCourseMeta(
   await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
-    SELECT * FROM courses
-    WHERE id = ${courseId} AND company_id = ${companyId}
+    SELECT
+      c.*,
+      ct.name AS topic_name,
+      ct.sort_order AS topic_sort_order
+    FROM courses c
+    LEFT JOIN course_topics ct ON ct.id = c.topic_id
+    WHERE c.id = ${courseId} AND c.company_id = ${companyId}
     LIMIT 1
   `;
   return rows[0] ? mapCourseMeta(rows[0] as Record<string, unknown>) : undefined;
@@ -615,9 +635,13 @@ export async function getUserAssignedCourses(
   await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
-    SELECT c.*
+    SELECT
+      c.*,
+      ct.name AS topic_name,
+      ct.sort_order AS topic_sort_order
     FROM user_course_assignments uca
     JOIN courses c ON c.id = uca.course_id
+    LEFT JOIN course_topics ct ON ct.id = c.topic_id
     LEFT JOIN company_course_provisions p ON p.course_id = c.id AND p.company_id = c.company_id
     WHERE uca.user_id = ${userId}
       AND c.company_id = ${companyId}

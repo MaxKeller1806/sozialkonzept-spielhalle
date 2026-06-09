@@ -35,10 +35,26 @@ export default function MasterCourseEditPage() {
     validityIntervalValue: "12",
     validityIntervalUnit: "months",
   });
+  const [topicId, setTopicId] = useState<number | "">("");
+  const [topics, setTopics] = useState<{ id: number; name: string }[]>([]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/superuser/course-topics?filter=active")
+      .then((r) => (r.ok ? r.json() : { topics: [] }))
+      .then((d) =>
+        setTopics(
+          (d.topics ?? []).map((t: { id: number; name: string }) => ({
+            id: t.id,
+            name: t.name,
+          }))
+        )
+      )
+      .catch(() => undefined);
+  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -60,6 +76,7 @@ export default function MasterCourseEditPage() {
         const d = result.d;
         if (d?.meta) {
           setMeta({ title: d.meta.title, status: d.meta.status });
+          setTopicId(d.meta.topicId ?? "");
           setValidity({
             validityType: d.meta.validityType as ValidityType,
             validityIntervalValue: String(d.meta.validityIntervalValue ?? 12),
@@ -100,6 +117,7 @@ export default function MasterCourseEditPage() {
             : null,
         validityIntervalUnit:
           validity.validityType === "custom" ? validity.validityIntervalUnit : null,
+        topicId: topicId === "" ? null : topicId,
       }),
     });
     const d = await res.json().catch(() => ({}));
@@ -244,6 +262,23 @@ export default function MasterCourseEditPage() {
                   <option value="draft">Entwurf</option>
                   <option value="published">Veröffentlicht</option>
                   <option value="disabled">Gesperrt</option>
+                </select>
+              </label>
+              <label className="block text-sm sm:col-span-2">
+                <span className="font-medium text-slate-700">Hauptthema (optional)</span>
+                <select
+                  className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2"
+                  value={topicId === "" ? "" : String(topicId)}
+                  onChange={(e) =>
+                    setTopicId(e.target.value ? Number(e.target.value) : "")
+                  }
+                >
+                  <option value="">Kein Hauptthema</option>
+                  {topics.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
                 </select>
               </label>
               <Input

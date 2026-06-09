@@ -27,6 +27,7 @@ import {
 } from "@/lib/training-status";
 
 type CategoryOption = { id: number; name: string };
+type LocationOption = { id: number; label: string };
 
 function TrainingStatusTableInner() {
   const router = useRouter();
@@ -38,6 +39,7 @@ function TrainingStatusTableInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
   const page = Math.max(
@@ -50,6 +52,7 @@ function TrainingStatusTableInner() {
   const sortDirection = parseSortDirection(searchParams.get("sortDirection"));
   const status = parseStatusFilter(searchParams.get("status") ?? "active");
   const categoryId = searchParams.get("categoryId") ?? "";
+  const locationId = searchParams.get("locationId") ?? "";
   const trainingFilter = parseTrainingStatusFilter(
     searchParams.get("trainingFilter")
   );
@@ -66,18 +69,20 @@ function TrainingStatusTableInner() {
     if (sortDirection) params.set("sortDirection", sortDirection);
     if (status !== "all") params.set("status", status);
     if (categoryId) params.set("categoryId", categoryId);
+    if (locationId) params.set("locationId", locationId);
     if (trainingFilter !== "all") params.set("trainingFilter", trainingFilter);
     if (employmentFilter !== "active") {
       params.set("employmentFilter", employmentFilter);
     }
     return params.toString();
-  }, [page, pageSize, search, sortBy, sortDirection, status, categoryId, trainingFilter, employmentFilter]);
+  }, [page, pageSize, search, sortBy, sortDirection, status, categoryId, locationId, trainingFilter, employmentFilter]);
 
   const hasActiveFilters =
     !!search ||
     status !== "active" ||
     employmentFilter !== "active" ||
     !!categoryId ||
+    !!locationId ||
     trainingFilter !== "all" ||
     page > 1 ||
     !!searchParams.get("sortBy");
@@ -108,6 +113,16 @@ function TrainingStatusTableInner() {
           (d.categories ?? []).map((c: CategoryOption) => ({
             id: c.id,
             name: c.name,
+          }))
+        )
+      );
+    fetch("/api/admin/locations?filter=active")
+      .then((r) => (r.ok ? r.json() : { locations: [] }))
+      .then((d) =>
+        setLocations(
+          (d.locations ?? []).map((loc: { id: number; label: string }) => ({
+            id: loc.id,
+            label: loc.label,
           }))
         )
       );
@@ -197,6 +212,21 @@ function TrainingStatusTableInner() {
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+          value={locationId}
+          onChange={(e) =>
+            replaceParams({ locationId: e.target.value || null }, true)
+          }
+          aria-label="Standort"
+        >
+          <option value="">Alle Standorte</option>
+          {locations.map((loc) => (
+            <option key={loc.id} value={loc.id}>
+              {loc.label}
             </option>
           ))}
         </select>
@@ -292,6 +322,7 @@ function TrainingStatusTableInner() {
                   </button>
                 </th>
                 <th className="p-3">Kategorie</th>
+                <th className="p-3">Standort</th>
                 <th className="p-3">
                   <button type="button" className="font-semibold hover:text-brand" onClick={() => toggleSort("joinedCompanyAt")}>
                     Eintritt{sortIndicator("joinedCompanyAt")}
@@ -410,6 +441,7 @@ function EmployeeRow({
           <span className="text-slate-500">{employee.email}</span>
         </td>
         <td className="p-3">{employee.employeeCategoryName ?? "—"}</td>
+        <td className="p-3">{employee.locationLabel ?? "—"}</td>
         <td className="p-3">{formatTrainingDate(employee.joinedCompanyAt)}</td>
         <td className="p-3">{summary.courseCount}</td>
         <td className="p-3">

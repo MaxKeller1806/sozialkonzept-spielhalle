@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { adminAccessFromSession, resolveListLocationId } from "@/lib/admin-access";
 import { resetSql } from "@/lib/db";
 import {
   listAdminPrivacyStatus,
@@ -13,9 +14,15 @@ export const maxDuration = 60;
 export async function GET(request: Request) {
   try {
     const admin = await requireAdmin();
+    const access = adminAccessFromSession(admin)!;
     const params = new URL(request.url).searchParams;
     const query = parsePrivacyStatusListQuery(params);
-    const result = await listAdminPrivacyStatus(admin.companyId!, query);
+    const effectiveLocationId = resolveListLocationId(access, query.locationId);
+    const result = await listAdminPrivacyStatus(
+      admin.companyId!,
+      query,
+      effectiveLocationId
+    );
 
     return NextResponse.json({
       employees: result.employees,

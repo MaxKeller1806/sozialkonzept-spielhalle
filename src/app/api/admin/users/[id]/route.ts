@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hashPassword, requireAdmin, validatePassword } from "@/lib/auth";
+import { assertEmployeeInAdminScope, adminAccessFromSession } from "@/lib/admin-access";
 import { ensureSeeded, getSql } from "@/lib/db";
 import { mapUser } from "@/lib/db/row-mappers";
 import {
@@ -15,6 +16,11 @@ import {
   parseLeftCompanyAtForAdmin,
   syncCityFields,
 } from "@/lib/user-profile";
+import { formatCompanyLocationLabel } from "@/lib/company-locations";
+import {
+  getUserLocationAssignments,
+  setUserLocationAssignments,
+} from "@/lib/user-locations";
 
 export async function GET(
   _request: Request,
@@ -22,19 +28,20 @@ export async function GET(
 ) {
   try {
     const admin = await requireAdmin();
+    const access = adminAccessFromSession(admin)!;
     const { id } = await params;
     const userId = Number(id);
+
+    await assertEmployeeInAdminScope(access, userId);
 
     await ensureSeeded();
     const sql = getSql();
 
     const rows = await sql`
-      SELECT id, first_name, last_name, email, birth_date, birth_place,
-             place_of_residence, street, house_number, postal_code, city,
-             role, location, active, must_change_password, created_at,
-             employee_category_id, joined_company_at, left_company_at
-      FROM users
-      WHERE id = ${userId} AND company_id = ${admin.companyId}
+      SELECT u.*, cl.name AS location_name, cl.city AS location_city
+      FROM users u
+      LEFT JOIN company_locations cl ON cl.id = u.location_id
+      WHERE u.id = ${userId} AND u.company_id = ${admin.companyId}
       LIMIT 1
     `;
 
@@ -43,10 +50,12 @@ export async function GET(
     }
 
     const user = mapUser(rows[0] as Record<string, unknown>);
+    const row = rows[0] as Record<string, unknown>;
     const assignedCourseIds = await getUserAssignedCourseIds(
       userId,
       admin.companyId!
     );
+    const locationAssignments = await getUserLocationAssignments(userId);
 
     return NextResponse.json({
       user: {
@@ -61,6 +70,18 @@ export async function GET(
         postalCode: user.postalCode,
         city: user.city ?? user.placeOfResidence,
         location: user.location,
+        locationId: user.locationId,
+        primaryLocationId: user.locationId,
+        locationIds: locationAssignments.map((a) => a.locationId),
+        locations: locationAssignments,
+        locationLabel:
+          row.location_name != null
+            ? formatCompanyLocationLabel({
+                name: String(row.location_name),
+                city:
+                  row.location_city != null ? String(row.location_city) : null,
+              })
+            : null,
         active: !!user.active,
         employeeCategoryId: user.employeeCategoryId,
         joinedCompanyAt: user.joinedCompanyAt,
@@ -83,9 +104,12 @@ export async function PATCH(
 ) {
   try {
     const admin = await requireAdmin();
+    const access = adminAccessFromSession(admin)!;
     const { id } = await params;
     const userId = Number(id);
     const body = await request.json();
+
+    await assertEmployeeInAdminScope(access, userId);
 
     await ensureSeeded();
     const sql = getSql();
@@ -114,6 +138,9 @@ export async function PATCH(
       postalCode,
       city,
       location,
+      locationId,
+      locationIds,
+      primaryLocationId,
       role,
       active,
       courseIds,
@@ -146,6 +173,41 @@ export async function PATCH(
       patch.place_of_residence = synced.placeOfResidence;
     }
     if (location !== undefined) patch.location = location || null;
+
+    const hasLocationUpdate =
+      locationIds !== undefined ||
+      primaryLocationId !== undefined ||
+      locationId !== undefined;
+
+    if (hasLocationUpdate) {
+      try {
+        await setUserLocationAssignments(
+          userId,
+          admin.companyId!,
+          {
+            locationIds: Array.isArray(locationIds) ? locationIds : undefined,
+            primaryLocationId,
+            locationId,
+          },
+          access
+        );
+      } catch (e) {
+        const locMsg = e instanceof Error ? e.message : "";
+        if (locMsg === "FORBIDDEN") {
+          return NextResponse.json(
+            { error: "Standortzuordnung nicht erlaubt." },
+            { status: 403 }
+          );
+        }
+        if (locMsg === "PRIMARY_LOCATION_INVALID") {
+          return NextResponse.json(
+            { error: "Hauptstandort muss einer der zugewiesenen Standorte sein." },
+            { status: 400 }
+          );
+        }
+        throw e;
+      }
+    }
     if (joinedCompanyAt !== undefined) {
       if (targetRole !== "employee") {
         return NextResponse.json(
@@ -217,7 +279,7 @@ export async function PATCH(
     }
 
     const keys = Object.keys(patch) as (keyof typeof patch)[];
-    if (keys.length === 0 && !courseIdsUpdated) {
+    if (keys.length === 0 && !courseIdsUpdated && !hasLocationUpdate) {
       return NextResponse.json({ error: "Keine Änderungen." }, { status: 400 });
     }
 

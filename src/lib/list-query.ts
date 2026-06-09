@@ -17,6 +17,7 @@ export type ListQueryState = {
   industryId: number | null;
   businessTypeId: number | null;
   categoryId: number | null;
+  locationId: number | null;
   companyId: number | null;
   role: "admin" | "employee" | null;
 };
@@ -71,6 +72,7 @@ export const LIST_FILTER_RESET_KEYS = [
   "industryId",
   "businessTypeId",
   "categoryId",
+  "locationId",
   "companyId",
   "role",
   "page",
@@ -96,6 +98,7 @@ export function hasActiveListFilters(
   if (params.get(paramKey(prefix, "industryId"))) return true;
   if (params.get(paramKey(prefix, "businessTypeId"))) return true;
   if (params.get(paramKey(prefix, "categoryId"))) return true;
+  if (params.get(paramKey(prefix, "locationId"))) return true;
   if (params.get(paramKey(prefix, "companyId"))) return true;
   if (params.get(paramKey(prefix, "role"))) return true;
 
@@ -153,6 +156,7 @@ export function parseListQueryFromUrl(
       params.get(paramKey(prefix, "businessTypeId"))
     ),
     categoryId: parseOptionalId(params.get(paramKey(prefix, "categoryId"))),
+    locationId: parseOptionalId(params.get(paramKey(prefix, "locationId"))),
     companyId: parseOptionalId(params.get(paramKey(prefix, "companyId"))),
     role: parseRoleFilter(params.get(paramKey(prefix, "role"))),
   };
@@ -229,6 +233,9 @@ export function buildListApiQuery(
   }
   if (state.categoryId) {
     params.set(paramKey(prefix, "categoryId"), String(state.categoryId));
+  }
+  if (state.locationId) {
+    params.set(paramKey(prefix, "locationId"), String(state.locationId));
   }
   if (state.companyId) {
     params.set(paramKey(prefix, "companyId"), String(state.companyId));

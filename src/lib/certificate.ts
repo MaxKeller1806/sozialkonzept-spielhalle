@@ -1,5 +1,7 @@
 import { randomUUID } from "crypto";
 import { ensureSeeded, getSql } from "./db";
+import { formatCompanyLocationLabel } from "./company-locations";
+import { sqlUserAssignedToLocationFilter } from "./user-locations";
 import { mapCertificate, mapUser } from "./db/row-mappers";
 import { getCourseMeta } from "./course-db";
 import { calculateValidUntil, addMonths } from "./course-validity";
@@ -167,13 +169,16 @@ export type AdminCertificateListRow = {
   status: "green" | "yellow" | "red";
   statusLabel: string;
   pdfUrl: string;
+  locationLabel: string | null;
 };
 
 export async function listCompanyCertificates(
-  companyId: number
+  companyId: number,
+  locationId: number | null = null
 ): Promise<AdminCertificateListRow[]> {
   await ensureSeeded();
   const sql = getSql();
+  const locationFilter = sqlUserAssignedToLocationFilter(sql, locationId);
 
   const rows = (await sql`
     SELECT
@@ -184,12 +189,17 @@ export async function listCompanyCertificates(
       cert.revoked,
       c.title AS course_title,
       u.first_name,
-      u.last_name
+      u.last_name,
+      u.location_id,
+      cl.name AS location_name,
+      cl.city AS location_city
     FROM certificates cert
     JOIN courses c ON c.id = cert.course_id AND c.company_id = ${companyId}
     JOIN users u ON u.id = cert.user_id AND u.company_id = ${companyId}
+    LEFT JOIN company_locations cl ON cl.id = u.location_id
     WHERE cert.company_id = ${companyId}
       AND u.role = 'employee'
+      ${locationFilter}
     ORDER BY cert.issued_at DESC
   `) as Record<string, unknown>[];
 
@@ -214,6 +224,14 @@ export async function listCompanyCertificates(
       status,
       statusLabel: statusLabel(status),
       pdfUrl: `/api/certificates/${id}/pdf`,
+      locationLabel:
+        row.location_name != null
+          ? formatCompanyLocationLabel({
+              name: String(row.location_name),
+              city:
+                row.location_city != null ? String(row.location_city) : null,
+            })
+          : null,
     };
   });
 }

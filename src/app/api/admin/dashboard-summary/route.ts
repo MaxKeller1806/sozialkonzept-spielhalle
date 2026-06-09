@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminDashboardSummary } from "@/lib/admin-dashboard-summary";
+import { adminAccessFromSession, resolveListLocationId } from "@/lib/admin-access";
+import { parseOptionalId } from "@/lib/list-query";
 import {
   isQueryTimeoutError,
   resetSqlOnFailure,
@@ -39,15 +41,24 @@ function dashboardErrorResponse(e: unknown) {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const admin = await requireAdmin();
     const companyId = admin.companyId!;
+    const access = adminAccessFromSession(admin)!;
+    const requestedLocationId = parseOptionalId(
+      new URL(request.url).searchParams.get("locationId")
+    );
+    const locationId = resolveListLocationId(access, requestedLocationId);
     const summary = await withDbQuery(
-      () => getAdminDashboardSummary(companyId),
+      () => getAdminDashboardSummary(companyId, locationId),
       45000
     );
-    return NextResponse.json({ summary });
+    return NextResponse.json({
+      summary,
+      adminScope: access.adminScope,
+      locationId,
+    });
   } catch (e) {
     console.error("[admin/dashboard-summary] GET:", e);
     await resetSqlOnFailure(e);

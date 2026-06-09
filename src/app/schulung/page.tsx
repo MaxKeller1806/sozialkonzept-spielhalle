@@ -5,7 +5,8 @@ import { Suspense, useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { ButtonLink, Card, ProgressBar, StatusDot } from "@/components/ui";
 import {
-  groupCoursesForEmployeeView,
+  groupCoursesByTopic,
+  UNCategorized_TOPIC_LABEL,
   type CourseHierarchyItem,
 } from "@/lib/course-hierarchy";
 import { formatEstimatedDuration } from "@/lib/course-duration";
@@ -14,6 +15,44 @@ interface CourseListItem extends CourseHierarchyItem {
   inProgress?: boolean;
   seminarStatus?: string;
   seminarStatusLabel?: string;
+}
+
+function TopicGroupSection({
+  title,
+  courses,
+  defaultOpen = true,
+}: {
+  title: string;
+  courses: CourseListItem[];
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  if (courses.length === 0) return null;
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="text-lg font-semibold text-slate-900">
+          {open ? "▾" : "▸"} {title}
+        </span>
+        <span className="text-sm text-slate-500">
+          {courses.length} Schulung{courses.length === 1 ? "" : "en"}
+        </span>
+      </button>
+      {open && (
+        <ul className="space-y-3 border-t border-slate-100 px-4 py-4">
+          {courses.map((c) => (
+            <li key={c.id}>
+              <CourseCard course={c} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
 }
 
 function CourseCard({ course }: { course: CourseListItem }) {
@@ -133,48 +172,26 @@ function SchulungContent() {
   }
 
   if (courses && !courseId) {
-    const { uncategorized, hierarchies } = groupCoursesForEmployeeView(courses);
+    const { uncategorized, groups } = groupCoursesByTopic(courses);
 
     return (
       <div className="mx-auto max-w-2xl">
         <PageHeader title="Meine Schulungen" />
-        <div className="space-y-10">
-          {uncategorized.length > 0 && (
-            <ul className="space-y-4">
-              {uncategorized.map((c) => (
-                <li key={c.id}>
-                  <CourseCard course={c} />
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {hierarchies.map((main) => (
-            <section key={main.name}>
-              <h2 className="mb-4 text-xl font-semibold text-slate-900">{main.name}</h2>
-              <div className="space-y-6">
-                {main.seminars.map((seminar) => (
-                  <div key={`${main.name}-${seminar.name}`}>
-                    <h3 className="mb-3 text-base font-medium text-slate-700">
-                      {seminar.name}
-                    </h3>
-                    <ul className="space-y-3 border-l-2 border-slate-200 pl-4">
-                      {seminar.courses.map((c) => (
-                        <li key={c.id}>
-                          <CourseCard course={c} />
-                        </li>
-                      ))}
-                      {seminar.instructions.map((c) => (
-                        <li key={c.id}>
-                          <CourseCard course={c} />
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </section>
+        <div className="space-y-4">
+          {groups.map((group) => (
+            <TopicGroupSection
+              key={group.topicId ?? group.name}
+              title={group.name}
+              courses={group.courses as CourseListItem[]}
+            />
           ))}
+          {uncategorized.length > 0 && (
+            <TopicGroupSection
+              title={UNCategorized_TOPIC_LABEL}
+              courses={uncategorized as CourseListItem[]}
+              defaultOpen={groups.length === 0}
+            />
+          )}
         </div>
 
         {courses.length === 0 && (

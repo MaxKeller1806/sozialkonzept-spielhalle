@@ -10,6 +10,7 @@ import {
 } from "@/lib/course-provisions";
 import { formatValidityRuleLabel } from "@/lib/course-validity";
 import { parseCourseListFilters, MAIN_CATEGORIES } from "@/lib/course-hierarchy";
+import { listAssignableCourseTopics } from "@/lib/course-topics";
 import {
   listAdminCoursesPaginated,
   ADMIN_COURSE_SORT_KEYS,
@@ -56,6 +57,7 @@ export async function GET(request: Request) {
         filter,
         total: courses.length,
         mainCategories: Object.values(MAIN_CATEGORIES),
+        topics: await listAssignableCourseTopics(user.companyId!),
       });
     }
 
@@ -80,6 +82,7 @@ export async function GET(request: Request) {
       meta: result.meta,
       sortFields: ADMIN_COURSE_SORT_KEYS,
       mainCategories: Object.values(MAIN_CATEGORIES),
+      topics: await listAssignableCourseTopics(user.companyId!),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";

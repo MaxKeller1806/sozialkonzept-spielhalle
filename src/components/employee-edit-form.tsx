@@ -17,7 +17,8 @@ export type EmployeeFormState = {
   houseNumber: string;
   postalCode: string;
   city: string;
-  location: string;
+  locationIds: number[];
+  primaryLocationId: number | "";
   joinedCompanyAt: string;
   leftCompanyAt: string;
 };
@@ -29,11 +30,17 @@ export type EmployeeCategoryOption = {
   totalDurationMinutes: number;
 };
 
+export type LocationOption = {
+  id: number;
+  label: string;
+};
+
 type EmployeeEditFormProps = {
   editId: number | null;
   form: EmployeeFormState;
   onFormChange: (form: EmployeeFormState) => void;
   employeeCategories: EmployeeCategoryOption[];
+  locationOptions: LocationOption[];
   employeeCategoryId: number | "";
   onCategoryChange: (value: string) => void;
   categoryPrompt: string[] | null;
@@ -49,11 +56,35 @@ type EmployeeEditFormProps = {
   error?: string;
 };
 
+function toggleLocation(
+  form: EmployeeFormState,
+  locationId: number,
+  checked: boolean
+): EmployeeFormState {
+  const locationIds = checked
+    ? [...new Set([...form.locationIds, locationId])]
+    : form.locationIds.filter((id) => id !== locationId);
+
+  let primaryLocationId = form.primaryLocationId;
+  if (!checked && primaryLocationId === locationId) {
+    primaryLocationId = locationIds.length === 1 ? locationIds[0]! : "";
+  }
+  if (locationIds.length === 1) {
+    primaryLocationId = locationIds[0]!;
+  }
+  if (locationIds.length === 0) {
+    primaryLocationId = "";
+  }
+
+  return { ...form, locationIds, primaryLocationId };
+}
+
 export function EmployeeEditForm({
   editId,
   form,
   onFormChange,
   employeeCategories,
+  locationOptions,
   employeeCategoryId,
   onCategoryChange,
   categoryPrompt,
@@ -68,6 +99,10 @@ export function EmployeeEditForm({
   hideActions = false,
   error,
 }: EmployeeEditFormProps) {
+  const selectedLocationOptions = locationOptions.filter((loc) =>
+    form.locationIds.includes(loc.id)
+  );
+
   return (
     <>
       {error && (
@@ -133,11 +168,58 @@ export function EmployeeEditForm({
           value={form.city}
           onChange={(e) => onFormChange({ ...form, city: e.target.value })}
         />
-        <Input
-          label="Spielhalle"
-          value={form.location}
-          onChange={(e) => onFormChange({ ...form, location: e.target.value })}
-        />
+        <fieldset className="sm:col-span-2">
+          <legend className="mb-2 block text-sm font-medium text-slate-700">
+            Standorte
+          </legend>
+          <p className="mb-3 text-xs text-slate-500">
+            Mehrere Standorte möglich. Ohne Auswahl bleibt der Mitarbeiter keinem Standort zugeordnet.
+          </p>
+          <div className="space-y-2 rounded-xl border border-slate-200 p-3">
+            {locationOptions.length === 0 ? (
+              <p className="text-sm text-slate-500">Keine Standorte angelegt.</p>
+            ) : (
+              locationOptions.map((loc) => (
+                <label key={loc.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="rounded border-slate-300"
+                    checked={form.locationIds.includes(loc.id)}
+                    onChange={(e) =>
+                      onFormChange(toggleLocation(form, loc.id, e.target.checked))
+                    }
+                  />
+                  <span>{loc.label}</span>
+                </label>
+              ))
+            )}
+          </div>
+        </fieldset>
+        {form.locationIds.length > 0 && (
+          <label className="block text-sm sm:col-span-2">
+            <span className="mb-1 block font-medium text-slate-700">Hauptstandort</span>
+            <select
+              className="w-full rounded-xl border border-slate-300 px-3 py-2"
+              value={
+                form.primaryLocationId === "" ? "" : String(form.primaryLocationId)
+              }
+              onChange={(e) =>
+                onFormChange({
+                  ...form,
+                  primaryLocationId: e.target.value ? Number(e.target.value) : "",
+                })
+              }
+              required={form.locationIds.length > 1}
+            >
+              {form.locationIds.length > 1 && <option value="">Bitte wählen…</option>}
+              {selectedLocationOptions.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <Input
           label="Eintrittsdatum (optional)"
           type="date"

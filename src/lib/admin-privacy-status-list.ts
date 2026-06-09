@@ -1,5 +1,7 @@
 import { getSql } from "./db";
 import { getActivePrivacyPolicy } from "./privacy";
+import { formatCompanyLocationLabel } from "./company-locations";
+import { sqlUserAssignedToLocationFilter } from "./user-locations";
 import {
   buildListMeta,
   parseListQueryFromUrl,
@@ -32,6 +34,8 @@ export type AdminPrivacyStatusEmployee = {
   employeeCategoryName: string | null;
   joinedCompanyAt: string | null;
   leftCompanyAt: string | null;
+  locationId: number | null;
+  locationLabel: string | null;
   statusKey: PrivacyStatusKey;
   acceptedAt: string | null;
   acceptedVersion: string | null;
@@ -308,6 +312,8 @@ export async function getAdminPrivacyStatusStats(
         employeeCategoryName: null,
         joinedCompanyAt: null,
         leftCompanyAt,
+        locationId: null,
+        locationLabel: null,
         statusKey: resolvePrivacyStatus({
           leftCompanyAt,
           currentVersionAcceptedAt,
@@ -328,7 +334,8 @@ export async function getAdminPrivacyStatusStats(
 
 export async function listAdminPrivacyStatus(
   companyId: number,
-  query: PrivacyStatusListQuery
+  query: PrivacyStatusListQuery,
+  effectiveLocationId: number | null = null
 ): Promise<{
   employees: AdminPrivacyStatusEmployee[];
   meta: ListMeta;
@@ -360,6 +367,8 @@ export async function listAdminPrivacyStatus(
       ? sql`AND u.employee_category_id = ${query.categoryId}`
       : sql``;
 
+  const locationFilter = sqlUserAssignedToLocationFilter(sql, effectiveLocationId);
+
   const searchFilter = searchPattern
     ? sql`AND (
         LOWER(u.email) LIKE ${searchPattern}
@@ -388,12 +397,16 @@ export async function listAdminPrivacyStatus(
       u.left_company_at,
       u.employee_category_id,
       ec.name AS category_name,
+      u.location_id,
+      cl.name AS location_name,
+      cl.city AS location_city,
       p_current.accepted_at AS current_accepted_at,
       v_current.version AS current_accepted_version,
       latest_any.accepted_at AS any_accepted_at,
       latest_any.version AS any_accepted_version
     FROM users u
     LEFT JOIN employee_categories ec ON ec.id = u.employee_category_id
+    LEFT JOIN company_locations cl ON cl.id = u.location_id
     ${currentAcceptJoin}
     LEFT JOIN LATERAL (
       SELECT pa.accepted_at, pv.version
@@ -408,6 +421,7 @@ export async function listAdminPrivacyStatus(
     ${activeFilter}
     ${employmentFilter}
     ${categoryFilter}
+    ${locationFilter}
     ${searchFilter}
     ORDER BY u.last_name ASC, u.first_name ASC
   `) as Record<string, unknown>[];
@@ -449,6 +463,15 @@ export async function listAdminPrivacyStatus(
         row.category_name != null ? String(row.category_name) : null,
       joinedCompanyAt,
       leftCompanyAt,
+      locationId: row.location_id != null ? Number(row.location_id) : null,
+      locationLabel:
+        row.location_name != null
+          ? formatCompanyLocationLabel({
+              name: String(row.location_name),
+              city:
+                row.location_city != null ? String(row.location_city) : null,
+            })
+          : null,
       statusKey,
       acceptedAt,
       acceptedVersion,

@@ -1,4 +1,6 @@
 import { getSql } from "./db";
+import { formatCompanyLocationLabel } from "./company-locations";
+import { sqlUserAssignedToLocationFilter } from "./user-locations";
 import { formatValidityRuleLabel } from "./course-validity";
 import { DUE_SOON_DAYS } from "./status";
 import {
@@ -59,6 +61,8 @@ export type AdminTrainingStatusEmployee = {
   employeeCategoryName: string | null;
   joinedCompanyAt: string | null;
   active: boolean;
+  locationId: number | null;
+  locationLabel: string | null;
   summary: EmployeeTrainingSummary;
   courses: EmployeeCourseTrainingRow[];
 };
@@ -303,7 +307,8 @@ function sortEmployees(
 
 export async function buildAdminTrainingStatusEmployees(
   companyId: number,
-  query: TrainingStatusListQuery
+  query: TrainingStatusListQuery,
+  effectiveLocationId: number | null = null
 ): Promise<AdminTrainingStatusEmployee[]> {
   const sql = getSql();
   const search = query.search.trim().toLowerCase();
@@ -320,6 +325,8 @@ export async function buildAdminTrainingStatusEmployees(
     query.categoryId != null
       ? sql`AND u.employee_category_id = ${query.categoryId}`
       : sql``;
+
+  const locationFilter = sqlUserAssignedToLocationFilter(sql, effectiveLocationId);
 
   const employmentFilter =
     query.employmentFilter === "departed"
@@ -355,14 +362,19 @@ export async function buildAdminTrainingStatusEmployees(
       u.active,
       u.employee_category_id,
       u.joined_company_at,
-      ec.name AS category_name
+      u.location_id,
+      ec.name AS category_name,
+      cl.name AS location_name,
+      cl.city AS location_city
     FROM users u
     LEFT JOIN employee_categories ec ON ec.id = u.employee_category_id
+    LEFT JOIN company_locations cl ON cl.id = u.location_id
     WHERE u.company_id = ${companyId}
       AND u.role = 'employee'
     ${activeFilter}
     ${employmentFilter}
     ${categoryFilter}
+    ${locationFilter}
     ${userSearchFilter}
     ORDER BY u.last_name ASC, u.first_name ASC
   `) as Record<string, unknown>[];
@@ -409,6 +421,15 @@ export async function buildAdminTrainingStatusEmployees(
         row.category_name != null ? String(row.category_name) : null,
       joinedCompanyAt,
       active: Boolean(row.active),
+      locationId: row.location_id != null ? Number(row.location_id) : null,
+      locationLabel:
+        row.location_name != null
+          ? formatCompanyLocationLabel({
+              name: String(row.location_name),
+              city:
+                row.location_city != null ? String(row.location_city) : null,
+            })
+          : null,
       summary,
       courses,
     };
@@ -541,9 +562,14 @@ export async function getAdminTrainingDashboardCounts(
 
 export async function listAdminTrainingStatus(
   companyId: number,
-  query: TrainingStatusListQuery
+  query: TrainingStatusListQuery,
+  effectiveLocationId: number | null = null
 ): Promise<{ employees: AdminTrainingStatusEmployee[]; meta: ListMeta }> {
-  let employees = await buildAdminTrainingStatusEmployees(companyId, query);
+  let employees = await buildAdminTrainingStatusEmployees(
+    companyId,
+    query,
+    effectiveLocationId
+  );
 
   if (query.trainingFilter !== "all") {
     employees = employees.filter((e) =>

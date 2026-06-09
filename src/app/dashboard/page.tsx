@@ -60,7 +60,8 @@ const EMPTY_FORM: EmployeeFormState = {
   houseNumber: "",
   postalCode: "",
   city: "",
-  location: "",
+  locationIds: [],
+  primaryLocationId: "",
   joinedCompanyAt: "",
   leftCompanyAt: "",
 };
@@ -73,6 +74,9 @@ export default function DashboardPage() {
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const [employeeCategories, setEmployeeCategories] = useState<
     EmployeeCategoryOption[]
+  >([]);
+  const [locationOptions, setLocationOptions] = useState<
+    { id: number; label: string }[]
   >([]);
   const [employeeCategoryId, setEmployeeCategoryId] = useState<number | "">("");
   const [loadedCategoryId, setLoadedCategoryId] = useState<number | null>(null);
@@ -91,17 +95,19 @@ export default function DashboardPage() {
     Promise.all([
       fetch("/api/admin/courses?filter=active"),
       fetch("/api/admin/employee-categories?filter=active"),
+      fetch("/api/admin/locations?filter=active"),
     ])
       .then((results) => {
-        const [coursesRes, categoriesRes] = results;
+        const [coursesRes, categoriesRes, locationsRes] = results;
         return Promise.all([
           coursesRes.ok ? coursesRes.json() : { courses: [] },
           categoriesRes.ok ? categoriesRes.json() : { categories: [] },
+          locationsRes.ok ? locationsRes.json() : { locations: [] },
         ]);
       })
       .then((data) => {
         if (!data) return;
-        const [coursesData, categoriesData] = data;
+        const [coursesData, categoriesData, locationsData] = data;
         if (coursesData.courses) {
           setAssignableCourses(
             coursesData.courses.map((c: AdminCourseRow) => toAssignableCourse(c))
@@ -109,6 +115,16 @@ export default function DashboardPage() {
         }
         if (categoriesData.categories) {
           setEmployeeCategories(categoriesData.categories);
+        }
+        if (locationsData.locations) {
+          setLocationOptions(
+            locationsData.locations.map(
+              (loc: { id: number; label: string }) => ({
+                id: loc.id,
+                label: loc.label,
+              })
+            )
+          );
         }
       })
       .catch((e) => {
@@ -181,7 +197,8 @@ export default function DashboardPage() {
       houseNumber: u.houseNumber ?? "",
       postalCode: u.postalCode ?? "",
       city: u.city ?? "",
-      location: u.location ?? "",
+      locationIds: u.locationId != null ? [u.locationId] : [],
+      primaryLocationId: u.locationId ?? "",
       joinedCompanyAt: u.joinedCompanyAt ?? "",
       leftCompanyAt: u.leftCompanyAt ?? "",
     });
@@ -216,6 +233,13 @@ export default function DashboardPage() {
         ...prev,
         joinedCompanyAt: joined ?? "",
         leftCompanyAt: left ?? "",
+        locationIds: Array.isArray(data.user?.locationIds)
+          ? (data.user.locationIds as number[])
+          : data.user?.locationId != null
+            ? [data.user.locationId as number]
+            : [],
+        primaryLocationId:
+          data.user?.primaryLocationId ?? data.user?.locationId ?? "",
       }));
     } catch {
       setFormError("Kurszuweisungen konnten nicht geladen werden.");
@@ -241,7 +265,13 @@ export default function DashboardPage() {
           houseNumber: form.houseNumber || null,
           postalCode: form.postalCode || null,
         city: form.city || null,
-        location: form.location || null,
+        locationIds: form.locationIds,
+        primaryLocationId:
+          form.locationIds.length === 0
+            ? null
+            : form.primaryLocationId === ""
+              ? null
+              : form.primaryLocationId,
         joinedCompanyAt: form.joinedCompanyAt || null,
         leftCompanyAt: form.leftCompanyAt || null,
         courseIds: selectedCourseIds,
@@ -265,6 +295,13 @@ export default function DashboardPage() {
           headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          locationIds: form.locationIds,
+          primaryLocationId:
+            form.locationIds.length === 0
+              ? null
+              : form.primaryLocationId === ""
+                ? null
+                : form.primaryLocationId,
           joinedCompanyAt: form.joinedCompanyAt || null,
           leftCompanyAt: form.leftCompanyAt || null,
           courseIds: selectedCourseIds,
@@ -360,6 +397,7 @@ export default function DashboardPage() {
           form={form}
           onFormChange={setForm}
           employeeCategories={employeeCategories}
+          locationOptions={locationOptions}
           employeeCategoryId={employeeCategoryId}
           onCategoryChange={handleCategoryChange}
           categoryPrompt={categoryPrompt}
@@ -380,6 +418,7 @@ export default function DashboardPage() {
       <EmployeeListTable
         refreshKey={listRefreshKey}
         categories={employeeCategories}
+        locations={locationOptions}
         onEdit={startEdit}
         onToggleActive={toggleActive}
       />

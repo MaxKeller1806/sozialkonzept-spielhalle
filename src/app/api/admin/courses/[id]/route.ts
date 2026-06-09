@@ -14,6 +14,10 @@ import {
 } from "@/lib/course-provisions";
 import { coursePermissionErrorResponse } from "@/lib/course-permissions-api";
 import { normalizeValidityType, normalizeIntervalUnit } from "@/lib/course-validity";
+import {
+  assertTopicAssignableToCompany,
+  setCompanyCourseTopicId,
+} from "@/lib/course-topics";
 
 export async function GET(
   _request: Request,
@@ -52,6 +56,32 @@ export async function PATCH(
     const companyId = user.companyId!;
     const body = await request.json();
 
+    if (body.topicId !== undefined) {
+      let parsedTopicId: number | null = null;
+      if (body.topicId != null && body.topicId !== "") {
+        parsedTopicId = Number(body.topicId);
+        if (!Number.isFinite(parsedTopicId)) {
+          return NextResponse.json(
+            { error: "Ungültiges Hauptthema." },
+            { status: 400 }
+          );
+        }
+      }
+      try {
+        await assertTopicAssignableToCompany(companyId, parsedTopicId);
+        await setCompanyCourseTopicId(companyId, courseId, parsedTopicId);
+      } catch (e) {
+        const locMsg = e instanceof Error ? e.message : "";
+        if (locMsg === "TOPIC_INVALID") {
+          return NextResponse.json(
+            { error: "Hauptthema nicht verfügbar." },
+            { status: 400 }
+          );
+        }
+        throw e;
+      }
+    }
+
     if (typeof body.active === "boolean") {
       const provision = await getCourseProvision(companyId, courseId);
       const perms = provisionPermissions(provision);
@@ -83,23 +113,41 @@ export async function PATCH(
       });
     }
 
-    await assertCourseSettingsEditable(companyId, courseId);
-    const course = await updateCourseSettings(companyId, courseId, {
-      passingScore:
-        body.passingScore != null ? Number(body.passingScore) : undefined,
-      validityType:
-        body.validityType != null
-          ? normalizeValidityType(body.validityType)
-          : undefined,
-      validityIntervalValue:
-        body.validityIntervalValue != null
-          ? Number(body.validityIntervalValue)
-          : undefined,
-      validityIntervalUnit:
-        body.validityIntervalUnit != null
-          ? normalizeIntervalUnit(body.validityIntervalUnit) ?? undefined
-          : undefined,
-    });
+    const hasSettings =
+      body.passingScore != null ||
+      body.validityType != null ||
+      body.validityIntervalValue != null ||
+      body.validityIntervalUnit != null;
+
+    let course;
+    if (hasSettings) {
+      await assertCourseSettingsEditable(companyId, courseId);
+      course = await updateCourseSettings(companyId, courseId, {
+        passingScore:
+          body.passingScore != null ? Number(body.passingScore) : undefined,
+        validityType:
+          body.validityType != null
+            ? normalizeValidityType(body.validityType)
+            : undefined,
+        validityIntervalValue:
+          body.validityIntervalValue != null
+            ? Number(body.validityIntervalValue)
+            : undefined,
+        validityIntervalUnit:
+          body.validityIntervalUnit != null
+            ? normalizeIntervalUnit(body.validityIntervalUnit) ?? undefined
+            : undefined,
+      });
+    }
+
+    if (
+      body.topicId === undefined &&
+      typeof body.active !== "boolean" &&
+      !hasSettings
+    ) {
+      return NextResponse.json({ error: "Keine Änderungen." }, { status: 400 });
+    }
+
     const meta = await getCourseMeta(companyId, courseId);
     return NextResponse.json({ course: meta, courseData: course });
   } catch (e) {
