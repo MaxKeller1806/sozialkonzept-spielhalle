@@ -45,7 +45,7 @@ export async function GET() {
     const companyId = admin.companyId!;
     const summary = await withDbQuery(
       () => getAdminDashboardSummary(companyId),
-      20000
+      45000
     );
     return NextResponse.json({ summary });
   } catch (e) {
