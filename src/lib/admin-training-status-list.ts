@@ -439,9 +439,56 @@ async function queryTrainingDashboardCounts(
     : sql``;
 
   const rows = (await sql`
-    WITH assignment_status AS (
+    WITH company_assignments AS (
+      SELECT uca.user_id, uca.course_id
+      FROM user_course_assignments uca
+      JOIN courses c ON c.id = uca.course_id AND c.company_id = ${companyId} AND c.active = TRUE
+      JOIN users u ON u.id = uca.user_id AND u.company_id = ${companyId}
+        AND u.role = 'employee'
+        AND u.active = TRUE
+        ${employmentFilter}
+    ),
+    latest_certs AS (
+      SELECT DISTINCT ON (cert.user_id, cert.course_id)
+        cert.user_id,
+        cert.course_id,
+        cert.id,
+        cert.valid_until,
+        cert.revoked
+      FROM certificates cert
+      INNER JOIN company_assignments ca
+        ON ca.user_id = cert.user_id AND ca.course_id = cert.course_id
+      ORDER BY cert.user_id, cert.course_id, cert.issued_at DESC
+    ),
+    failed_attempts AS (
+      SELECT DISTINCT ON (ta.user_id, ta.course_id)
+        ta.user_id,
+        ta.course_id,
+        ta.completed_at
+      FROM training_attempts ta
+      INNER JOIN company_assignments ca
+        ON ca.user_id = ta.user_id AND ca.course_id = ta.course_id
+      WHERE ta.completed_at IS NOT NULL
+        AND ta.passed = FALSE
+        AND NOT EXISTS (
+          SELECT 1 FROM certificates cert2
+          WHERE cert2.user_id = ta.user_id
+            AND cert2.course_id = ta.course_id
+            AND cert2.revoked = FALSE
+            AND cert2.issued_at >= ta.completed_at
+        )
+      ORDER BY ta.user_id, ta.course_id, ta.completed_at DESC
+    ),
+    active_attempts AS (
+      SELECT DISTINCT ta.user_id, ta.course_id
+      FROM training_attempts ta
+      INNER JOIN company_assignments ca
+        ON ca.user_id = ta.user_id AND ca.course_id = ta.course_id
+      WHERE ta.completed_at IS NULL
+    ),
+    assignment_status AS (
       SELECT
-        uca.user_id,
+        ca.user_id,
         CASE
           WHEN latest_cert.id IS NOT NULL AND NOT COALESCE(latest_cert.revoked, FALSE) THEN
             CASE
@@ -453,48 +500,17 @@ async function queryTrainingDashboardCounts(
                 THEN 'due_soon'
               ELSE NULL
             END
-          WHEN COALESCE(active_attempt.in_progress, FALSE) THEN NULL
-          WHEN failed_attempt.completed_at IS NOT NULL THEN NULL
+          WHEN active_attempt.user_id IS NOT NULL THEN NULL
+          WHEN failed_attempts.completed_at IS NOT NULL THEN NULL
           ELSE 'not_started'
         END AS status_key
-      FROM user_course_assignments uca
-      JOIN courses c ON c.id = uca.course_id AND c.company_id = ${companyId} AND c.active = TRUE
-      JOIN users u ON u.id = uca.user_id AND u.company_id = ${companyId}
-        AND u.role = 'employee'
-        AND u.active = TRUE
-        ${employmentFilter}
-      LEFT JOIN LATERAL (
-        SELECT cert.id, cert.valid_until, cert.revoked
-        FROM certificates cert
-        WHERE cert.user_id = uca.user_id AND cert.course_id = c.id
-        ORDER BY cert.issued_at DESC
-        LIMIT 1
-      ) latest_cert ON TRUE
-      LEFT JOIN LATERAL (
-        SELECT ta.completed_at
-        FROM training_attempts ta
-        WHERE ta.user_id = uca.user_id
-          AND ta.course_id = c.id
-          AND ta.completed_at IS NOT NULL
-          AND ta.passed = FALSE
-          AND NOT EXISTS (
-            SELECT 1 FROM certificates cert2
-            WHERE cert2.user_id = ta.user_id
-              AND cert2.course_id = ta.course_id
-              AND cert2.revoked = FALSE
-              AND cert2.issued_at >= ta.completed_at
-          )
-        ORDER BY ta.completed_at DESC
-        LIMIT 1
-      ) failed_attempt ON TRUE
-      LEFT JOIN LATERAL (
-        SELECT TRUE AS in_progress
-        FROM training_attempts ta
-        WHERE ta.user_id = uca.user_id
-          AND ta.course_id = c.id
-          AND ta.completed_at IS NULL
-        LIMIT 1
-      ) active_attempt ON TRUE
+      FROM company_assignments ca
+      LEFT JOIN latest_certs latest_cert
+        ON latest_cert.user_id = ca.user_id AND latest_cert.course_id = ca.course_id
+      LEFT JOIN failed_attempts
+        ON failed_attempts.user_id = ca.user_id AND failed_attempts.course_id = ca.course_id
+      LEFT JOIN active_attempts active_attempt
+        ON active_attempt.user_id = ca.user_id AND active_attempt.course_id = ca.course_id
     )
     SELECT
       COUNT(DISTINCT user_id) FILTER (WHERE status_key = 'expired')::int AS expired,
