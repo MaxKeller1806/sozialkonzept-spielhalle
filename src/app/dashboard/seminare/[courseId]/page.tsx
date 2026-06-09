@@ -28,7 +28,9 @@ export default function SeminarDetailPage() {
   const courseId = decodeURIComponent(String(params.courseId ?? ""));
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [canPermanentDelete, setCanPermanentDelete] = useState(false);
-  const [settingsReadOnly, setSettingsReadOnly] = useState(false);
+  const [canEditValidity, setCanEditValidity] = useState(true);
+  const [canEditPassingScore, setCanEditPassingScore] = useState(true);
+  const [fromMaster, setFromMaster] = useState(false);
   const [passingScore, setPassingScore] = useState("80");
   const [validity, setValidity] = useState<ValidityRuleFormValue>({
     validityType: "yearly",
@@ -99,7 +101,10 @@ export default function SeminarDetailPage() {
           validityIntervalUnit: c.validityIntervalUnit ?? "months",
         });
         setCanPermanentDelete(Boolean(data.canPermanentDelete));
-        setSettingsReadOnly(Boolean(data.permissions?.readOnly));
+        const perms = data.permissions ?? {};
+        setCanEditValidity(perms.canEditValidity !== false);
+        setCanEditPassingScore(perms.canEditPassingScore !== false);
+        setFromMaster(Boolean(perms.fromMaster));
       } else {
         setCourse(null);
         setError(
@@ -301,10 +306,15 @@ export default function SeminarDetailPage() {
 
           <Card>
             <h3 className="mb-4 text-lg font-bold">Seminar-Einstellungen</h3>
-            {settingsReadOnly && (
+            {fromMaster && !canEditValidity && !canEditPassingScore && (
               <p className="mb-4 rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-900">
-                Dieses Seminar wird von Certiano bereitgestellt. Gültigkeit und
-                Bestehensgrenze können nicht geändert werden.
+                Diese Einstellung wird durch Certiano vorgegeben und kann nur durch
+                den Superuser freigegeben werden.
+              </p>
+            )}
+            {fromMaster && (canEditValidity || canEditPassingScore) && (
+              <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">
+                Änderung durch Superuser für diese Firma freigegeben.
               </p>
             )}
             <form onSubmit={saveSettings} className="space-y-6">
@@ -312,22 +322,41 @@ export default function SeminarDetailPage() {
                 <span className="text-sm font-medium text-slate-700">
                   Bestehensgrenze (%)
                 </span>
+                {fromMaster && !canEditPassingScore && (
+                  <p className="mt-1 text-xs text-amber-800">
+                    Diese Einstellung wird durch Certiano vorgegeben und kann nur
+                    durch den Superuser freigegeben werden.
+                  </p>
+                )}
                 <input
                   type="number"
                   min={50}
                   max={100}
                   value={passingScore}
-                  disabled={settingsReadOnly || saving}
+                  disabled={!canEditPassingScore || saving}
                   onChange={(e) => setPassingScore(e.target.value)}
                   className="mt-1 block w-28 rounded-xl border border-slate-300 px-3 py-2 disabled:bg-slate-100"
                 />
               </label>
-              <ValidityRuleForm
-                value={validity}
-                onChange={setValidity}
-                disabled={settingsReadOnly || saving}
-              />
-              <Button type="submit" disabled={saving || settingsReadOnly}>
+              <div>
+                {fromMaster && !canEditValidity && (
+                  <p className="mb-1 text-xs text-amber-800">
+                    Diese Einstellung wird durch Certiano vorgegeben und kann nur
+                    durch den Superuser freigegeben werden.
+                  </p>
+                )}
+                <ValidityRuleForm
+                  value={validity}
+                  onChange={setValidity}
+                  disabled={!canEditValidity || saving}
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={
+                  saving || (!canEditValidity && !canEditPassingScore)
+                }
+              >
                 {saving ? "Speichern…" : "Einstellungen speichern"}
               </Button>
             </form>

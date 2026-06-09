@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { getCompanyAdminSettings } from "@/lib/company-admin-settings";
 import {
   listCompanyCourses,
   createCompanyCourse,
@@ -41,6 +42,8 @@ export async function GET(request: Request) {
 
   try {
     const user = await requireAdmin();
+    const companyId = user.companyId!;
+    const companySettings = await getCompanyAdminSettings(companyId);
     const hierarchyFilters = parseCourseListFilters(params);
 
     if (
@@ -80,7 +83,11 @@ export async function GET(request: Request) {
             validityIntervalUnit: c.validityIntervalUnit,
             validityMonths: c.validityMonths,
           }),
-          permissions: provisionPermissions(byCourse.get(c.id)),
+          permissions: provisionPermissions(
+            byCourse.get(c.id),
+            c.masterCourseId,
+            companySettings
+          ),
         })),
         filter,
         total: courses.length,
@@ -118,7 +125,11 @@ export async function GET(request: Request) {
     return NextResponse.json({
       courses: result.courses.map((c) => ({
         ...c,
-        permissions: provisionPermissions(byCourse.get(c.id)),
+        permissions: provisionPermissions(
+          byCourse.get(c.id),
+          c.masterCourseId,
+          companySettings
+        ),
       })),
       meta: result.meta,
       sortFields: ADMIN_COURSE_SORT_KEYS,

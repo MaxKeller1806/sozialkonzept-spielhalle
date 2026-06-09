@@ -22,6 +22,8 @@ export type CompanyFormState = {
   status: string;
   licenseStatus: string;
   licenseExpiresAt: string;
+  allowAdminValidityOverride: boolean;
+  allowAdminPassingScoreOverride: boolean;
 };
 
 const EMPTY_FORM: CompanyFormState = {
@@ -41,6 +43,8 @@ const EMPTY_FORM: CompanyFormState = {
   status: "active",
   licenseStatus: "unlicensed",
   licenseExpiresAt: "",
+  allowAdminValidityOverride: false,
+  allowAdminPassingScoreOverride: false,
 };
 
 type CompanyEditFormProps = {
@@ -116,6 +120,9 @@ export function CompanyEditForm({
             licenseExpiresAt: c.licenseExpiresAt
               ? c.licenseExpiresAt.slice(0, 10)
               : "",
+            allowAdminValidityOverride: c.allowAdminValidityOverride === true,
+            allowAdminPassingScoreOverride:
+              c.allowAdminPassingScoreOverride === true,
           });
           setIndustryId(c.industryId ?? "");
           setBusinessTypeId(c.businessTypeId ?? "");
@@ -160,6 +167,8 @@ export function CompanyEditForm({
           licenseExpiresAt: form.licenseExpiresAt || null,
           industryId: industryId === "" ? null : industryId,
           businessTypeId: businessTypeId === "" ? null : businessTypeId,
+          allowAdminValidityOverride: form.allowAdminValidityOverride,
+          allowAdminPassingScoreOverride: form.allowAdminPassingScoreOverride,
         }),
       });
       if (res.ok) {
@@ -307,6 +316,39 @@ export function CompanyEditForm({
           value={form.licenseExpiresAt}
           onChange={(e) => setForm({ ...form, licenseExpiresAt: e.target.value })}
         />
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2">
+          <h3 className="text-sm font-semibold text-slate-800">Admin-Berechtigungen</h3>
+          <p className="mt-1 text-sm text-slate-600">
+            Diese Einstellung gilt für die gesamte Firma.
+          </p>
+          <div className="mt-3 space-y-2">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.allowAdminValidityOverride}
+                onChange={(e) =>
+                  setForm({ ...form, allowAdminValidityOverride: e.target.checked })
+                }
+                className="rounded border-slate-300"
+              />
+              Admin darf Gültigkeiten ändern
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.allowAdminPassingScoreOverride}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    allowAdminPassingScoreOverride: e.target.checked,
+                  })
+                }
+                className="rounded border-slate-300"
+              />
+              Admin darf Bestehensgrenzen ändern
+            </label>
+          </div>
+        </div>
         {!hideActions && (
           <div className="flex flex-wrap gap-3 sm:col-span-2">
             <Button type="submit" disabled={saving}>

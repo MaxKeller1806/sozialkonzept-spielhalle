@@ -60,6 +60,8 @@ export interface Company {
   businessTypeId: number | null;
   industryName?: string | null;
   businessTypeName?: string | null;
+  allowAdminValidityOverride: boolean;
+  allowAdminPassingScoreOverride: boolean;
   createdAt: string;
 }
 

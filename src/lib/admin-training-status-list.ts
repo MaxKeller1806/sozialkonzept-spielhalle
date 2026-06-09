@@ -60,6 +60,7 @@ export type AdminTrainingStatusEmployee = {
   employeeCategoryId: number | null;
   employeeCategoryName: string | null;
   joinedCompanyAt: string | null;
+  leftCompanyAt?: string | null;
   active: boolean;
   locationId: number | null;
   locationLabel: string | null;
@@ -362,6 +363,7 @@ export async function buildAdminTrainingStatusEmployees(
       u.active,
       u.employee_category_id,
       u.joined_company_at,
+      u.left_company_at,
       u.location_id,
       ec.name AS category_name,
       cl.name AS location_name,
@@ -420,6 +422,9 @@ export async function buildAdminTrainingStatusEmployees(
       employeeCategoryName:
         row.category_name != null ? String(row.category_name) : null,
       joinedCompanyAt,
+      leftCompanyAt: row.left_company_at
+        ? new Date(String(row.left_company_at)).toISOString().slice(0, 10)
+        : null,
       active: Boolean(row.active),
       locationId: row.location_id != null ? Number(row.location_id) : null,
       locationLabel:

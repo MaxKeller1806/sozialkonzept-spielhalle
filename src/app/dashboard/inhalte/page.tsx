@@ -70,6 +70,7 @@ function InhalteEditor({ courseId }: { courseId: string }) {
     canEditContent: true,
     canEditTests: true,
     canAddModules: true,
+    canEditPassingScore: true,
     readOnly: false,
     fromMaster: false,
   });
@@ -275,6 +276,12 @@ function InhalteEditor({ courseId }: { courseId: string }) {
           <>
             <Card className="mb-8">
               <h2 className="text-lg font-bold">Bestehensgrenze Abschlusstest</h2>
+              {permissions.fromMaster && !permissions.canEditPassingScore && (
+                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  Die Bestehensgrenze wird durch Certiano vorgegeben und kann nur mit
+                  Freigabe des Superusers geändert werden.
+                </p>
+              )}
               <p className="mt-2 text-sm text-slate-600">
                 Legen Sie fest, ab welchem Prozentsatz der Test bestanden gilt. Pro
                 Durchlauf werden {perTest} Fragen aus dem Pool gestellt.
@@ -294,14 +301,18 @@ function InhalteEditor({ courseId }: { courseId: string }) {
                     step={1}
                     value={passingScoreInput}
                     onChange={(e) => setPassingScoreInput(e.target.value)}
-                    className="mt-1 block w-28 rounded-xl border border-slate-300 px-3 py-2"
+                    disabled={!permissions.canEditPassingScore}
+                    className="mt-1 block w-28 rounded-xl border border-slate-300 px-3 py-2 disabled:bg-slate-100"
                   />
                 </label>
                 <p className="text-sm text-slate-600">
                   = mindestens <strong>{minCorrect}</strong> von {perTest} Fragen
                   richtig
                 </p>
-                <Button type="submit" disabled={savingScore || !permissions.canEditContent}>
+                <Button
+                  type="submit"
+                  disabled={savingScore || !permissions.canEditPassingScore}
+                >
                   {savingScore ? "Speichern…" : "Speichern"}
                 </Button>
               </form>

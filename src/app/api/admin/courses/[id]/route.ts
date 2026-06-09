@@ -7,8 +7,9 @@ import {
 } from "@/lib/course-db";
 import { executePermanentCourseDelete } from "@/lib/course-delete";
 import { getCourseEvidenceSummary } from "@/lib/course-evidence";
+import { getCompanyAdminSettings } from "@/lib/company-admin-settings";
 import {
-  assertCourseSettingsEditable,
+  assertCourseSettingsFieldEditable,
   getCourseProvision,
   provisionPermissions,
 } from "@/lib/course-provisions";
@@ -26,15 +27,17 @@ export async function GET(
   try {
     const user = await requireAdmin();
     const { id: courseId } = await params;
-    const meta = await getCourseMetaWithTopics(user.companyId!, courseId);
+    const companyId = user.companyId!;
+    const companySettings = await getCompanyAdminSettings(companyId);
+    const meta = await getCourseMetaWithTopics(companyId, courseId);
     if (!meta) {
       return NextResponse.json({ error: "Seminar nicht gefunden." }, { status: 404 });
     }
-    const provision = await getCourseProvision(user.companyId!, courseId);
+    const provision = await getCourseProvision(companyId, courseId);
     const evidence = await getCourseEvidenceSummary(courseId);
     return NextResponse.json({
       course: meta,
-      permissions: provisionPermissions(provision),
+      permissions: provisionPermissions(provision, meta.masterCourseId, companySettings),
       evidence,
     });
   } catch (e) {
@@ -96,9 +99,16 @@ export async function PATCH(
       }
     }
 
+    const companySettings = await getCompanyAdminSettings(companyId);
+
     if (typeof body.active === "boolean") {
       const provision = await getCourseProvision(companyId, courseId);
-      const perms = provisionPermissions(provision);
+      const courseMeta = await getCourseMetaWithTopics(companyId, courseId);
+      const perms = provisionPermissions(
+        provision,
+        courseMeta?.masterCourseId,
+        companySettings
+      );
 
       if (body.active) {
         if (provision?.disabledBySuperuser) {
@@ -127,15 +137,25 @@ export async function PATCH(
       });
     }
 
-    const hasSettings =
-      body.passingScore != null ||
+    const hasPassingScore = body.passingScore != null;
+    const hasValidity =
       body.validityType != null ||
       body.validityIntervalValue != null ||
       body.validityIntervalUnit != null;
+    const hasSettings = hasPassingScore || hasValidity;
 
     let course;
     if (hasSettings) {
-      await assertCourseSettingsEditable(companyId, courseId);
+      if (hasPassingScore) {
+        await assertCourseSettingsFieldEditable(
+          companyId,
+          courseId,
+          "passing_score"
+        );
+      }
+      if (hasValidity) {
+        await assertCourseSettingsFieldEditable(companyId, courseId, "validity");
+      }
       course = await updateCourseSettings(companyId, courseId, {
         passingScore:
           body.passingScore != null ? Number(body.passingScore) : undefined,
@@ -195,7 +215,13 @@ export async function DELETE(
     }
 
     const provision = await getCourseProvision(companyId, courseId);
-    const perms = provisionPermissions(provision);
+    const courseMeta = await getCourseMetaWithTopics(companyId, courseId);
+    const companySettings = await getCompanyAdminSettings(companyId);
+    const perms = provisionPermissions(
+      provision,
+      courseMeta?.masterCourseId,
+      companySettings
+    );
     if (!perms.canArchive && !perms.canReactivate) {
       return NextResponse.json(
         { error: "Entfernen ist für dieses Seminar nicht erlaubt." },

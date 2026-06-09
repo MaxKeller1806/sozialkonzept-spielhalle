@@ -11,6 +11,24 @@ export function coursePermissionErrorResponse(e: unknown): NextResponse | null {
       { status: 403 }
     );
   }
+  if (msg === "COURSE_VALIDITY_LOCKED") {
+    return NextResponse.json(
+      {
+        error:
+          "Diese Einstellung wird durch Certiano vorgegeben und kann nur durch den Superuser freigegeben werden.",
+      },
+      { status: 403 }
+    );
+  }
+  if (msg === "COURSE_PASSING_SCORE_LOCKED") {
+    return NextResponse.json(
+      {
+        error:
+          "Diese Einstellung wird durch Certiano vorgegeben und kann nur durch den Superuser freigegeben werden.",
+      },
+      { status: 403 }
+    );
+  }
   if (msg === "COURSE_LOCKED") {
     return NextResponse.json(
       { error: "Dieser Kurs ist gesperrt." },

@@ -178,10 +178,15 @@ export async function generateLearningContentPdf(
 
 export async function generateExamDocumentationPdf(
   course: CourseData,
-  opts?: { companyName?: string; branding?: CompanyBranding }
+  opts?: {
+    companyName?: string;
+    branding?: CompanyBranding;
+    showCorrectAnswers?: boolean;
+  }
 ): Promise<Buffer> {
   const exportedAt = new Date().toLocaleString("de-DE");
   const primary = opts?.branding?.primaryColor ?? "#000080";
+  const showCorrectAnswers = opts?.showCorrectAnswers === true;
 
   return createPdfBuffer((doc) => {
     if (opts?.companyName) {
@@ -202,14 +207,16 @@ export async function generateExamDocumentationPdf(
     doc.text(`Export: ${exportedAt}`, { align: "center" });
     doc.moveDown(1);
 
-    doc
-      .fontSize(9)
-      .fillColor("#b45309")
-      .text(
-        "VERTRAULICH – Enthält Musterlösungen. Nur für interne Aufbewahrung und Behördennachweis.",
-        { align: "left" }
-      );
-    doc.moveDown(1);
+    if (showCorrectAnswers) {
+      doc
+        .fontSize(9)
+        .fillColor("#b45309")
+        .text(
+          "VERTRAULICH – Enthält Musterlösungen. Nur für interne Aufbewahrung und Behördennachweis.",
+          { align: "left" }
+        );
+      doc.moveDown(1);
+    }
 
     let qNum = 0;
     for (const mod of course.modules) {
@@ -232,23 +239,26 @@ export async function generateExamDocumentationPdf(
         if (q.type !== "boolean" && q.answers) {
           q.answers.forEach((ans, i) => {
             const marker =
-              q.type === "single" && q.correct === i
+              showCorrectAnswers &&
+              (q.type === "single" && q.correct === i
                 ? " ✓"
                 : q.type === "multiple" &&
                     Array.isArray(q.correct) &&
                     (q.correct as number[]).includes(i)
                   ? " ✓"
-                  : "";
+                  : "");
             doc.fontSize(10).text(`  • ${ans}${marker}`);
           });
         }
 
-        doc
-          .fontSize(10)
-          .fillColor(primary)
-          .font("Helvetica-Bold")
-          .text(`Richtige Antwort: ${formatCorrectAnswer(q)}`);
-        doc.font("Helvetica").fillColor("#000");
+        if (showCorrectAnswers) {
+          doc
+            .fontSize(10)
+            .fillColor(primary)
+            .font("Helvetica-Bold")
+            .text(`Richtige Antwort: ${formatCorrectAnswer(q)}`);
+          doc.font("Helvetica").fillColor("#000");
+        }
         doc.moveDown(0.6);
 
         if (doc.y > doc.page.height - 120) {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { updateCourseSettings } from "@/lib/course-db";
+import { getCompanyAdminSettings } from "@/lib/company-admin-settings";
+import { getCourseMeta, updateCourseSettings } from "@/lib/course-db";
 import { courseIdFromRequest } from "@/lib/course-context";
 import { buildContentStateMap } from "@/lib/content-provisions";
 import {
@@ -9,7 +10,7 @@ import {
 } from "@/lib/course-editor-context";
 import { getCourseForContext } from "@/lib/course";
 import {
-  assertCourseEditable,
+  assertCourseSettingsFieldEditable,
   getCourseProvision,
   provisionPermissions,
 } from "@/lib/course-provisions";
@@ -37,6 +38,8 @@ export async function GET(request: Request) {
       filterContent: false,
     });
     const provision = await getCourseProvision(ctx.companyId, ctx.courseId);
+    const meta = await getCourseMeta(ctx.companyId, ctx.courseId);
+    const companySettings = await getCompanyAdminSettings(ctx.companyId);
     const contentStates = await buildContentStateMap(
       ctx.companyId,
       ctx.courseId,
@@ -45,7 +48,11 @@ export async function GET(request: Request) {
     return NextResponse.json({
       courseId: ctx.courseId,
       course,
-      permissions: provisionPermissions(provision),
+      permissions: provisionPermissions(
+        provision,
+        meta?.masterCourseId,
+        companySettings
+      ),
       contentStates,
     });
   } catch (e) {
@@ -73,7 +80,11 @@ export async function PATCH(request: Request) {
       );
     }
 
-    await assertCourseEditable(ctx.companyId, ctx.courseId, "content");
+    await assertCourseSettingsFieldEditable(
+      ctx.companyId,
+      ctx.courseId,
+      "passing_score"
+    );
     const body = await request.json();
     const { passingScore } = body;
 

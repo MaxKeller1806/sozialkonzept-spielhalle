@@ -8,6 +8,7 @@ import {
   getMasterCourseMeta,
   masterContentAsCourseData,
 } from "./master-course-db";
+import type { CompanyAdminSettings } from "./company-admin-settings";
 import type { CourseProvision, CourseProvisionStatus } from "./types";
 
 function normalizeStatus(status: string): CourseProvisionStatus {
@@ -15,12 +16,18 @@ function normalizeStatus(status: string): CourseProvisionStatus {
   return status as CourseProvisionStatus;
 }
 
+function effectiveMasterCourseId(row: Record<string, unknown>): string | null {
+  const id = row.master_course_id ?? row.course_master_course_id;
+  return id != null ? String(id) : null;
+}
+
 function mapProvision(row: Record<string, unknown>): CourseProvision {
+  const masterId = effectiveMasterCourseId(row);
   return {
     id: Number(row.id),
     companyId: Number(row.company_id),
     courseId: String(row.course_id),
-    masterCourseId: row.master_course_id != null ? String(row.master_course_id) : null,
+    masterCourseId: masterId,
     masterTitle: row.master_title != null ? String(row.master_title) : null,
     status: normalizeStatus(String(row.status ?? "active")),
     canEditContent: Boolean(row.can_edit_content ?? true),
@@ -32,7 +39,7 @@ function mapProvision(row: Record<string, unknown>): CourseProvision {
     courseTitle: String(row.course_title),
     courseSlug: String(row.course_slug),
     courseActive: Boolean(row.course_active),
-    source: row.master_course_id != null ? "master" : "native",
+    source: masterId != null ? "master" : "native",
   };
 }
 
@@ -67,10 +74,11 @@ export async function getCourseProvision(
       c.title AS course_title,
       c.slug AS course_slug,
       c.active AS course_active,
+      c.master_course_id AS course_master_course_id,
       m.title AS master_title
     FROM company_course_provisions p
     JOIN courses c ON c.id = p.course_id
-    LEFT JOIN master_courses m ON m.id = p.master_course_id
+    LEFT JOIN master_courses m ON m.id = COALESCE(p.master_course_id, c.master_course_id)
     WHERE p.company_id = ${companyId} AND p.course_id = ${courseId}
     LIMIT 1
   `;
@@ -183,7 +191,8 @@ export async function loadCompanyProvisionsOverview(
         p.assigned_at,
         c.title AS course_title,
         c.slug AS course_slug,
-        c.active AS course_active
+        c.active AS course_active,
+        c.master_course_id AS course_master_course_id
       FROM company_course_provisions p
       INNER JOIN courses c ON c.id = p.course_id AND c.company_id = p.company_id
       WHERE p.company_id = ${companyId}
@@ -266,22 +275,43 @@ export async function assertCourseEditable(
   return provision;
 }
 
-/** Gültigkeit/Bestehensgrenze – auch bei deaktivierten Seminaren, außer Certiano-read-only. */
+import { getCompanyAdminSettings } from "./company-admin-settings";
+
+/** Gültigkeit/Bestehensgrenze – firmeneigene Kurse oder firmenweite Superuser-Freigabe. */
+export type CourseSettingsField = "validity" | "passing_score";
+
+export async function assertCourseSettingsFieldEditable(
+  companyId: number,
+  courseId: string,
+  field: CourseSettingsField
+): Promise<void> {
+  const sql = getSql();
+  const courseRows = await sql`
+    SELECT id, master_course_id FROM courses
+    WHERE id = ${courseId} AND company_id = ${companyId}
+    LIMIT 1
+  `;
+  if (courseRows.length === 0) throw new Error("COURSE_NOT_FOUND");
+
+  if (courseRows[0].master_course_id == null) return;
+
+  const companySettings = await getCompanyAdminSettings(companyId);
+
+  if (field === "validity" && !companySettings.allowAdminValidityOverride) {
+    throw new Error("COURSE_VALIDITY_LOCKED");
+  }
+  if (field === "passing_score" && !companySettings.allowAdminPassingScoreOverride) {
+    throw new Error("COURSE_PASSING_SCORE_LOCKED");
+  }
+}
+
+/** @deprecated Nutze assertCourseSettingsFieldEditable pro Feld. */
 export async function assertCourseSettingsEditable(
   companyId: number,
   courseId: string
 ): Promise<void> {
-  const sql = getSql();
-  const courseRows = await sql`
-    SELECT id FROM courses WHERE id = ${courseId} AND company_id = ${companyId} LIMIT 1
-  `;
-  if (courseRows.length === 0) throw new Error("COURSE_NOT_FOUND");
-
-  const provision = await getCourseProvision(companyId, courseId);
-  if (!provision) return;
-  if (provision.source === "master" && !provision.canEditContent) {
-    throw new Error("COURSE_READ_ONLY");
-  }
+  await assertCourseSettingsFieldEditable(companyId, courseId, "validity");
+  await assertCourseSettingsFieldEditable(companyId, courseId, "passing_score");
 }
 
 export async function updateProvision(
@@ -316,14 +346,14 @@ export async function updateProvision(
   const canEditContent = patch.canEditContent ?? existing.canEditContent;
   const canEditTests = patch.canEditTests ?? existing.canEditTests;
   const canAddModules = patch.canAddModules ?? existing.canAddModules;
-  let canDeactivate = patch.canDeactivate ?? existing.canDeactivate;
+  let canDeactivateMut = patch.canDeactivate ?? existing.canDeactivate;
   const disabledBySuperuser =
     patch.status !== undefined
       ? status === "disabled"
       : existing.disabledBySuperuser;
 
   if (status === "active" && existing.masterCourseId == null) {
-    canDeactivate = true;
+    canDeactivateMut = true;
   }
 
   await sql`
@@ -332,7 +362,7 @@ export async function updateProvision(
       can_edit_content = ${canEditContent},
       can_edit_tests = ${canEditTests},
       can_add_modules = ${canAddModules},
-      can_deactivate = ${canDeactivate},
+      can_deactivate = ${canDeactivateMut},
       disabled_by_superuser = ${disabledBySuperuser}
     WHERE company_id = ${companyId} AND course_id = ${courseId}
   `;
@@ -488,23 +518,36 @@ export async function isCourseAccessibleForEmployee(
   return provision.status === "active" && provision.courseActive;
 }
 
-export function provisionPermissions(provision?: CourseProvision) {
+export function provisionPermissions(
+  provision?: CourseProvision,
+  courseMasterCourseId?: string | null,
+  companySettings?: CompanyAdminSettings
+) {
+  const fromMaster =
+    provision?.source === "master" ||
+    (courseMasterCourseId != null && courseMasterCourseId !== "");
+
+  const companyValidity = companySettings?.allowAdminValidityOverride === true;
+  const companyPassing = companySettings?.allowAdminPassingScoreOverride === true;
+
   if (!provision) {
     return {
-      canEditContent: true,
-      canEditTests: true,
-      canAddModules: true,
-      canDeactivate: true,
-      canArchive: true,
+      canEditContent: !fromMaster,
+      canEditTests: !fromMaster,
+      canAddModules: !fromMaster,
+      canDeactivate: !fromMaster,
+      canArchive: !fromMaster,
       canReactivate: false,
-      readOnly: false,
-      fromMaster: false,
+      canEditValidity: !fromMaster || companyValidity,
+      canEditPassingScore: !fromMaster || companyPassing,
+      readOnly: fromMaster,
+      fromMaster,
       disabledBySuperuser: false,
       status: "active" as CourseProvisionStatus,
     };
   }
   const active = provision.status === "active";
-  const isNative = provision.source === "native";
+  const isNative = !fromMaster;
   return {
     canEditContent: active && provision.canEditContent,
     canEditTests: active && provision.canEditTests,
@@ -516,8 +559,10 @@ export function provisionPermissions(provision?: CourseProvision) {
       !provision.disabledBySuperuser &&
       (isNative || provision.canDeactivate),
     canReactivate: !active && !provision.disabledBySuperuser,
-    readOnly: !provision.canEditContent || provision.source === "master",
-    fromMaster: provision.source === "master",
+    canEditValidity: isNative || companyValidity,
+    canEditPassingScore: isNative || companyPassing,
+    readOnly: !provision.canEditContent || fromMaster,
+    fromMaster,
     disabledBySuperuser: provision.disabledBySuperuser,
     status: provision.status,
   };

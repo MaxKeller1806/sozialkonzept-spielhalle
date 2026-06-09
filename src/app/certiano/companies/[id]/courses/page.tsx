@@ -20,6 +20,8 @@ interface CourseDetail {
   courseId: string;
   courseTitle: string;
   status: string;
+  source?: "native" | "master";
+  masterCourseId?: string | null;
   canEditContent: boolean;
   canEditTests: boolean;
   canAddModules: boolean;
@@ -92,6 +94,8 @@ export default function CompanyCoursesPage() {
             courseId: p.courseId,
             courseTitle: p.courseTitle,
             status: p.status === "locked" ? "disabled" : p.status,
+            source: p.source,
+            masterCourseId: p.masterCourseId,
             canEditContent: p.canEditContent,
             canEditTests: p.canEditTests,
             canAddModules: p.canAddModules,
@@ -298,6 +302,11 @@ export default function CompanyCoursesPage() {
                   <p className="mt-1 text-sm">
                     Status:{" "}
                     <strong>{p.status === "active" ? "Aktiv" : "Deaktiviert"}</strong>
+                    {(p.source === "master" || p.masterCourseId) && (
+                      <span className="ml-2 text-xs text-slate-500">
+                        (Certiano-Master)
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">

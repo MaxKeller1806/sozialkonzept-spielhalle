@@ -2,9 +2,9 @@ import {
   IconBadge,
   IconBook,
   IconBuilding,
-  IconCertificate,
   IconChart,
   IconDashboard,
+  IconDownload,
   IconMessage,
   IconShield,
   IconTag,
@@ -23,7 +23,7 @@ export type AdminNavKey =
   | "schulungsstatus"
   | "feedback"
   | "datenschutz"
-  | "zertifikate"
+  | "audit-export"
   | "konto";
 
 export const ADMIN_SIDEBAR_ITEMS: SidebarNavItem[] = [
@@ -77,10 +77,10 @@ export const ADMIN_SIDEBAR_ITEMS: SidebarNavItem[] = [
     match: (p) => p.startsWith("/dashboard/datenschutz"),
   },
   {
-    href: "/dashboard/zertifikate",
-    label: "Zertifikate & Nachweise",
-    icon: <IconCertificate />,
-    match: (p) => p.startsWith("/dashboard/zertifikate"),
+    href: "/dashboard/audit-export",
+    label: "Audit-Export",
+    icon: <IconDownload />,
+    match: (p) => p.startsWith("/dashboard/audit-export"),
   },
   {
     href: "/dashboard/standorte",

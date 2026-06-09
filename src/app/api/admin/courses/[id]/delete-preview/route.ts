@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { getCourseDeletePreview } from "@/lib/course-delete";
+import { getCompanyAdminSettings } from "@/lib/company-admin-settings";
+import { getCourseMeta } from "@/lib/course-db";
 import { getCourseProvision, provisionPermissions } from "@/lib/course-provisions";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +17,13 @@ export async function GET(
     const companyId = user.companyId!;
 
     const provision = await getCourseProvision(companyId, courseId);
-    const perms = provisionPermissions(provision);
+    const meta = await getCourseMeta(companyId, courseId);
+    const companySettings = await getCompanyAdminSettings(companyId);
+    const perms = provisionPermissions(
+      provision,
+      meta?.masterCourseId,
+      companySettings
+    );
     if (!perms.canArchive && !perms.canReactivate) {
       return NextResponse.json(
         { error: "Entfernen ist für dieses Seminar nicht erlaubt." },

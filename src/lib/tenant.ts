@@ -119,6 +119,10 @@ export function mapCompany(row: Record<string, unknown>): Company {
     industryName: row.industry_name != null ? String(row.industry_name) : null,
     businessTypeName:
       row.business_type_name != null ? String(row.business_type_name) : null,
+    allowAdminValidityOverride: Boolean(row.allow_admin_validity_override ?? false),
+    allowAdminPassingScoreOverride: Boolean(
+      row.allow_admin_passing_score_override ?? false
+    ),
     createdAt: new Date(String(row.created_at)).toISOString(),
   };
 }

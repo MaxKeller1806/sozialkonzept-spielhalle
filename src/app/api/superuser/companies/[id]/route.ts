@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
-import { getSql } from "@/lib/db";
+import { getSql, postgresErrorFields, resetSql } from "@/lib/db";
 import {
   getCompanyById,
   permanentlyDeleteCompanyUser,
@@ -40,10 +40,14 @@ export async function GET(
         businessTypeId: company.businessTypeId,
         industryName: company.industryName ?? null,
         businessTypeName: company.businessTypeName ?? null,
+        allowAdminValidityOverride: company.allowAdminValidityOverride,
+        allowAdminPassingScoreOverride: company.allowAdminPassingScoreOverride,
         createdAt: company.createdAt,
       },
     });
   } catch (e) {
+    console.error("[superuser/companies] GET failed", postgresErrorFields(e));
+    await resetSql();
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
@@ -65,6 +69,14 @@ export async function PATCH(
 
     if (body.status !== undefined) patch.status = body.status;
     if (body.licenseStatus !== undefined) patch.license_status = body.licenseStatus;
+    if (body.allowAdminValidityOverride !== undefined) {
+      patch.allow_admin_validity_override = Boolean(body.allowAdminValidityOverride);
+    }
+    if (body.allowAdminPassingScoreOverride !== undefined) {
+      patch.allow_admin_passing_score_override = Boolean(
+        body.allowAdminPassingScoreOverride
+      );
+    }
     if (body.name !== undefined) patch.name = body.name;
     if (body.licenseExpiresAt !== undefined) {
       patch.license_expires_at = body.licenseExpiresAt
@@ -147,13 +159,52 @@ export async function PATCH(
     `;
 
     const company = await getCompanyById(companyId);
-    return NextResponse.json({ ok: true, company });
+    return NextResponse.json({
+      ok: true,
+      company: company
+        ? {
+            id: company.id,
+            name: company.name,
+            slug: company.slug,
+            status: company.status,
+            licenseStatus: company.licenseStatus,
+            licenseExpiresAt: company.licenseExpiresAt,
+            branding: company.branding,
+            street: company.street,
+            postalCode: company.postalCode,
+            city: company.city,
+            country: company.country,
+            email: company.email,
+            phone: company.phone,
+            website: company.website,
+            industryId: company.industryId,
+            businessTypeId: company.businessTypeId,
+            industryName: company.industryName ?? null,
+            businessTypeName: company.businessTypeName ?? null,
+            allowAdminValidityOverride: company.allowAdminValidityOverride,
+            allowAdminPassingScoreOverride: company.allowAdminPassingScoreOverride,
+            createdAt: company.createdAt,
+          }
+        : null,
+    });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "";
+    console.error("[superuser/companies] PATCH failed", postgresErrorFields(e));
+    await resetSql();
+    const errFields = postgresErrorFields(e);
+    const msg = errFields.message;
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
-    return NextResponse.json({ error: "Fehler." }, { status: 500 });
+    if (errFields.code === "42703" && msg.includes("allow_admin_")) {
+      return NextResponse.json(
+        {
+          error:
+            "Datenbank-Migration fehlt: Spalten für Admin-Berechtigungen nicht vorhanden. Bitte npm run db:migrate ausführen.",
+        },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json({ error: "Speichern fehlgeschlagen." }, { status: 500 });
   }
 }
 
