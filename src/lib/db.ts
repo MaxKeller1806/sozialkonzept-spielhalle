@@ -1,6 +1,18 @@
 import postgres from "postgres";
 
-let sql: postgres.Sql | null = null;
+const SQL_GLOBAL_KEY = "__certianoPostgresSql";
+
+type SqlGlobal = typeof globalThis & {
+  [SQL_GLOBAL_KEY]?: postgres.Sql | null;
+};
+
+function readGlobalSql(): postgres.Sql | null {
+  return (globalThis as SqlGlobal)[SQL_GLOBAL_KEY] ?? null;
+}
+
+function writeGlobalSql(client: postgres.Sql | null): void {
+  (globalThis as SqlGlobal)[SQL_GLOBAL_KEY] = client;
+}
 
 function getDatabaseUrl(): string {
   const url = process.env.DATABASE_URL;
@@ -68,37 +80,68 @@ export function isQueryTimeoutError(err: unknown): boolean {
   );
 }
 
+export function isMissingDbObject(err: unknown, name: string): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes("does not exist") && msg.includes(name);
+}
+
+export function postgresErrorFields(err: unknown): {
+  message: string;
+  code?: string;
+  detail?: string;
+  stack?: string;
+} {
+  const message = err instanceof Error ? err.message : String(err);
+  const rec = err && typeof err === "object" ? (err as Record<string, unknown>) : {};
+  return {
+    message,
+    code: rec.code != null ? String(rec.code) : undefined,
+    detail: rec.detail != null ? String(rec.detail) : undefined,
+    stack: err instanceof Error ? err.stack : undefined,
+  };
+}
+
+function poolMaxConnections(): number {
+  const url = process.env.DATABASE_URL ?? "";
+  /** Supabase Transaction Pooler (6543): eine Verbindung pro Serverless-Instanz. */
+  if (url.includes(":6543")) return 1;
+  /** Lokal / Direct Connection: wenige parallele Requests (Editor, Shell). */
+  return process.env.NODE_ENV === "production" ? 2 : 4;
+}
+
 function createSql(): postgres.Sql {
   return postgres(getDatabaseUrl(), {
     ssl: process.env.NODE_ENV === "production" ? "require" : "prefer",
     prepare: false,
     fetch_types: false,
-    /** Supabase Transaction Pooler (6543): eine Verbindung pro Serverless-Instanz. */
-    max: 1,
+    max: poolMaxConnections(),
     idle_timeout: 20,
     connect_timeout: 10,
     max_lifetime: 60 * 5,
     onclose: () => {
-      sql = null;
+      writeGlobalSql(null);
     },
   });
 }
 
 export function getSql(): postgres.Sql {
-  if (!sql) {
-    sql = createSql();
+  let client = readGlobalSql();
+  if (!client) {
+    client = createSql();
+    writeGlobalSql(client);
   }
-  return sql;
+  return client;
 }
 
 export async function resetSql(): Promise<void> {
-  if (sql) {
+  const client = readGlobalSql();
+  if (client) {
     try {
-      await sql.end({ timeout: 2 });
+      await client.end({ timeout: 2 });
     } catch {
       /* ignore */
     }
-    sql = null;
+    writeGlobalSql(null);
   }
 }
 

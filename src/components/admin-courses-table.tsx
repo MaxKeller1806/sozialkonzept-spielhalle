@@ -20,6 +20,8 @@ type CourseRow = {
   validityLabel: string;
   instructionCode?: string | null;
   topicId?: number | null;
+  topicIds?: number[];
+  topics?: { id: number; name: string }[];
   topicName?: string | null;
   topicSortOrder?: number;
   sortOrder?: number;
@@ -46,7 +48,8 @@ function matchesSearch(course: CourseRow, search: string): boolean {
     course.title.toLowerCase().includes(q) ||
     course.slug.toLowerCase().includes(q) ||
     (course.instructionCode?.toLowerCase().includes(q) ?? false) ||
-    (course.topicName?.toLowerCase().includes(q) ?? false)
+    (course.topicName?.toLowerCase().includes(q) ?? false) ||
+    (course.topics?.some((t) => t.name.toLowerCase().includes(q)) ?? false)
   );
 }
 

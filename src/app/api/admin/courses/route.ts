@@ -17,6 +17,12 @@ import {
 } from "@/lib/admin-courses-list";
 import { parseListQueryFromUrl } from "@/lib/list-query";
 import type { UserListFilter } from "@/lib/tenant";
+import {
+  isDbConnectionError,
+  postgresErrorFields,
+  resetSqlOnFailure,
+  withDbQuery,
+} from "@/lib/db";
 
 function parseFilter(value: string | null): UserListFilter {
   if (value === "active" || value === "archived") return value;
@@ -24,9 +30,17 @@ function parseFilter(value: string | null): UserListFilter {
 }
 
 export async function GET(request: Request) {
+  const params = new URL(request.url).searchParams;
+  const queryContext = {
+    path: "/api/admin/courses",
+    filter: params.get("filter"),
+    page: params.get("page"),
+    search: params.get("search"),
+    sortBy: params.get("sortBy"),
+  };
+
   try {
     const user = await requireAdmin();
-    const params = new URL(request.url).searchParams;
     const hierarchyFilters = parseCourseListFilters(params);
 
     if (
@@ -36,13 +50,27 @@ export async function GET(request: Request) {
       !params.has("sortBy")
     ) {
       const filter = parseFilter(params.get("filter"));
-      const courses = await listCompanyCourses(
-        user.companyId!,
-        filter,
-        hierarchyFilters
+      const courses = await withDbQuery(() =>
+        listCompanyCourses(user.companyId!, filter, hierarchyFilters)
       );
-      const provisions = await listCompanyProvisions(user.companyId!);
+      const provisions = await withDbQuery(() =>
+        listCompanyProvisions(user.companyId!)
+      );
       const byCourse = new Map(provisions.map((p) => [p.courseId, p]));
+
+      let topics: Awaited<ReturnType<typeof listAssignableCourseTopics>> = [];
+      try {
+        topics = await withDbQuery(() =>
+          listAssignableCourseTopics(user.companyId!)
+        );
+      } catch (topicsErr) {
+        console.error("[admin/courses] listAssignableCourseTopics failed", {
+          ...postgresErrorFields(topicsErr),
+          companyId: user.companyId,
+          ...queryContext,
+        });
+      }
+
       return NextResponse.json({
         courses: courses.map((c) => ({
           ...c,
@@ -57,7 +85,7 @@ export async function GET(request: Request) {
         filter,
         total: courses.length,
         mainCategories: Object.values(MAIN_CATEGORIES),
-        topics: await listAssignableCourseTopics(user.companyId!),
+        topics,
       });
     }
 
@@ -66,13 +94,26 @@ export async function GET(request: Request) {
       sortDirection: "asc",
       status: "active",
     });
-    const result = await listAdminCoursesPaginated(
-      user.companyId!,
-      query,
-      hierarchyFilters
+    const result = await withDbQuery(() =>
+      listAdminCoursesPaginated(user.companyId!, query, hierarchyFilters)
     );
-    const provisions = await listCompanyProvisions(user.companyId!);
+    const provisions = await withDbQuery(() =>
+      listCompanyProvisions(user.companyId!)
+    );
     const byCourse = new Map(provisions.map((p) => [p.courseId, p]));
+
+    let topics: Awaited<ReturnType<typeof listAssignableCourseTopics>> = [];
+    try {
+      topics = await withDbQuery(() =>
+        listAssignableCourseTopics(user.companyId!)
+      );
+    } catch (topicsErr) {
+      console.error("[admin/courses] listAssignableCourseTopics failed", {
+        ...postgresErrorFields(topicsErr),
+        companyId: user.companyId,
+        ...queryContext,
+      });
+    }
 
     return NextResponse.json({
       courses: result.courses.map((c) => ({
@@ -82,14 +123,30 @@ export async function GET(request: Request) {
       meta: result.meta,
       sortFields: ADMIN_COURSE_SORT_KEYS,
       mainCategories: Object.values(MAIN_CATEGORIES),
-      topics: await listAssignableCourseTopics(user.companyId!),
+      topics,
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "";
+    await resetSqlOnFailure(e);
+    const errFields = postgresErrorFields(e);
+    console.error("[admin/courses] GET failed", {
+      ...errFields,
+      ...queryContext,
+    });
+
+    const msg = errFields.message;
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
-    return NextResponse.json({ error: "Fehler." }, { status: 500 });
+    if (isDbConnectionError(e)) {
+      return NextResponse.json(
+        { error: "Datenbankverbindung unterbrochen. Bitte erneut versuchen." },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json(
+      { error: "Seminare konnten nicht geladen werden." },
+      { status: 500 }
+    );
   }
 }
 
@@ -114,6 +171,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ course }, { status: 201 });
   } catch (e) {
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });

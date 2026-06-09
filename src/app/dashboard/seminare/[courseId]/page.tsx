@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { ValidityRuleForm, type ValidityRuleFormValue } from "@/components/validity-rule-form";
@@ -14,17 +14,18 @@ interface CourseDetail {
   title: string;
   slug: string;
   active: boolean;
-  topicId?: number | null;
+  topicIds?: number[];
   passingScore: number;
   validityType: ValidityType;
   validityIntervalValue: number | null;
   validityIntervalUnit: "days" | "months" | "years" | null;
 }
 
+type LoadState = "loading" | "ready";
+
 export default function SeminarDetailPage() {
   const params = useParams();
-  const courseId = decodeURIComponent(String(params.courseId));
-  const router = useRouter();
+  const courseId = decodeURIComponent(String(params.courseId ?? ""));
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [canPermanentDelete, setCanPermanentDelete] = useState(false);
   const [settingsReadOnly, setSettingsReadOnly] = useState(false);
@@ -34,12 +35,15 @@ export default function SeminarDetailPage() {
     validityIntervalValue: "12",
     validityIntervalUnit: "months",
   });
-  const [topicId, setTopicId] = useState<number | "">("");
+  const [selectedTopicIds, setSelectedTopicIds] = useState<number[]>([]);
   const [topics, setTopics] = useState<{ id: number; name: string }[]>([]);
   const [message, setMessage] = useState("");
+  const [topicMessage, setTopicMessage] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [topicError, setTopicError] = useState("");
+  const [loadState, setLoadState] = useState<LoadState>("loading");
   const [saving, setSaving] = useState(false);
+  const [savingTopics, setSavingTopics] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/course-topics?filter=active")
@@ -55,67 +59,135 @@ export default function SeminarDetailPage() {
       .catch(() => undefined);
   }, []);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    fetch(`/api/admin/courses/${encodeURIComponent(courseId)}`)
-      .then((r) => {
-        if (r.status === 403) {
-          router.push("/login");
-          return null;
-        }
-        return r.json();
-      })
-      .then((d) => {
-        if (d?.course) {
-          const c = d.course as CourseDetail;
-          setCourse(c);
-          setTopicId(c.topicId ?? "");
-          setPassingScore(String(c.passingScore));
-          setValidity({
-            validityType: c.validityType,
-            validityIntervalValue: String(c.validityIntervalValue ?? 12),
-            validityIntervalUnit: c.validityIntervalUnit ?? "months",
-          });
-          setCanPermanentDelete(Boolean(d.canPermanentDelete));
-          setSettingsReadOnly(Boolean(d.permissions?.readOnly));
-        } else if (d?.error) {
-          setError(d.error);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [courseId, router]);
+  const fetchCourse = useCallback(async () => {
+    if (!courseId) {
+      setError("Seminar konnte nicht geladen werden.");
+      setLoadState("ready");
+      return;
+    }
+
+    setLoadState("loading");
+    setError("");
+
+    try {
+      const res = await fetch(`/api/admin/courses/${encodeURIComponent(courseId)}`);
+      if (res.status === 403 || res.status === 401) {
+        window.location.replace("/login");
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(
+          typeof data.error === "string"
+            ? data.error
+            : "Seminar konnte nicht geladen werden."
+        );
+        setCourse(null);
+        return;
+      }
+
+      if (data?.course) {
+        const c = data.course as CourseDetail;
+        setCourse(c);
+        setSelectedTopicIds(Array.isArray(c.topicIds) ? c.topicIds : []);
+        setPassingScore(String(c.passingScore));
+        setValidity({
+          validityType: c.validityType ?? "yearly",
+          validityIntervalValue: String(c.validityIntervalValue ?? 12),
+          validityIntervalUnit: c.validityIntervalUnit ?? "months",
+        });
+        setCanPermanentDelete(Boolean(data.canPermanentDelete));
+        setSettingsReadOnly(Boolean(data.permissions?.readOnly));
+      } else {
+        setCourse(null);
+        setError(
+          typeof data.error === "string"
+            ? data.error
+            : "Seminar konnte nicht geladen werden."
+        );
+      }
+    } catch {
+      setCourse(null);
+      setError("Seminar konnte nicht geladen werden.");
+    } finally {
+      setLoadState("ready");
+    }
+  }, [courseId]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    void fetchCourse();
+  }, [fetchCourse]);
+
+  function toggleTopic(id: number) {
+    setSelectedTopicIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  async function saveTopics(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingTopics(true);
+    setTopicMessage("");
+    setTopicError("");
+    try {
+      const res = await fetch(`/api/admin/courses/${encodeURIComponent(courseId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topicIds: selectedTopicIds }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setTopicMessage("Hauptthemen gespeichert.");
+        if (Array.isArray(data.course?.topicIds)) {
+          setSelectedTopicIds(data.course.topicIds);
+        }
+      } else {
+        setTopicError(
+          typeof data.error === "string" ? data.error : "Speichern fehlgeschlagen."
+        );
+      }
+    } catch {
+      setTopicError("Speichern fehlgeschlagen.");
+    } finally {
+      setSavingTopics(false);
+    }
+  }
 
   async function saveSettings(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setMessage("");
     setError("");
-    const res = await fetch(`/api/admin/courses/${encodeURIComponent(courseId)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        passingScore: Number(passingScore),
-        validityType: validity.validityType,
-        validityIntervalValue:
-          validity.validityType === "custom"
-            ? Number(validity.validityIntervalValue)
-            : null,
-        validityIntervalUnit:
-          validity.validityType === "custom" ? validity.validityIntervalUnit : null,
-        topicId: topicId === "" ? null : topicId,
-      }),
-    });
-    const data = await res.json();
-    setSaving(false);
-    if (res.ok) {
-      setMessage("Einstellungen gespeichert.");
-      load();
-    } else {
-      setError(data.error ?? "Speichern fehlgeschlagen.");
+    try {
+      const res = await fetch(`/api/admin/courses/${encodeURIComponent(courseId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          passingScore: Number(passingScore),
+          validityType: validity.validityType,
+          validityIntervalValue:
+            validity.validityType === "custom"
+              ? Number(validity.validityIntervalValue)
+              : null,
+          validityIntervalUnit:
+            validity.validityType === "custom" ? validity.validityIntervalUnit : null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setMessage("Einstellungen gespeichert.");
+        await fetchCourse();
+      } else {
+        setError(
+          typeof data.error === "string" ? data.error : "Speichern fehlgeschlagen."
+        );
+      }
+    } catch {
+      setError("Speichern fehlgeschlagen.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -130,13 +202,17 @@ export default function SeminarDetailPage() {
     const res = await fetch(`/api/admin/courses/${encodeURIComponent(courseId)}`, {
       method: "DELETE",
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      router.push("/dashboard/seminare");
+      window.location.href = "/dashboard/seminare";
     } else {
-      setError(data.error ?? "Löschen fehlgeschlagen.");
+      setError(
+        typeof data.error === "string" ? data.error : "Löschen fehlgeschlagen."
+      );
     }
   }
+
+  const loading = loadState === "loading";
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -155,95 +231,121 @@ export default function SeminarDetailPage() {
         </Link>
       </p>
 
-        {loading ? (
-          <p className="text-sm text-slate-600">Lädt…</p>
-        ) : !course ? (
-          <Card>
-            <p className="text-sm text-red-700">{error || "Seminar nicht gefunden."}</p>
+      {loading ? (
+        <p className="text-sm text-slate-600">Lädt…</p>
+      ) : !course ? (
+        <Card>
+          <p className="text-sm text-red-700">{error || "Seminar nicht gefunden."}</p>
+        </Card>
+      ) : (
+        <>
+          {message && (
+            <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">
+              {message}
+            </p>
+          )}
+          {error && (
+            <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
+          )}
+
+          <Card className="mb-6">
+            <h2 className="mb-2 text-lg font-bold">{course.title}</h2>
+            <p className="text-sm text-slate-600">
+              Status: {course.active ? "Aktiv" : "Inaktiv"} · Aktuelle Regel:{" "}
+              {formatValidityRuleLabel(course)}
+            </p>
           </Card>
-        ) : (
-          <>
-            {message && (
+
+          <Card className="mb-6">
+            <h3 className="mb-4 text-lg font-bold">Hauptthemen</h3>
+            <p className="mb-4 text-sm text-slate-600">
+              Ein Seminar kann mehreren Hauptthemen zugeordnet werden und erscheint dann in
+              jeder passenden Gruppe.
+            </p>
+            {topicMessage && (
               <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">
-                {message}
+                {topicMessage}
               </p>
             )}
-            {error && (
-              <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
-            )}
-
-            <Card className="mb-6">
-              <h2 className="mb-2 text-lg font-bold">{course.title}</h2>
-              <p className="text-sm text-slate-600">
-                Status: {course.active ? "Aktiv" : "Inaktiv"} · Aktuelle Regel:{" "}
-                {formatValidityRuleLabel(course)}
+            {topicError && (
+              <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">
+                {topicError}
               </p>
-            </Card>
-
-            <Card>
-              <h3 className="mb-4 text-lg font-bold">Seminar-Einstellungen</h3>
-              {settingsReadOnly && (
-                <p className="mb-4 rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-900">
-                  Dieses Seminar wird von Certiano bereitgestellt. Gültigkeit und
-                  Bestehensgrenze können nicht geändert werden.
-                </p>
+            )}
+            <form onSubmit={saveTopics} className="space-y-4">
+              {topics.length === 0 ? (
+                <p className="text-sm text-slate-500">Keine Hauptthemen verfügbar.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {topics.map((t) => (
+                    <li key={t.id}>
+                      <label className="flex cursor-pointer items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={selectedTopicIds.includes(t.id)}
+                          onChange={() => toggleTopic(t.id)}
+                          disabled={savingTopics}
+                          className="rounded border-slate-300"
+                        />
+                        <span>{t.name}</span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
               )}
-              <form onSubmit={saveSettings} className="space-y-6">
-                <label className="block text-sm">
-                  <span className="font-medium text-slate-700">Hauptthema (optional)</span>
-                  <select
-                    className="mt-1 block w-full max-w-md rounded-xl border border-slate-300 px-3 py-2"
-                    value={topicId === "" ? "" : String(topicId)}
-                    onChange={(e) =>
-                      setTopicId(e.target.value ? Number(e.target.value) : "")
-                    }
-                  >
-                    <option value="">Kein Hauptthema</option>
-                    {topics.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="text-sm font-medium text-slate-700">
-                    Bestehensgrenze (%)
-                  </span>
-                  <input
-                    type="number"
-                    min={50}
-                    max={100}
-                    value={passingScore}
-                    disabled={settingsReadOnly || saving}
-                    onChange={(e) => setPassingScore(e.target.value)}
-                    className="mt-1 block w-28 rounded-xl border border-slate-300 px-3 py-2 disabled:bg-slate-100"
-                  />
-                </label>
-                <ValidityRuleForm
-                  value={validity}
-                  onChange={setValidity}
-                  disabled={settingsReadOnly || saving}
-                />
-                <Button type="submit" disabled={saving || settingsReadOnly}>
-                  {saving ? "Speichern…" : "Speichern"}
-                </Button>
-              </form>
-            </Card>
+              <Button type="submit" disabled={savingTopics}>
+                {savingTopics ? "Speichern…" : "Hauptthemen speichern"}
+              </Button>
+            </form>
+          </Card>
 
-            {canPermanentDelete && (
-              <Card className="mt-6 border-red-200">
-                <h3 className="mb-2 font-bold text-red-800">Endgültig löschen</h3>
-                <p className="mb-4 text-sm text-slate-600">
-                  Nur möglich, wenn keine Zertifikate oder Prüfungen vorhanden sind.
-                </p>
-                <Button type="button" variant="danger" onClick={() => void deleteCourse()}>
-                  Seminar endgültig löschen
-                </Button>
-              </Card>
+          <Card>
+            <h3 className="mb-4 text-lg font-bold">Seminar-Einstellungen</h3>
+            {settingsReadOnly && (
+              <p className="mb-4 rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-900">
+                Dieses Seminar wird von Certiano bereitgestellt. Gültigkeit und
+                Bestehensgrenze können nicht geändert werden.
+              </p>
             )}
-          </>
-        )}
+            <form onSubmit={saveSettings} className="space-y-6">
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">
+                  Bestehensgrenze (%)
+                </span>
+                <input
+                  type="number"
+                  min={50}
+                  max={100}
+                  value={passingScore}
+                  disabled={settingsReadOnly || saving}
+                  onChange={(e) => setPassingScore(e.target.value)}
+                  className="mt-1 block w-28 rounded-xl border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                />
+              </label>
+              <ValidityRuleForm
+                value={validity}
+                onChange={setValidity}
+                disabled={settingsReadOnly || saving}
+              />
+              <Button type="submit" disabled={saving || settingsReadOnly}>
+                {saving ? "Speichern…" : "Einstellungen speichern"}
+              </Button>
+            </form>
+          </Card>
+
+          {canPermanentDelete && (
+            <Card className="mt-6 border-red-200">
+              <h3 className="mb-2 font-bold text-red-800">Endgültig löschen</h3>
+              <p className="mb-4 text-sm text-slate-600">
+                Nur möglich, wenn keine Zertifikate oder Prüfungen vorhanden sind.
+              </p>
+              <Button type="button" variant="danger" onClick={() => void deleteCourse()}>
+                Seminar endgültig löschen
+              </Button>
+            </Card>
+          )}
+        </>
+      )}
     </div>
   );
 }

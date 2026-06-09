@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import {
-  getCourseMeta,
+  getCourseMetaWithTopics,
   setCompanyCourseActive,
   updateCourseSettings,
 } from "@/lib/course-db";
@@ -15,8 +15,8 @@ import {
 import { coursePermissionErrorResponse } from "@/lib/course-permissions-api";
 import { normalizeValidityType, normalizeIntervalUnit } from "@/lib/course-validity";
 import {
-  assertTopicAssignableToCompany,
-  setCompanyCourseTopicId,
+  assertTopicIdsAssignableToCompany,
+  setCourseTopicAssignments,
 } from "@/lib/course-topics";
 
 export async function GET(
@@ -26,7 +26,7 @@ export async function GET(
   try {
     const user = await requireAdmin();
     const { id: courseId } = await params;
-    const meta = await getCourseMeta(user.companyId!, courseId);
+    const meta = await getCourseMetaWithTopics(user.companyId!, courseId);
     if (!meta) {
       return NextResponse.json({ error: "Seminar nicht gefunden." }, { status: 404 });
     }
@@ -56,20 +56,34 @@ export async function PATCH(
     const companyId = user.companyId!;
     const body = await request.json();
 
-    if (body.topicId !== undefined) {
-      let parsedTopicId: number | null = null;
-      if (body.topicId != null && body.topicId !== "") {
-        parsedTopicId = Number(body.topicId);
-        if (!Number.isFinite(parsedTopicId)) {
+    let topicIdsUpdated = false;
+
+    if (body.topicIds !== undefined) {
+      const topicIds = Array.isArray(body.topicIds)
+        ? body.topicIds.map(Number).filter((id: number) => Number.isFinite(id) && id > 0)
+        : [];
+      try {
+        await assertTopicIdsAssignableToCompany(companyId, topicIds);
+        await setCourseTopicAssignments(companyId, courseId, topicIds);
+        topicIdsUpdated = true;
+      } catch (e) {
+        const locMsg = e instanceof Error ? e.message : "";
+        if (locMsg === "TOPIC_INVALID") {
           return NextResponse.json(
-            { error: "Ungültiges Hauptthema." },
+            { error: "Hauptthema nicht verfügbar." },
             { status: 400 }
           );
         }
+        throw e;
+      }
+    } else if (body.topicId !== undefined) {
+      let parsed: number[] = [];
+      if (body.topicId != null && body.topicId !== "") {
+        parsed = [Number(body.topicId)];
       }
       try {
-        await assertTopicAssignableToCompany(companyId, parsedTopicId);
-        await setCompanyCourseTopicId(companyId, courseId, parsedTopicId);
+        await setCourseTopicAssignments(companyId, courseId, parsed);
+        topicIdsUpdated = true;
       } catch (e) {
         const locMsg = e instanceof Error ? e.message : "";
         if (locMsg === "TOPIC_INVALID") {
@@ -104,7 +118,7 @@ export async function PATCH(
       if (!ok) {
         return NextResponse.json({ error: "Seminar nicht gefunden." }, { status: 404 });
       }
-      const meta = await getCourseMeta(companyId, courseId);
+      const meta = await getCourseMetaWithTopics(companyId, courseId);
       return NextResponse.json({
         course: meta,
         message: body.active
@@ -141,6 +155,7 @@ export async function PATCH(
     }
 
     if (
+      body.topicIds === undefined &&
       body.topicId === undefined &&
       typeof body.active !== "boolean" &&
       !hasSettings
@@ -148,8 +163,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Keine Änderungen." }, { status: 400 });
     }
 
-    const meta = await getCourseMeta(companyId, courseId);
-    return NextResponse.json({ course: meta, courseData: course });
+    const meta = await getCourseMetaWithTopics(companyId, courseId);
+    return NextResponse.json({ course: meta, courseData: course, topicIdsUpdated });
   } catch (e) {
     const perm = coursePermissionErrorResponse(e);
     if (perm) return perm;

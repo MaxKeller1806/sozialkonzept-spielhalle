@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
-import { resetSql } from "@/lib/db";
+import { isDbConnectionError, resetSqlOnFailure } from "@/lib/db";
 import { getCourseTopic, updateCourseTopic } from "@/lib/course-topics";
 
 export async function PATCH(
@@ -32,7 +32,7 @@ export async function PATCH(
 
     return NextResponse.json({ topic });
   } catch (e) {
-    await resetSql();
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "NOT_FOUND") {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });

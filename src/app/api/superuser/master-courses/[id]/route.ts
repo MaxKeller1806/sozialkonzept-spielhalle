@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser, getCurrentUser } from "@/lib/auth";
+import { isDbConnectionError, resetSqlOnFailure, withDbQuery } from "@/lib/db";
 import { assignMasterToAllCompanies } from "@/lib/course-provisions";
 import {
   getMasterCourseDetail,
@@ -7,7 +8,7 @@ import {
   importCompanyCourseIntoMaster,
   setMasterCourseActive,
   updateMasterCourseSettings,
-  updateMasterCourseTopicId,
+  updateMasterCourseTopicIds,
 } from "@/lib/master-course-db";
 import { executePermanentMasterCourseDelete } from "@/lib/master-course-delete";
 
@@ -18,7 +19,7 @@ export async function GET(
   try {
     await requireSuperuser();
     const { id } = await params;
-    const detail = await getMasterCourseDetail(id);
+    const detail = await withDbQuery(() => getMasterCourseDetail(id), 15000);
     if (!detail) {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }
@@ -28,9 +29,16 @@ export async function GET(
       importHint: detail.importHint,
     });
   } catch (e) {
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
+    if (isDbConnectionError(e)) {
+      return NextResponse.json(
+        { error: "Datenbankverbindung unterbrochen. Bitte erneut versuchen." },
+        { status: 503 }
+      );
     }
     return NextResponse.json({ error: "Fehler." }, { status: 500 });
   }
@@ -66,18 +74,46 @@ export async function PATCH(
       });
     }
 
-    if (body.topicId !== undefined) {
-      let parsedTopicId: number | null = null;
-      if (body.topicId != null && body.topicId !== "") {
-        parsedTopicId = Number(body.topicId);
-        if (!Number.isFinite(parsedTopicId)) {
+    let topicIdsUpdated = false;
+
+    if (body.topicIds !== undefined) {
+      const topicIds = Array.isArray(body.topicIds)
+        ? body.topicIds.map(Number).filter((id: number) => Number.isFinite(id) && id > 0)
+        : [];
+      try {
+        await updateMasterCourseTopicIds(id, topicIds);
+        topicIdsUpdated = true;
+      } catch (e) {
+        const locMsg = e instanceof Error ? e.message : "";
+        if (locMsg === "TOPIC_INVALID") {
           return NextResponse.json(
-            { error: "Ungültiges Hauptthema." },
+            { error: "Hauptthema nicht verfügbar." },
             { status: 400 }
           );
         }
+        if (locMsg === "NOT_FOUND") {
+          return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
+        }
+        throw e;
       }
-      await updateMasterCourseTopicId(id, parsedTopicId);
+    } else if (body.topicId !== undefined) {
+      let parsed: number[] = [];
+      if (body.topicId != null && body.topicId !== "") {
+        parsed = [Number(body.topicId)];
+      }
+      try {
+        await updateMasterCourseTopicIds(id, parsed);
+        topicIdsUpdated = true;
+      } catch (e) {
+        const locMsg = e instanceof Error ? e.message : "";
+        if (locMsg === "TOPIC_INVALID") {
+          return NextResponse.json(
+            { error: "Hauptthema nicht verfügbar." },
+            { status: 400 }
+          );
+        }
+        throw e;
+      }
     }
 
     const hasSettings =
@@ -89,7 +125,7 @@ export async function PATCH(
       body.validityIntervalValue != null ||
       body.validityIntervalUnit != null;
 
-    if (!hasSettings && body.topicId === undefined) {
+    if (!hasSettings && !topicIdsUpdated) {
       return NextResponse.json({ error: "Keine Änderungen." }, { status: 400 });
     }
 
@@ -106,15 +142,22 @@ export async function PATCH(
       });
     }
 
-    const meta = await getMasterCourseMeta(id);
+    const meta = await withDbQuery(() => getMasterCourseMeta(id));
     return NextResponse.json({ meta, course });
   } catch (e) {
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "NOT_FOUND") {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
+    if (isDbConnectionError(e)) {
+      return NextResponse.json(
+        { error: "Datenbankverbindung unterbrochen. Bitte erneut versuchen." },
+        { status: 503 }
+      );
     }
     return NextResponse.json({ error: "Speichern fehlgeschlagen." }, { status: 500 });
   }

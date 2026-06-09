@@ -74,6 +74,9 @@ function mapListItem(row: Record<string, unknown>): MasterCourseListItem {
     active: row.status !== "disabled",
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at ?? row.created_at)).toISOString(),
+    topicId: row.topic_id != null ? Number(row.topic_id) : null,
+    topicIds: [],
+    topics: [],
     ...parseInstructionMetaFromRow(row),
   };
 }
@@ -197,6 +200,8 @@ function mapMeta(row: Record<string, unknown>): MasterCourseMeta {
     topicName: row.topic_name != null ? String(row.topic_name) : null,
     topicSortOrder:
       row.topic_sort_order != null ? Number(row.topic_sort_order) : undefined,
+    topicIds: [],
+    topics: [],
     ...parseInstructionMetaFromRow(row),
   };
 }
@@ -234,6 +239,11 @@ export type MasterCourseListItem = {
   sortOrder: number;
   requiresCertificate: boolean;
   requiresProof: boolean;
+  topicId?: number | null;
+  topicName?: string | null;
+  topicSortOrder?: number;
+  topicIds?: number[];
+  topics?: { id: number; name: string; sortOrder?: number }[];
 };
 
 /** Übersichtsliste – ohne content_json, Module oder Prüfungsfragen. */
@@ -246,12 +256,18 @@ export async function listMasterCoursesMetadata(
       SELECT id, title, description, status, validity_type, validity_interval_value,
              validity_interval_unit, validity_months, created_at, updated_at,
              main_category, seminar, instruction_code, instruction_title,
-             sort_order, requires_certificate, requires_proof
+             sort_order, requires_certificate, requires_proof, topic_id
       FROM master_courses
     `;
     const filtered = filterMasterRows(rows as Record<string, unknown>[], filters);
     const sorted = sortMasterRows(filtered, filters);
-    return sorted.map((r) => mapListItem(r));
+    let items = sorted.map((r) => mapListItem(r));
+    const { enrichMasterCoursesWithTopics } = await import("./course-topics");
+    items = await enrichMasterCoursesWithTopics(items);
+    if (filters?.topicId != null) {
+      items = items.filter((c) => (c.topicIds ?? []).includes(filters.topicId!));
+    }
+    return items;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("does not exist") && msg.includes("master_courses")) {
@@ -335,7 +351,12 @@ export async function getMasterCourseMeta(
       WHERE mc.id = ${id}
       LIMIT 1
     `;
-    return rows[0] ? mapMeta(rows[0] as Record<string, unknown>) : undefined;
+    if (!rows[0]) return undefined;
+    const { enrichMasterCoursesWithTopics } = await import("./course-topics");
+    const [enriched] = await enrichMasterCoursesWithTopics([
+      mapMeta(rows[0] as Record<string, unknown>),
+    ]);
+    return enriched;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("validity_type") || msg.includes("validity_interval")) {
@@ -347,14 +368,17 @@ export async function getMasterCourseMeta(
         WHERE id = ${id}
         LIMIT 1
       `;
-      return rows[0]
-        ? mapMeta({
-            ...(rows[0] as Record<string, unknown>),
-            validity_type: "yearly",
-            validity_interval_value: null,
-            validity_interval_unit: null,
-          })
-        : undefined;
+      if (!rows[0]) return undefined;
+      const { enrichMasterCoursesWithTopics } = await import("./course-topics");
+      const [enriched] = await enrichMasterCoursesWithTopics([
+        mapMeta({
+          ...(rows[0] as Record<string, unknown>),
+          validity_type: "yearly",
+          validity_interval_value: null,
+          validity_interval_unit: null,
+        }),
+      ]);
+      return enriched;
     }
     throw e;
   }
@@ -427,12 +451,17 @@ export async function getMasterCourseDetail(
     validity_interval_unit: base.validity_interval_unit ?? null,
   };
   const course = rowToData(row);
-  const source = await findRichestCompanyCourseForMaster(String(row.slug ?? ""));
+  const { enrichMasterCoursesWithTopics } = await import("./course-topics");
+  const [meta] = await enrichMasterCoursesWithTopics([mapMeta(row)]);
+  const masterEmpty = isEmptyCourseContent(course);
+  const source = masterEmpty
+    ? await findRichestCompanyCourseForMaster(String(row.slug ?? ""))
+    : null;
   return {
-    meta: mapMeta(row),
+    meta,
     course,
     importHint: {
-      masterEmpty: isEmptyCourseContent(course),
+      masterEmpty,
       sourceAvailable: source != null && !isEmptyCourseContent(source.content),
       sourceTitle: source?.title ?? null,
       sourceCourseId: source?.id ?? null,
@@ -552,11 +581,17 @@ export async function updateMasterCourseTopicId(
   id: string,
   topicId: number | null
 ): Promise<MasterCourseMeta | undefined> {
-  const sql = getSql();
-  await sql`
-    UPDATE master_courses SET topic_id = ${topicId}, updated_at = NOW()
-    WHERE id = ${id}
-  `;
+  const { setMasterCourseTopicAssignments } = await import("./course-topics");
+  await setMasterCourseTopicAssignments(id, topicId != null ? [topicId] : []);
+  return getMasterCourseMeta(id);
+}
+
+export async function updateMasterCourseTopicIds(
+  id: string,
+  topicIds: number[]
+): Promise<MasterCourseMeta | undefined> {
+  const { setMasterCourseTopicAssignments } = await import("./course-topics");
+  await setMasterCourseTopicAssignments(id, topicIds);
   return getMasterCourseMeta(id);
 }
 
@@ -866,6 +901,7 @@ async function findRichestCompanyCourseForSlug(slugOrKey: string): Promise<Compa
     WHERE company_id IS NOT NULL
       AND COALESCE(NULLIF(TRIM(slug), ''), id) = ${slugOrKey}
     ORDER BY octet_length(COALESCE(content_json::text, '')) DESC
+    LIMIT 1
   `;
   return pickRichestCompanySource(candidates as Record<string, unknown>[]);
 }

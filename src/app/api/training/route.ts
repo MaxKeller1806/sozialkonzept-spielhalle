@@ -49,6 +49,8 @@ export async function GET(request: Request) {
             seminar: c.seminar,
             sortOrder: c.sortOrder,
             topicId: c.topicId,
+            topicIds: c.topicIds,
+            topics: c.topics,
             topicName: c.topicName,
             topicSortOrder: c.topicSortOrder,
             requiresCertificate: c.requiresCertificate,

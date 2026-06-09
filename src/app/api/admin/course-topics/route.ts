@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { resetSql } from "@/lib/db";
+import { isDbConnectionError, resetSqlOnFailure, withDbQuery } from "@/lib/db";
 import {
   createCompanyCourseTopic,
   listAssignableCourseTopics,
@@ -13,13 +13,21 @@ export async function GET(request: Request) {
     const admin = await requireAdmin();
     const params = new URL(request.url).searchParams;
     const activeOnly = params.get("filter") !== "all";
-    const topics = await listAssignableCourseTopics(admin.companyId!, activeOnly);
+    const topics = await withDbQuery(() =>
+      listAssignableCourseTopics(admin.companyId!, activeOnly)
+    );
     return NextResponse.json({ topics });
   } catch (e) {
-    await resetSql();
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
+    if (isDbConnectionError(e)) {
+      return NextResponse.json(
+        { error: "Datenbankverbindung unterbrochen. Bitte erneut versuchen." },
+        { status: 503 }
+      );
     }
     return NextResponse.json({ error: "Fehler." }, { status: 500 });
   }
@@ -41,10 +49,16 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ topic }, { status: 201 });
   } catch (e) {
-    await resetSql();
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
+    if (isDbConnectionError(e)) {
+      return NextResponse.json(
+        { error: "Datenbankverbindung unterbrochen. Bitte erneut versuchen." },
+        { status: 503 }
+      );
     }
     return NextResponse.json({ error: "Anlegen fehlgeschlagen." }, { status: 500 });
   }

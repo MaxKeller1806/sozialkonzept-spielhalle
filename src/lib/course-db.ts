@@ -9,7 +9,7 @@ import {
 } from "./course-validity";
 import { parseInstructionMetaFromRow } from "./course-instruction-meta";
 import type { CourseListFilters } from "./course-hierarchy";
-import { ensureSeeded, getSql } from "./db";
+import { ensureSeeded, getSql, isMissingDbObject } from "./db";
 import type { CourseData, CourseMeta, CourseModule, ExamQuestion, Lesson } from "./types";
 
 function normalize(course: CourseData): CourseData {
@@ -84,6 +84,8 @@ function mapCourseMeta(row: Record<string, unknown>): CourseMeta {
     topicName: row.topic_name != null ? String(row.topic_name) : null,
     topicSortOrder:
       row.topic_sort_order != null ? Number(row.topic_sort_order) : undefined,
+    topicIds: [],
+    topics: [],
     ...parseInstructionMetaFromRow(row),
   };
 }
@@ -164,6 +166,7 @@ function applyCourseFilters(
       filters.topicId != null &&
       (row.topic_id == null || Number(row.topic_id) !== filters.topicId)
     ) {
+      // Legacy-Fallback – genauer Filter nach enrichCoursesWithTopics
       return false;
     }
     if (filters.validityType && rule.validityType !== filters.validityType) {
@@ -204,29 +207,53 @@ function rowToCourseData(row: Record<string, unknown>): CourseData {
   return emptyCourseTemplate(meta.id, meta.title, meta.slug);
 }
 
+async function loadCompanyCourseRows(
+  companyId: number,
+  filter: "active" | "archived" | "all"
+): Promise<Record<string, unknown>[]> {
+  const sql = getSql();
+  const activeFilter =
+    filter === "active"
+      ? sql`AND c.active = TRUE`
+      : filter === "archived"
+        ? sql`AND c.active = FALSE`
+        : sql``;
+  try {
+    const rows = await sql`
+      SELECT
+        c.*,
+        ct.name AS topic_name,
+        ct.sort_order AS topic_sort_order
+      FROM courses c
+      LEFT JOIN course_topics ct ON ct.id = c.topic_id
+      WHERE c.company_id = ${companyId}
+      ${activeFilter}
+    `;
+    return rows as Record<string, unknown>[];
+  } catch (err) {
+    if (
+      isMissingDbObject(err, "topic_id") ||
+      isMissingDbObject(err, "course_topics")
+    ) {
+      const rows = await sql`
+        SELECT c.*
+        FROM courses c
+        WHERE c.company_id = ${companyId}
+        ${activeFilter}
+      `;
+      return rows as Record<string, unknown>[];
+    }
+    throw err;
+  }
+}
+
 export async function listCompanyCourses(
   companyId: number,
   filter: "active" | "archived" | "all" = "all",
   hierarchyFilters?: CourseListFilters
 ): Promise<CourseMeta[]> {
   await ensureSeeded();
-  const sql = getSql();
-  const activeFilter =
-    filter === "active"
-      ? sql`AND active = TRUE`
-      : filter === "archived"
-        ? sql`AND active = FALSE`
-        : sql``;
-  const rows = await sql`
-    SELECT
-      c.*,
-      ct.name AS topic_name,
-      ct.sort_order AS topic_sort_order
-    FROM courses c
-    LEFT JOIN course_topics ct ON ct.id = c.topic_id
-    WHERE c.company_id = ${companyId}
-    ${activeFilter}
-  `;
+  const rows = await loadCompanyCourseRows(companyId, filter);
   let filtered = applyCourseFilters(
     rows as Record<string, unknown>[],
     hierarchyFilters
@@ -234,7 +261,13 @@ export async function listCompanyCourses(
   filtered = hierarchyFilters?.sort
     ? sortCourseRows(filtered, hierarchyFilters)
     : sortCourseRowsByHierarchy(filtered);
-  return filtered.map((r) => mapCourseMeta(r));
+  let mapped = filtered.map((r) => mapCourseMeta(r));
+  const { enrichCoursesWithTopics } = await import("./course-topics");
+  mapped = await enrichCoursesWithTopics(mapped);
+  if (hierarchyFilters?.topicId != null) {
+    mapped = mapped.filter((c) => c.topicIds.includes(hierarchyFilters.topicId!));
+  }
+  return mapped;
 }
 
 /** Kurs mit den meisten Lerninhalten (gleiche Quelle wie Mitarbeiter-Schulung). */
@@ -287,6 +320,17 @@ export async function getCourseMeta(
     LIMIT 1
   `;
   return rows[0] ? mapCourseMeta(rows[0] as Record<string, unknown>) : undefined;
+}
+
+export async function getCourseMetaWithTopics(
+  companyId: number,
+  courseId: string
+): Promise<CourseMeta | undefined> {
+  const meta = await getCourseMeta(companyId, courseId);
+  if (!meta) return undefined;
+  const { enrichCoursesWithTopics } = await import("./course-topics");
+  const [enriched] = await enrichCoursesWithTopics([meta]);
+  return enriched;
 }
 
 export async function getCourseData(
@@ -649,7 +693,9 @@ export async function getUserAssignedCourses(
       AND (p.status IS NULL OR p.status = 'active')
   `;
   const sorted = sortCourseRowsByHierarchy(rows as Record<string, unknown>[]);
-  return sorted.map((r) => mapCourseMeta(r));
+  let mapped = sorted.map((r) => mapCourseMeta(r));
+  const { enrichCoursesWithTopics } = await import("./course-topics");
+  return enrichCoursesWithTopics(mapped);
 }
 
 export async function assignUserToCourse(

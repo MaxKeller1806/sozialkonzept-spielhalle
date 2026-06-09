@@ -70,7 +70,8 @@ export async function listMasterCoursesPaginated(
     courses = courses.filter(
       (c) =>
         c.title.toLowerCase().includes(search) ||
-        (c.description?.toLowerCase().includes(search) ?? false)
+        (c.description?.toLowerCase().includes(search) ?? false) ||
+        (c.topics?.some((t) => t.name.toLowerCase().includes(search)) ?? false)
     );
   }
 

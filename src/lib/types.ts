@@ -239,6 +239,12 @@ export interface CourseData {
   exam: ExamQuestion[];
 }
 
+export type CourseTopicRef = {
+  id: number;
+  name: string;
+  sortOrder: number;
+};
+
 export interface CourseMeta {
   id: string;
   companyId: number;
@@ -269,10 +275,12 @@ export interface CourseMeta {
   requiresProof: boolean;
   /** Geschätzte Bearbeitungsdauer in Minuten. */
   estimatedDurationMinutes: number | null;
-  /** Hauptthema (Gruppierung). */
+  /** @deprecated Erstes Hauptthema – nutze topicIds/topics. */
   topicId: number | null;
   topicName?: string | null;
   topicSortOrder?: number;
+  topicIds: number[];
+  topics: CourseTopicRef[];
 }
 
 export type MasterCourseStatus = "draft" | "published" | "disabled";
@@ -303,6 +311,8 @@ export interface MasterCourseMeta {
   topicId: number | null;
   topicName?: string | null;
   topicSortOrder?: number;
+  topicIds: number[];
+  topics: CourseTopicRef[];
 }
 
 export interface EmployeeCategory {

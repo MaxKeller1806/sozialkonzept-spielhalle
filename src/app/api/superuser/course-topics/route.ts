@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
-import { resetSql } from "@/lib/db";
+import { isDbConnectionError, resetSqlOnFailure, withDbQuery } from "@/lib/db";
 import {
   COURSE_TOPIC_SORT_ALLOWLIST,
   createGlobalCourseTopic,
   listCourseTopicsPaginated,
-  listGlobalCourseTopics,
+  listGlobalCourseTopicOptions,
   parseCourseTopicListQuery,
 } from "@/lib/course-topics";
 
@@ -28,12 +28,16 @@ export async function GET(request: Request) {
       !params.has("sortBy")
     ) {
       const filter = parseFilter(params.get("filter"));
-      const topics = await listGlobalCourseTopics(filter === "active");
+      const topics = await withDbQuery(() =>
+        listGlobalCourseTopicOptions(filter === "active")
+      );
       return NextResponse.json({ topics, filter });
     }
 
     const query = parseCourseTopicListQuery(params);
-    const result = await listCourseTopicsPaginated("global", null, query);
+    const result = await withDbQuery(() =>
+      listCourseTopicsPaginated("global", null, query)
+    );
     return NextResponse.json({
       topics: result.topics,
       meta: result.meta,
@@ -41,10 +45,16 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     console.error("[superuser/course-topics] GET:", e);
-    await resetSql();
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
+    if (isDbConnectionError(e)) {
+      return NextResponse.json(
+        { error: "Datenbankverbindung unterbrochen. Bitte erneut versuchen." },
+        { status: 503 }
+      );
     }
     return NextResponse.json({ error: "Fehler." }, { status: 500 });
   }
@@ -67,10 +77,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ topic }, { status: 201 });
   } catch (e) {
     console.error("[superuser/course-topics] POST:", e);
-    await resetSql();
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
+    if (isDbConnectionError(e)) {
+      return NextResponse.json(
+        { error: "Datenbankverbindung unterbrochen. Bitte erneut versuchen." },
+        { status: 503 }
+      );
     }
     return NextResponse.json({ error: "Anlegen fehlgeschlagen." }, { status: 500 });
   }

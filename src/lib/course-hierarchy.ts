@@ -39,6 +39,8 @@ export type CourseHierarchyItem = {
   sortOrder?: number;
   slug: string;
   topicId?: number | null;
+  topicIds?: number[];
+  topics?: { id: number; name: string; sortOrder?: number }[];
   topicName?: string | null;
   topicSortOrder?: number;
   estimatedDurationMinutes?: number | null;
@@ -187,7 +189,7 @@ export type CourseTopicGroup<T extends CourseHierarchyItem = CourseHierarchyItem
 
 export const UNCategorized_TOPIC_LABEL = "Ohne Hauptthema";
 
-/** Gruppierung nach Hauptthema (course_topics). */
+/** Gruppierung nach Hauptthemen – Kurs kann in mehreren Gruppen erscheinen. */
 export function groupCoursesByTopic<T extends CourseHierarchyItem>(
   courses: T[]
 ): { uncategorized: T[]; groups: CourseTopicGroup<T>[] } {
@@ -195,20 +197,45 @@ export function groupCoursesByTopic<T extends CourseHierarchyItem>(
   const byTopic = new Map<string, CourseTopicGroup<T>>();
 
   for (const course of courses) {
-    if (course.topicId == null) {
+    const refs =
+      course.topics && course.topics.length > 0
+        ? course.topics
+        : course.topicIds && course.topicIds.length > 0
+          ? course.topicIds.map((id) => ({
+              id,
+              name: course.topicName ?? "Hauptthema",
+              sortOrder: course.topicSortOrder ?? 0,
+            }))
+          : course.topicId != null
+            ? [
+                {
+                  id: course.topicId,
+                  name: course.topicName ?? "Hauptthema",
+                  sortOrder: course.topicSortOrder ?? 0,
+                },
+              ]
+            : [];
+
+    if (refs.length === 0) {
       uncategorized.push(course);
       continue;
     }
-    const key = String(course.topicId);
-    if (!byTopic.has(key)) {
-      byTopic.set(key, {
-        topicId: course.topicId,
-        name: course.topicName?.trim() || "Hauptthema",
-        sortOrder: course.topicSortOrder ?? 0,
-        courses: [],
-      });
+
+    for (const ref of refs) {
+      const key = String(ref.id);
+      if (!byTopic.has(key)) {
+        byTopic.set(key, {
+          topicId: ref.id,
+          name: ref.name?.trim() || "Hauptthema",
+          sortOrder: ref.sortOrder ?? 0,
+          courses: [],
+        });
+      }
+      const group = byTopic.get(key)!;
+      if (!group.courses.some((c) => c.id === course.id)) {
+        group.courses.push(course);
+      }
     }
-    byTopic.get(key)!.courses.push(course);
   }
 
   for (const group of byTopic.values()) {

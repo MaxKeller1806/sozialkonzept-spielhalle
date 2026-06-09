@@ -442,6 +442,9 @@ export async function assignMasterToCompany(
       assigned_by = EXCLUDED.assigned_by
   `;
 
+  const { syncCourseTopicsFromMaster } = await import("./course-topics");
+  await syncCourseTopicsFromMaster(companyId, courseId, masterCourseId);
+
   const provision = await getCourseProvision(companyId, courseId);
   if (!provision) throw new Error("PROVISION_FAILED");
   return provision;

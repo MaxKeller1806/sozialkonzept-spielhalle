@@ -1,4 +1,5 @@
-import { getSql } from "./db";
+import type { CourseTopicRef } from "./types";
+import { getSql, isMissingDbObject } from "./db";
 import {
   buildListMeta,
   buildOrderBySql,
@@ -60,6 +61,25 @@ function mapTopicRow(row: Record<string, unknown>): CourseTopicRow {
   };
 }
 
+/** Leichte Liste für Formulare – ohne course_count-Subquery. */
+export async function listGlobalCourseTopicOptions(
+  activeOnly = true
+): Promise<{ id: number; name: string }[]> {
+  const sql = getSql();
+  const activeFilter = activeOnly ? sql`AND ct.active = TRUE` : sql``;
+  const rows = (await sql`
+    SELECT ct.id, ct.name
+    FROM course_topics ct
+    WHERE ct.company_id IS NULL
+    ${activeFilter}
+    ORDER BY ct.sort_order ASC, ct.name ASC
+  `) as Record<string, unknown>[];
+  return rows.map((row) => ({
+    id: Number(row.id),
+    name: String(row.name),
+  }));
+}
+
 export async function listGlobalCourseTopics(
   activeOnly = true
 ): Promise<CourseTopicRow[]> {
@@ -68,7 +88,9 @@ export async function listGlobalCourseTopics(
   const rows = (await sql`
     SELECT ct.*,
       (
-        SELECT COUNT(*)::int FROM master_courses mc WHERE mc.topic_id = ct.id
+        SELECT COUNT(DISTINCT mct.master_course_id)::int
+        FROM master_course_topics mct
+        WHERE mct.topic_id = ct.id
       ) AS course_count
     FROM course_topics ct
     WHERE ct.company_id IS NULL
@@ -254,8 +276,8 @@ export async function listCourseTopicsPaginated(
 
   const countExpr =
     scope === "global"
-      ? sql`(SELECT COUNT(*)::int FROM master_courses mc WHERE mc.topic_id = ct.id)`
-      : sql`(SELECT COUNT(*)::int FROM courses c WHERE c.topic_id = ct.id AND c.company_id = ${companyId})`;
+      ? sql`(SELECT COUNT(DISTINCT mct.master_course_id)::int FROM master_course_topics mct WHERE mct.topic_id = ct.id)`
+      : sql`(SELECT COUNT(DISTINCT cta.course_id)::int FROM course_topic_assignments cta JOIN courses c ON c.id = cta.course_id WHERE cta.topic_id = ct.id AND c.company_id = ${companyId})`;
 
   const rows = (await sql`
     SELECT
@@ -294,13 +316,286 @@ export async function setCompanyCourseTopicId(
   courseId: string,
   topicId: number | null
 ): Promise<void> {
-  await assertTopicAssignableToCompany(companyId, topicId);
+  await setCourseTopicAssignments(
+    companyId,
+    courseId,
+    topicId != null ? [topicId] : []
+  );
+}
+
+function normalizeTopicIds(topicIds: number[] | undefined): number[] {
+  if (!topicIds) return [];
+  return [...new Set(topicIds.map(Number).filter((id) => Number.isFinite(id) && id > 0))];
+}
+
+export async function assertTopicIdsAssignableToCompany(
+  companyId: number,
+  topicIds: number[]
+): Promise<void> {
+  for (const topicId of topicIds) {
+    await assertTopicAssignableToCompany(companyId, topicId);
+  }
+}
+
+export async function getCourseTopicAssignmentsForCourse(
+  courseId: string
+): Promise<CourseTopicRef[]> {
   const sql = getSql();
-  const rows = await sql`
-    UPDATE courses
-    SET topic_id = ${topicId}, updated_at = NOW()
-    WHERE id = ${courseId} AND company_id = ${companyId}
-    RETURNING id
+  const rows = (await sql`
+    SELECT ct.id, ct.name, ct.sort_order
+    FROM course_topic_assignments cta
+    JOIN course_topics ct ON ct.id = cta.topic_id
+    WHERE cta.course_id = ${courseId}
+    ORDER BY ct.sort_order ASC, ct.name ASC
+  `) as Record<string, unknown>[];
+  return rows.map((row) => ({
+    id: Number(row.id),
+    name: String(row.name),
+    sortOrder: Number(row.sort_order ?? 0),
+  }));
+}
+
+export async function getMasterCourseTopicAssignments(
+  masterCourseId: string
+): Promise<CourseTopicRef[]> {
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT ct.id, ct.name, ct.sort_order
+    FROM master_course_topics mct
+    JOIN course_topics ct ON ct.id = mct.topic_id
+    WHERE mct.master_course_id = ${masterCourseId}
+    ORDER BY ct.sort_order ASC, ct.name ASC
+  `) as Record<string, unknown>[];
+  return rows.map((row) => ({
+    id: Number(row.id),
+    name: String(row.name),
+    sortOrder: Number(row.sort_order ?? 0),
+  }));
+}
+
+export async function enrichCoursesWithTopics<
+  T extends {
+    id: string;
+    topicId?: number | null;
+    topicName?: string | null;
+    topicSortOrder?: number;
+  },
+>(courses: T[]): Promise<(T & { topicIds: number[]; topics: CourseTopicRef[] })[]> {
+  if (courses.length === 0) return [];
+
+  const applyLegacyOnly = () =>
+    courses.map((course) => {
+      const legacyTopicId = course.topicId ?? null;
+      const topics: CourseTopicRef[] =
+        legacyTopicId != null
+          ? [
+              {
+                id: legacyTopicId,
+                name: course.topicName?.trim() || "Hauptthema",
+                sortOrder: course.topicSortOrder ?? 0,
+              },
+            ]
+          : [];
+      const topicIds = topics.map((t) => t.id);
+      return {
+        ...course,
+        topics,
+        topicIds,
+        topicId: topics[0]?.id ?? legacyTopicId,
+        topicName: topics[0]?.name ?? course.topicName ?? null,
+        topicSortOrder: topics[0]?.sortOrder ?? course.topicSortOrder,
+      };
+    });
+
+  const sql = getSql();
+  const ids = courses.map((c) => c.id);
+
+  let rows: Record<string, unknown>[];
+  try {
+    rows = (await sql`
+      SELECT cta.course_id, ct.id, ct.name, ct.sort_order
+      FROM course_topic_assignments cta
+      JOIN course_topics ct ON ct.id = cta.topic_id
+      WHERE cta.course_id IN ${sql(ids)}
+      ORDER BY ct.sort_order ASC, ct.name ASC
+    `) as Record<string, unknown>[];
+  } catch (err) {
+    if (
+      isMissingDbObject(err, "course_topic_assignments") ||
+      isMissingDbObject(err, "course_topics")
+    ) {
+      return applyLegacyOnly();
+    }
+    throw err;
+  }
+
+  const byCourse = new Map<string, CourseTopicRef[]>();
+  for (const row of rows) {
+    const courseId = String(row.course_id);
+    if (!byCourse.has(courseId)) byCourse.set(courseId, []);
+    byCourse.get(courseId)!.push({
+      id: Number(row.id),
+      name: String(row.name),
+      sortOrder: Number(row.sort_order ?? 0),
+    });
+  }
+
+  return courses.map((course) => {
+    const topics = byCourse.get(course.id) ?? [];
+    const legacyTopicId = course.topicId ?? null;
+    const topicIds =
+      topics.length > 0
+        ? topics.map((t) => t.id)
+        : legacyTopicId != null
+          ? [legacyTopicId]
+          : [];
+    const primary = topics[0] ?? null;
+    return {
+      ...course,
+      topics,
+      topicIds,
+      topicId: primary?.id ?? legacyTopicId,
+      topicName: primary?.name ?? null,
+      topicSortOrder: primary?.sortOrder,
+    };
+  });
+}
+
+export async function enrichMasterCoursesWithTopics<
+  T extends { id: string; topicId?: number | null },
+>(courses: T[]): Promise<(T & { topicIds: number[]; topics: CourseTopicRef[] })[]> {
+  if (courses.length === 0) return [];
+  const sql = getSql();
+  const ids = courses.map((c) => c.id);
+  const rows = (await sql`
+    SELECT mct.master_course_id, ct.id, ct.name, ct.sort_order
+    FROM master_course_topics mct
+    JOIN course_topics ct ON ct.id = mct.topic_id
+    WHERE mct.master_course_id IN ${sql(ids)}
+    ORDER BY ct.sort_order ASC, ct.name ASC
+  `) as Record<string, unknown>[];
+
+  const byMaster = new Map<string, CourseTopicRef[]>();
+  for (const row of rows) {
+    const masterId = String(row.master_course_id);
+    if (!byMaster.has(masterId)) byMaster.set(masterId, []);
+    byMaster.get(masterId)!.push({
+      id: Number(row.id),
+      name: String(row.name),
+      sortOrder: Number(row.sort_order ?? 0),
+    });
+  }
+
+  return courses.map((course) => {
+    const topics = byMaster.get(course.id) ?? [];
+    const legacyTopicId = course.topicId ?? null;
+    const topicIds =
+      topics.length > 0
+        ? topics.map((t) => t.id)
+        : legacyTopicId != null
+          ? [legacyTopicId]
+          : [];
+    const primary = topics[0] ?? null;
+    return {
+      ...course,
+      topics,
+      topicIds,
+      topicId: primary?.id ?? legacyTopicId,
+      topicName: primary?.name ?? null,
+      topicSortOrder: primary?.sortOrder,
+    };
+  });
+}
+
+export async function setCourseTopicAssignments(
+  companyId: number,
+  courseId: string,
+  topicIds: number[]
+): Promise<CourseTopicRef[]> {
+  const normalized = normalizeTopicIds(topicIds);
+  await assertTopicIdsAssignableToCompany(companyId, normalized);
+
+  const sql = getSql();
+  const courseRows = await sql`
+    SELECT id FROM courses WHERE id = ${courseId} AND company_id = ${companyId} LIMIT 1
   `;
-  if (rows.length === 0) throw new Error("NOT_FOUND");
+  if (courseRows.length === 0) throw new Error("NOT_FOUND");
+
+  const legacyTopicId = normalized[0] ?? null;
+
+  await sql.begin(async (tx) => {
+    await tx`DELETE FROM course_topic_assignments WHERE course_id = ${courseId}`;
+    for (const topicId of normalized) {
+      await tx`
+        INSERT INTO course_topic_assignments (course_id, topic_id)
+        VALUES (${courseId}, ${topicId})
+        ON CONFLICT (course_id, topic_id) DO NOTHING
+      `;
+    }
+    await tx`
+      UPDATE courses SET topic_id = ${legacyTopicId}, updated_at = NOW()
+      WHERE id = ${courseId} AND company_id = ${companyId}
+    `;
+  });
+
+  return getCourseTopicAssignmentsForCourse(courseId);
+}
+
+export async function setMasterCourseTopicAssignments(
+  masterCourseId: string,
+  topicIds: number[]
+): Promise<CourseTopicRef[]> {
+  const normalized = normalizeTopicIds(topicIds);
+  for (const topicId of normalized) {
+    const topic = await getCourseTopic(topicId);
+    if (!topic || !topic.isGlobal || !topic.active) {
+      throw new Error("TOPIC_INVALID");
+    }
+  }
+
+  const sql = getSql();
+  const masterRows = await sql`
+    SELECT id FROM master_courses WHERE id = ${masterCourseId} LIMIT 1
+  `;
+  if (masterRows.length === 0) throw new Error("NOT_FOUND");
+
+  const legacyTopicId = normalized[0] ?? null;
+
+  await sql.begin(async (tx) => {
+    await tx`DELETE FROM master_course_topics WHERE master_course_id = ${masterCourseId}`;
+    for (const topicId of normalized) {
+      await tx`
+        INSERT INTO master_course_topics (master_course_id, topic_id)
+        VALUES (${masterCourseId}, ${topicId})
+        ON CONFLICT (master_course_id, topic_id) DO NOTHING
+      `;
+    }
+    await tx`
+      UPDATE master_courses SET topic_id = ${legacyTopicId}, updated_at = NOW()
+      WHERE id = ${masterCourseId}
+    `;
+  });
+
+  return getMasterCourseTopicAssignments(masterCourseId);
+}
+
+export async function syncCourseTopicsFromMaster(
+  companyId: number,
+  courseId: string,
+  masterCourseId: string
+): Promise<void> {
+  const masterTopics = await getMasterCourseTopicAssignments(masterCourseId);
+  if (masterTopics.length === 0) return;
+
+  const sql = getSql();
+  const existing = await sql`
+    SELECT topic_id FROM course_topic_assignments WHERE course_id = ${courseId}
+  `;
+  if (existing.length > 0) return;
+
+  await setCourseTopicAssignments(
+    companyId,
+    courseId,
+    masterTopics.map((t) => t.id)
+  );
 }
