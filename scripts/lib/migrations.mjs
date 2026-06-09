@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
+import { loadEnvFiles } from "./load-env.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const migrationsDir = path.join(__dirname, "../../supabase/migrations");
@@ -9,9 +10,12 @@ export const migrationsDir = path.join(__dirname, "../../supabase/migrations");
 export const MIGRATION_TABLE = "schema_migrations";
 
 export function getDatabaseUrl() {
-  const url = process.env.DATABASE_URL;
+  loadEnvFiles();
+  const url = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!url) {
-    throw new Error("DATABASE_URL fehlt. Siehe .env.example");
+    throw new Error(
+      "DATABASE_URL fehlt. In .env.local setzen (für Migrationen: DIRECT_DATABASE_URL mit Port 5432). Siehe .env.example"
+    );
   }
   return url;
 }
