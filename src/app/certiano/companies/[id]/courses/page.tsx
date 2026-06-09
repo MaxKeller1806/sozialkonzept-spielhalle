@@ -1,20 +1,11 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CourseAssignmentOptions } from "@/lib/course-assignment-options";
 import { CertianoShell } from "@/components/certiano-shell";
+import { CourseProvisionTopicPicker } from "@/components/course-provision-topic-picker";
 import { Button, Card } from "@/components/ui";
-
-interface UserRow {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  active: boolean;
-  lastLoginAt: string | null;
-  canHardDelete: boolean;
-}
 
 interface CourseDetail {
   courseId: string;
@@ -40,18 +31,27 @@ interface CourseDetail {
   };
 }
 
-interface MasterCourse {
-  id: string;
-  title: string;
-  status: string;
+function provisionsSnapshotKey(rows: CourseDetail[]): string {
+  return rows
+    .map(
+      (p) =>
+        `${p.courseId}:${p.status}:${p.canEditContent}:${p.canEditTests}:${p.canAddModules}`
+    )
+    .join("|");
 }
 
 export default function CompanyCoursesPage() {
   const params = useParams();
-  const companyId = Number(params.id);
+  const companyId = useMemo(() => {
+    const raw = params.id;
+    const id = typeof raw === "string" ? raw : Array.isArray(raw) ? raw[0] : "";
+    return Number(id);
+  }, [params.id]);
+
   const [provisions, setProvisions] = useState<CourseDetail[]>([]);
-  const [masters, setMasters] = useState<MasterCourse[]>([]);
-  const [selectedMaster, setSelectedMaster] = useState("");
+  const [assignmentData, setAssignmentData] = useState<CourseAssignmentOptions | null>(
+    null
+  );
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -59,27 +59,30 @@ export default function CompanyCoursesPage() {
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
-  const load = useCallback(() => {
+  const reloadNonceRef = useRef(0);
+  const [reloadNonce, setReloadNonce] = useState(0);
+
+  useEffect(() => {
     if (!Number.isFinite(companyId) || companyId <= 0) {
       setError("Ungültige Firmen-ID.");
       setLoading(false);
       return;
     }
 
-    setLoading(true);
-    setError("");
-    setMastersWarning("");
-
+    let cancelled = false;
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 20000);
 
     (async () => {
+      setLoading(true);
+      setError("");
+
       try {
         const coursesRes = await fetch(
           `/api/superuser/companies/${companyId}/courses`,
           { signal: controller.signal }
         );
         const coursesData = await coursesRes.json().catch(() => ({}));
+        if (cancelled) return;
 
         if (coursesRes.status === 401 || coursesRes.status === 403) {
           window.location.replace("/certiano/login");
@@ -89,48 +92,52 @@ export default function CompanyCoursesPage() {
           throw new Error(coursesData.error ?? "Kurse konnten nicht geladen werden.");
         }
 
-        setProvisions(
-          (coursesData.provisions ?? []).map((p: CourseDetail) => ({
-            courseId: p.courseId,
-            courseTitle: p.courseTitle,
-            status: p.status === "locked" ? "disabled" : p.status,
-            source: p.source,
-            masterCourseId: p.masterCourseId,
-            canEditContent: p.canEditContent,
-            canEditTests: p.canEditTests,
-            canAddModules: p.canAddModules,
-          }))
-        );
-        setMasters(coursesData.masters ?? []);
+        const nextProvisions = (coursesData.provisions ?? []).map((p: CourseDetail) => ({
+          courseId: p.courseId,
+          courseTitle: p.courseTitle,
+          status: p.status === "locked" ? "disabled" : p.status,
+          source: p.source,
+          masterCourseId: p.masterCourseId,
+          canEditContent: p.canEditContent,
+          canEditTests: p.canEditTests,
+          canAddModules: p.canAddModules,
+        }));
 
-        if (coursesData.migrationHint) {
-          setMastersWarning(String(coursesData.migrationHint));
-        }
+        setProvisions((prev) =>
+          provisionsSnapshotKey(prev) === provisionsSnapshotKey(nextProvisions)
+            ? prev
+            : nextProvisions
+        );
+
+        setAssignmentData({
+          topics: coursesData.topics ?? [],
+          ungroupedCourses: coursesData.ungroupedCourses ?? [],
+          selectedMasterCourseIds: coursesData.selectedMasterCourseIds ?? [],
+        });
+
+        setMastersWarning(
+          coursesData.migrationHint ? String(coursesData.migrationHint) : ""
+        );
       } catch (e) {
-        const isAbort =
-          e instanceof Error &&
-          (e.name === "AbortError" ||
-            e.message.toLowerCase().includes("aborted"));
-        if (isAbort) {
-          setError(
-            "Die Kursfreigaben konnten nicht geladen werden. Bitte erneut versuchen."
-          );
-        } else {
-          console.error("[courses page] load:", e);
-          setError(
-            e instanceof Error ? e.message : "Laden fehlgeschlagen."
-          );
-        }
+        if (cancelled) return;
+        if (e instanceof Error && e.name === "AbortError") return;
+        console.error("[courses page] load:", e);
+        setError(e instanceof Error ? e.message : "Laden fehlgeschlagen.");
       } finally {
-        window.clearTimeout(timeout);
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, [companyId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [companyId, reloadNonce]);
+
+  const reloadProvisions = useCallback(() => {
+    reloadNonceRef.current += 1;
+    setReloadNonce(reloadNonceRef.current);
+  }, []);
 
   async function loadCourseDetail(courseId: string) {
     setBusyKey(`load-${courseId}`);
@@ -223,25 +230,6 @@ export default function CompanyCoursesPage() {
     }
   }
 
-  async function assignMaster(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedMaster) return;
-    setBusyKey("assign");
-    const res = await fetch(`/api/superuser/companies/${companyId}/courses`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ masterCourseId: selectedMaster }),
-    });
-    const d = await res.json().catch(() => ({}));
-    setBusyKey(null);
-    if (res.ok) {
-      setMessage(`Kurs „${d.provision?.courseTitle ?? ""}" zugewiesen.`);
-      load();
-    } else {
-      setError(d.error ?? "Zuweisung fehlgeschlagen.");
-    }
-  }
-
   return (
     <CertianoShell companyId={companyId}>
       {error && (
@@ -258,31 +246,17 @@ export default function CompanyCoursesPage() {
       )}
 
       <Card className="mb-6">
-        <h2 className="mb-4 text-lg font-bold">Master-Seminar zuweisen</h2>
-        {masters.length === 0 && !loading ? (
-          <p className="text-sm text-slate-600">Noch keine Masterkurse vorhanden.</p>
-        ) : (
-        <form onSubmit={assignMaster} className="flex flex-wrap items-end gap-3">
-          <label className="block text-sm">
-            <span className="font-medium text-slate-700">Master-Kurs</span>
-            <select
-              className="mt-1 block min-w-[240px] rounded-xl border border-slate-300 px-3 py-2"
-              value={selectedMaster}
-              onChange={(e) => setSelectedMaster(e.target.value)}
-            >
-              <option value="">Bitte wählen…</option>
-              {masters.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.title} ({m.status})
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button type="submit" disabled={!selectedMaster || busyKey === "assign"}>
-            Zuweisen
-          </Button>
-        </form>
-        )}
+        <h2 className="mb-4 text-lg font-bold">Seminare / Kursfreigaben zuweisen</h2>
+        <p className="mb-4 text-sm text-slate-600">
+          Wählen Sie Hauptthemen oder einzelne Seminare aus. Die Auswahl wird erst
+          beim Speichern übernommen.
+        </p>
+        <CourseProvisionTopicPicker
+          companyId={companyId}
+          assignmentData={assignmentData}
+          assignmentLoading={loading}
+          onSaved={reloadProvisions}
+        />
       </Card>
 
       {loading ? (

@@ -2,6 +2,10 @@
 
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import {
+  AdminCredentialsDialog,
+  type AdminAccessCredentials,
+} from "@/components/admin-credentials-dialog";
 import { CertianoShell } from "@/components/certiano-shell";
 import { Button, Card } from "@/components/ui";
 import { useSuperuserDeleteUser } from "@/hooks/use-superuser-delete-user";
@@ -29,6 +33,10 @@ export default function CompanyUsersPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const [resettingUserId, setResettingUserId] = useState<number | null>(null);
+  const [adminCredentials, setAdminCredentials] = useState<AdminAccessCredentials | null>(
+    null
+  );
 
   const { openDeleteDialog, deleteDialog } = useSuperuserDeleteUser({
     getPreviewUrl: (userId) => `/api/superuser/users/${userId}/delete-preview`,
@@ -110,6 +118,39 @@ export default function CompanyUsersPage() {
       setReloadNonce((n) => n + 1);
     } else {
       setError(d.error ?? "Reaktivierung fehlgeschlagen.");
+    }
+  }
+
+  async function resetAdminPassword(user: UserRow) {
+    if (
+      !window.confirm(
+        `Neues Erstpasswort für ${user.firstName} ${user.lastName} setzen? Das bisherige Passwort ist danach ungültig.`
+      )
+    ) {
+      return;
+    }
+    setMessage("");
+    setError("");
+    setResettingUserId(user.id);
+    try {
+      const res = await fetch(
+        `/api/superuser/companies/${companyId}/users/${user.id}/reset-password`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }
+      );
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error ?? "Passwort-Reset fehlgeschlagen.");
+        return;
+      }
+      if (d.adminAccess?.email && d.adminAccess?.initialPassword) {
+        setAdminCredentials({
+          email: d.adminAccess.email,
+          initialPassword: d.adminAccess.initialPassword,
+        });
+        setMessage("Neues Erstpasswort wurde gesetzt.");
+      }
+    } finally {
+      setResettingUserId(null);
     }
   }
 
@@ -234,6 +275,18 @@ export default function CompanyUsersPage() {
                   </td>
                   <td className="p-4">
                     <div className="flex flex-col gap-2">
+                      {u.role === "admin" && (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={resettingUserId === u.id}
+                          onClick={() => void resetAdminPassword(u)}
+                        >
+                          {resettingUserId === u.id
+                            ? "Setze Passwort…"
+                            : "Passwort zurücksetzen"}
+                        </Button>
+                      )}
                       {u.active ? (
                         <Button type="button" variant="secondary" onClick={() => archiveUser(u)}>
                           Archivieren
@@ -259,6 +312,12 @@ export default function CompanyUsersPage() {
           </table>
         </Card>
       )}
+      <AdminCredentialsDialog
+        open={adminCredentials != null}
+        credentials={adminCredentials}
+        onClose={() => setAdminCredentials(null)}
+        successMessage="Neues Erstpasswort wurde gesetzt."
+      />
       {deleteDialog}
     </CertianoShell>
   );

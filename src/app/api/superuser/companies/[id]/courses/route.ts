@@ -1,6 +1,7 @@
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
-import { resetSql } from "@/lib/db";
+import { loadCompanyCoursesPageData } from "@/lib/course-assignment-options";
 import { getCourseData } from "@/lib/course-db";
 import {
   buildContentStateMap,
@@ -9,19 +10,25 @@ import {
 import {
   assignMasterToCompany,
   getCourseProvision,
-  loadCompanyProvisionsOverview,
   updateProvision,
 } from "@/lib/course-provisions";
-import { listMasterCoursesOverview } from "@/lib/master-course-db";
-import { getCompanyById } from "@/lib/tenant";
+import { resetSql, resetSqlOnFailure } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
+
+function stepLog(requestId: string, label: string, startMs: number): void {
+  console.log(
+    `[superuser/company-courses] ${requestId} ${label} ${Math.round(performance.now() - startMs)}ms`
+  );
+}
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestId = randomUUID();
+  const totalStart = performance.now();
   const { id } = await params;
   const companyId = Number(id);
   const url = new URL(request.url);
@@ -29,21 +36,28 @@ export async function GET(
   const detail = url.searchParams.get("detail") === "1";
 
   try {
-    console.time("auth");
+    let step = performance.now();
     await requireSuperuser();
-    console.timeEnd("auth");
+    stepLog(requestId, "auth", step);
 
     if (courseId && detail) {
+      step = performance.now();
       const course = await getCourseData(companyId, courseId);
+      stepLog(requestId, "course-detail-load", step);
       if (!course) {
         return NextResponse.json({ error: "Kurs nicht gefunden." }, { status: 404 });
       }
-      console.time("provisions-load");
+
+      step = performance.now();
       const provision = await getCourseProvision(companyId, courseId);
-      console.timeEnd("provisions-load");
+      stepLog(requestId, "provision-detail-load", step);
+
+      step = performance.now();
       const contentStates = await buildContentStateMap(companyId, courseId, course);
-      console.time("response");
-      const body = {
+      stepLog(requestId, "content-states", step);
+
+      stepLog(requestId, "total", totalStart);
+      return NextResponse.json({
         provision,
         course: {
           modules: course.modules.map((m) => ({
@@ -58,47 +72,28 @@ export async function GET(
           })),
         },
         contentStates,
-      };
-      console.timeEnd("response");
-      return NextResponse.json(body);
+      });
     }
 
-    console.time("company-load");
-    const company = await getCompanyById(companyId);
-    console.timeEnd("company-load");
-    if (!company) {
-      return NextResponse.json({ error: "Firma nicht gefunden." }, { status: 404 });
-    }
+    step = performance.now();
+    const data = await loadCompanyCoursesPageData(companyId);
+    stepLog(requestId, "bundle-load", step);
+    stepLog(requestId, "total", totalStart);
 
-    console.time("provisions-load");
-    const { provisions, migrationRequired } =
-      await loadCompanyProvisionsOverview(companyId);
-    console.timeEnd("provisions-load");
-
-    console.time("master-courses-load");
-    const masters = await listMasterCoursesOverview();
-    console.timeEnd("master-courses-load");
-
-    console.time("response");
-    const body = {
-      provisions,
-      masters,
-      ...(migrationRequired
-        ? { migrationHint: "Migration fehlt: npm run db:migrate" }
-        : {}),
-    };
-    console.timeEnd("response");
-    return NextResponse.json(body);
+    return NextResponse.json(data);
   } catch (e) {
-    console.error("[superuser/courses] GET:", e);
-    await resetSql();
+    console.error(`[superuser/company-courses] ${requestId} GET:`, e);
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
+    if (msg === "NOT_FOUND") {
+      return NextResponse.json({ error: "Firma nicht gefunden." }, { status: 404 });
+    }
     if (msg.includes("does not exist")) {
       return NextResponse.json(
-        { error: "Migration fehlt: npm run db:migrate", provisions: [], masters: [] },
+        { error: "Migration fehlt: npm run db:migrate" },
         { status: 500 }
       );
     }

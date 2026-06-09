@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   AdminDataTable,
   type AdminTableColumn,
 } from "@/components/admin-data-table";
+import { AdminCredentialsDialog, type AdminAccessCredentials } from "@/components/admin-credentials-dialog";
 import { AdminDrawer } from "@/components/admin-drawer";
 import { AdminModal } from "@/components/admin-modal";
 import { CertianoShell } from "@/components/certiano-shell";
+import { CompanyDangerZone } from "@/components/company-danger-zone";
 import { CompanyEditForm } from "@/components/company-edit-form";
 import { IndustryBusinessTypeSelect } from "@/components/industry-business-type-select";
 import { PageHeader } from "@/components/page-header";
@@ -24,6 +27,7 @@ interface IndustryOption {
 }
 
 function CertianoCompaniesContent() {
+  const searchParams = useSearchParams();
   const {
     rows: companies,
     meta,
@@ -56,7 +60,16 @@ function CertianoCompaniesContent() {
   const [createSaving, setCreateSaving] = useState(false);
   const [createError, setCreateError] = useState("");
   const [newLicense, setNewLicense] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", slug: "", email: "" });
+  const [adminCredentials, setAdminCredentials] = useState<AdminAccessCredentials | null>(
+    null
+  );
+  const [form, setForm] = useState({
+    name: "",
+    slug: "",
+    email: "",
+    adminEmail: "",
+    adminPassword: "",
+  });
   const [industryId, setIndustryId] = useState<number | "">("");
   const [businessTypeId, setBusinessTypeId] = useState<number | "">("");
   const [message, setMessage] = useState("");
@@ -67,21 +80,47 @@ function CertianoCompaniesContent() {
       .then((d) => setIndustryOptions(d.industries ?? []));
   }, []);
 
+  useEffect(() => {
+    if (searchParams.get("companyDeleted") === "1") {
+      setMessage("Firma wurde erfolgreich gelöscht.");
+      window.history.replaceState(null, "", "/certiano");
+    }
+  }, [searchParams]);
+
   const businessTypeOptions =
     industryOptions.find((i) => i.id === state.industryId)?.businessTypes ?? [];
 
-  function resetCreateForm() {
-    setForm({ name: "", slug: "", email: "" });
+  const resetCreateForm = useCallback(() => {
+    setForm({
+      name: "",
+      slug: "",
+      email: "",
+      adminEmail: "",
+      adminPassword: "",
+    });
     setIndustryId("");
     setBusinessTypeId("");
     setCreateError("");
     setShowCreateModal(false);
-  }
+  }, []);
 
-  function openCreateModal() {
-    resetCreateForm();
+  const openCreateModal = useCallback(() => {
+    setForm({
+      name: "",
+      slug: "",
+      email: "",
+      adminEmail: "",
+      adminPassword: "",
+    });
+    setIndustryId("");
+    setBusinessTypeId("");
+    setCreateError("");
     setShowCreateModal(true);
-  }
+  }, []);
+
+  const closeAdminCredentials = useCallback(() => {
+    setAdminCredentials(null);
+  }, []);
 
   async function createCompany(e: React.FormEvent) {
     e.preventDefault();
@@ -93,7 +132,11 @@ function CertianoCompaniesContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
+          name: form.name,
+          slug: form.slug,
+          email: form.email || null,
+          adminEmail: form.adminEmail || null,
+          adminPassword: form.adminPassword || null,
           industryId: industryId === "" ? null : industryId,
           businessTypeId: businessTypeId === "" ? null : businessTypeId,
         }),
@@ -104,7 +147,13 @@ function CertianoCompaniesContent() {
         return;
       }
       setNewLicense(data.licenseKey);
-      setMessage(`Firma angelegt. Admin: ${data.adminEmail}`);
+      setMessage("Firma wurde angelegt.");
+      if (data.adminAccess?.email && data.adminAccess?.initialPassword) {
+        setAdminCredentials({
+          email: data.adminAccess.email,
+          initialPassword: data.adminAccess.initialPassword,
+        });
+      }
       resetCreateForm();
       reload();
     } finally {
@@ -138,10 +187,10 @@ function CertianoCompaniesContent() {
     setEditCompanyId(company.id);
   }
 
-  function closeEditCompany() {
+  const closeEditCompany = useCallback(() => {
     setEditCompanyId(null);
     setEditCompanyName("");
-  }
+  }, []);
 
   const columns: AdminTableColumn<CompanySummaryRow>[] = [
     {
@@ -326,11 +375,32 @@ function CertianoCompaniesContent() {
             onChange={(e) => setForm({ ...form, slug: e.target.value })}
           />
           <Input
-            label="E-Mail (optional)"
+            label="Firmen-E-Mail (optional)"
             type="email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
+          <Input
+            label="Admin-E-Mail (optional)"
+            type="email"
+            placeholder="Leer = admin@kurzname.local"
+            value={form.adminEmail}
+            onChange={(e) => setForm({ ...form, adminEmail: e.target.value })}
+          />
+          <p className="text-xs text-slate-500">
+            Wenn leer, wird automatisch eine Login-E-Mail erzeugt (z. B. admin@kurzname.local).
+          </p>
+          <Input
+            label="Admin-Erstpasswort (optional)"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Leer = sicheres Passwort wird generiert"
+            value={form.adminPassword}
+            onChange={(e) => setForm({ ...form, adminPassword: e.target.value })}
+          />
+          <p className="text-xs text-slate-500">
+            Mindestens 8 Zeichen. Wird nur einmal nach dem Anlegen angezeigt.
+          </p>
           <IndustryBusinessTypeSelect
             industryId={industryId}
             businessTypeId={businessTypeId}
@@ -339,6 +409,13 @@ function CertianoCompaniesContent() {
           />
         </form>
       </AdminModal>
+
+      <AdminCredentialsDialog
+        open={adminCredentials != null}
+        credentials={adminCredentials}
+        onClose={closeAdminCredentials}
+        successMessage="Firma wurde angelegt."
+      />
 
       <AdminDrawer
         open={editCompanyId != null}
@@ -374,17 +451,28 @@ function CertianoCompaniesContent() {
         }
       >
         {editCompanyId != null && (
-          <CompanyEditForm
-            companyId={editCompanyId}
-            hideActions
-            onSavingChange={setCompanySaving}
-            onSaved={() => {
-              setMessage("Firma erfolgreich gespeichert.");
-              closeEditCompany();
-              reload();
-            }}
-            onCancel={closeEditCompany}
-          />
+          <>
+            <CompanyEditForm
+              companyId={editCompanyId}
+              hideActions
+              onSavingChange={setCompanySaving}
+              onSaved={() => {
+                setMessage("Firma erfolgreich gespeichert.");
+                closeEditCompany();
+                reload();
+              }}
+              onCancel={closeEditCompany}
+            />
+            <CompanyDangerZone
+              companyId={editCompanyId}
+              companyName={editCompanyName}
+              onDeleted={() => {
+                setMessage("Firma wurde erfolgreich gelöscht.");
+                closeEditCompany();
+                reload();
+              }}
+            />
+          </>
         )}
       </AdminDrawer>
 

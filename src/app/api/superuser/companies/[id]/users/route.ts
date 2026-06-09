@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
-import { isDbConnectionError, resetSql, withDbRetry } from "@/lib/db";
+import { isDbConnectionError, isQueryTimeoutError, resetSqlOnFailure, withDbQuery } from "@/lib/db";
 import {
   countCompanyUsersStatus,
   listCompanyUsersMinimal,
@@ -29,12 +29,8 @@ export async function GET(
 
     const filter = parseFilter(new URL(request.url).searchParams.get("filter"));
 
-    const [users, counts] = await withDbRetry(() =>
-      Promise.all([
-        listCompanyUsersMinimal(companyId, filter),
-        countCompanyUsersStatus(companyId),
-      ])
-    );
+    const users = await withDbQuery(() => listCompanyUsersMinimal(companyId, filter));
+    const counts = await withDbQuery(() => countCompanyUsersStatus(companyId));
 
     return NextResponse.json({
       users,
@@ -46,7 +42,7 @@ export async function GET(
     });
   } catch (e) {
     console.error("[superuser/company-users] GET:", e);
-    await resetSql();
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED") {
       return NextResponse.json(
@@ -58,6 +54,12 @@ export async function GET(
       return NextResponse.json(
         { error: "Bitte als Certiano-Superuser anmelden." },
         { status: 403 }
+      );
+    }
+    if (isQueryTimeoutError(e)) {
+      return NextResponse.json(
+        { error: "Abfrage hat zu lange gedauert. Bitte erneut versuchen." },
+        { status: 504 }
       );
     }
     if (isDbConnectionError(e)) {

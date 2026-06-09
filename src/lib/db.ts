@@ -101,6 +101,63 @@ export function postgresErrorFields(err: unknown): {
   };
 }
 
+function usesTransactionPooler(): boolean {
+  const url = process.env.DATABASE_URL ?? "";
+  return (
+    url.includes(":6543") ||
+    url.includes("pooler.supabase.com") ||
+    url.includes("pgbouncer=true")
+  );
+}
+
+/** Transaction-Pooler (6543): nur eine Query gleichzeitig pro Instanz. */
+let serializedTail: Promise<void> = Promise.resolve();
+
+export async function runSerialized<T>(operation: () => Promise<T>): Promise<T> {
+  if (!usesTransactionPooler()) {
+    return operation();
+  }
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const previous = serializedTail;
+  serializedTail = previous.then(
+    () => gate,
+    () => gate
+  );
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+  }
+}
+
+export async function logDbOperation<T>(
+  route: string,
+  label: string,
+  operation: () => Promise<T>,
+  resultCount?: (result: T) => number | undefined
+): Promise<T> {
+  const start = Date.now();
+  try {
+    const result = await operation();
+    const rows = resultCount?.(result);
+    console.info(
+      `[db] ${route} ${label} ok ${Date.now() - start}ms` +
+        (rows != null ? ` rows=${rows}` : "")
+    );
+    return result;
+  } catch (err) {
+    console.error(
+      `[db] ${route} ${label} failed ${Date.now() - start}ms`,
+      postgresErrorFields(err)
+    );
+    throw err;
+  }
+}
+
 function poolMaxConnections(): number {
   const url = process.env.DATABASE_URL ?? "";
   /** Supabase Transaction Pooler (6543): eine Verbindung pro Serverless-Instanz. */
@@ -186,12 +243,14 @@ export async function withDbRetry<T>(operation: () => Promise<T>): Promise<T> {
   }
 }
 
-/** Query mit Timeout; ein Retry nur bei Verbindungsfehler. */
+/** Query mit Timeout; ein Retry nur bei Verbindungsfehler; Pooler-serialisiert. */
 export async function withDbQuery<T>(
   operation: () => Promise<T>,
-  timeoutMs = 5000
+  timeoutMs = 8000
 ): Promise<T> {
-  return withDbRetry(() => withQueryTimeout(operation, timeoutMs));
+  return runSerialized(() =>
+    withDbRetry(() => withQueryTimeout(operation, timeoutMs))
+  );
 }
 
 /** @deprecated Daten per `npm run db:seed` laden – kein Auto-Seed zur Laufzeit. */

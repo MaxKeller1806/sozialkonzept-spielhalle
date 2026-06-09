@@ -53,29 +53,36 @@ export async function GET(request: Request) {
     const filter = parseFilter(url.searchParams.get("filter"));
     const role = parseRole(url.searchParams.get("role"));
     const search = url.searchParams.get("q");
+    const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10) || 1);
+    const pageSizeRaw = parseInt(url.searchParams.get("pageSize") ?? "50", 10);
+    const pageSize = Number.isFinite(pageSizeRaw) ? pageSizeRaw : 50;
 
     console.time(`${tag} query`);
-    const data = await withDbQuery(() =>
-      fetchSuperuserUsersList({
-        filter,
-        companyId: companyId && Number.isFinite(companyId) ? companyId : null,
-        role,
-        search,
-      })
+    const data = await withDbQuery(
+      () =>
+        fetchSuperuserUsersList({
+          filter,
+          companyId: companyId && Number.isFinite(companyId) ? companyId : null,
+          role,
+          search,
+          page,
+          pageSize,
+        }),
+      8000
     );
     console.timeEnd(`${tag} query`);
+    console.info(`${tag} result users=${data.users.length} total=${data.total}`);
 
-    console.time(`${tag} response`);
-    const body = NextResponse.json({
+    return NextResponse.json({
       users: data.users,
       companies: data.companies,
       total: data.total,
+      page: data.page,
+      pageSize: data.pageSize,
       limit: data.limit,
-      truncated: data.total > data.users.length,
+      truncated: data.total > data.page * data.pageSize,
       filter,
     });
-    console.timeEnd(`${tag} response`);
-    return body;
   } catch (e) {
     console.error("[superuser/users] GET:", e);
     await resetSqlOnFailure(e);

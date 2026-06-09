@@ -21,7 +21,7 @@ function effectiveMasterCourseId(row: Record<string, unknown>): string | null {
   return id != null ? String(id) : null;
 }
 
-function mapProvision(row: Record<string, unknown>): CourseProvision {
+export function mapProvision(row: Record<string, unknown>): CourseProvision {
   const masterId = effectiveMasterCourseId(row);
   return {
     id: Number(row.id),

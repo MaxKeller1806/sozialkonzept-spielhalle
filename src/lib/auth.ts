@@ -1,6 +1,7 @@
 import { getIronSession, SessionOptions } from "iron-session";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { getSql } from "./db";
 import { mapUserWithPassword } from "./db/row-mappers";
 import { getCompanyById } from "./tenant";
@@ -95,6 +96,28 @@ export function validatePassword(password: string): string | null {
     return "Das Passwort muss mindestens 8 Zeichen lang sein.";
   }
   return null;
+}
+
+/** Sicheres Erstpasswort für einmalige Übergabe (keine mehrdeutigen Zeichen). */
+export function generateInitialPassword(length = 16): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  const bytes = crypto.randomBytes(length);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
+
+export function resolveInitialPassword(plainPassword?: string | null): {
+  password: string;
+  error: string | null;
+} {
+  const trimmed = plainPassword != null ? String(plainPassword).trim() : "";
+  if (trimmed) {
+    const validationError = validatePassword(trimmed);
+    if (validationError) {
+      return { password: "", error: validationError };
+    }
+    return { password: trimmed, error: null };
+  }
+  return { password: generateInitialPassword(), error: null };
 }
 
 export async function getUserByEmail(

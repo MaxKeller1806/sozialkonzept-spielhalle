@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react";
 
 export function useAdminPanel(open: boolean, onClose: () => void) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -14,7 +16,7 @@ export function useAdminPanel(open: boolean, onClose: () => void) {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
       }
 
       if (event.key !== "Tab" || !panelRef.current) return;
@@ -38,19 +40,24 @@ export function useAdminPanel(open: boolean, onClose: () => void) {
 
     document.addEventListener("keydown", onKeyDown);
 
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
     const timer = window.setTimeout(() => {
       const first = panelRef.current?.querySelector<HTMLElement>(
-        'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])'
+        'input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
       );
       first?.focus();
     }, 0);
 
-    return () => {
-      window.clearTimeout(timer);
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open, onClose]);
+    return () => window.clearTimeout(timer);
+  }, [open]);
 
   return panelRef;
 }

@@ -6,6 +6,10 @@ import {
   permanentlyDeleteCompanyUser,
   removeOrArchiveCompanyUser,
 } from "@/lib/tenant";
+import {
+  CompanyDeleteProtectedError,
+  permanentlyDeleteCompany,
+} from "@/lib/company-delete";
 import { resolveCompanyIndustryFields } from "@/lib/industries";
 import { ConfirmDeleteRequiredError } from "@/lib/user-delete";
 
@@ -217,8 +221,28 @@ export async function DELETE(
     const { id } = await params;
     const companyId = Number(id);
     const deleteUserId = new URL(request.url).searchParams.get("userId");
+
     if (!deleteUserId) {
-      return NextResponse.json({ error: "userId erforderlich." }, { status: 400 });
+      const body = await request.json().catch(() => ({}));
+      const confirmCompanyId = Number(body.confirmCompanyId);
+      if (!Number.isFinite(confirmCompanyId) || confirmCompanyId <= 0) {
+        return NextResponse.json(
+          { error: "Bitte Firma zur Bestätigung auswählen." },
+          { status: 400 }
+        );
+      }
+      if (confirmCompanyId !== companyId) {
+        return NextResponse.json(
+          { error: "Die ausgewählte Firma stimmt nicht überein." },
+          { status: 400 }
+        );
+      }
+
+      await permanentlyDeleteCompany(companyId);
+      return NextResponse.json({
+        ok: true,
+        message: "Firma wurde erfolgreich gelöscht.",
+      });
     }
 
     const uid = Number(deleteUserId);
@@ -251,6 +275,11 @@ export async function DELETE(
         "Benutzer wurde archiviert. Vorhandene Prüfungs- und Zertifikatsdaten bleiben aus Nachweisgründen erhalten.",
     });
   } catch (e) {
+    console.error("[superuser/companies] DELETE failed", postgresErrorFields(e));
+    await resetSql();
+    if (e instanceof CompanyDeleteProtectedError) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
     if (e instanceof ConfirmDeleteRequiredError) {
       return NextResponse.json(
         {
@@ -263,7 +292,7 @@ export async function DELETE(
     }
     const msg = e instanceof Error ? e.message : "";
     if (msg === "NOT_FOUND") {
-      return NextResponse.json({ error: "Nutzer nicht gefunden." }, { status: 404 });
+      return NextResponse.json({ error: "Firma oder Nutzer nicht gefunden." }, { status: 404 });
     }
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });

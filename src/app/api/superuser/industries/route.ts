@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
-import { resetSql } from "@/lib/db";
+import {
+  isDbConnectionError,
+  isQueryTimeoutError,
+  logDbOperation,
+  resetSqlOnFailure,
+  withDbQuery,
+} from "@/lib/db";
 import {
   createIndustry,
   INDUSTRY_SORT_ALLOWLIST,
   listIndustriesPaginated,
-  listIndustriesWithBusinessTypes,
+  listIndustriesWithBusinessTypesForSelect,
 } from "@/lib/industries";
 import { parseListQueryFromUrl } from "@/lib/list-query";
 
@@ -17,6 +23,7 @@ function parseFilter(value: string | null): "active" | "archived" | "all" {
 }
 
 export async function GET(request: Request) {
+  const tag = "[superuser/industries]";
   try {
     await requireSuperuser();
     const params = new URL(request.url).searchParams;
@@ -28,26 +35,52 @@ export async function GET(request: Request) {
       !params.has("sortBy")
     ) {
       const filter = parseFilter(params.get("filter"));
-      const industries = await listIndustriesWithBusinessTypes(filter);
-      return NextResponse.json({ industries, filter });
+      const industries = await withDbQuery(
+        () =>
+          logDbOperation(tag, "listForSelect", () =>
+            listIndustriesWithBusinessTypesForSelect(filter)
+          ),
+        3000
+      );
+      return NextResponse.json({
+        industries,
+        filter,
+        count: industries.length,
+      });
     }
 
     const query = parseListQueryFromUrl(params, {
       sortBy: "sortOrder",
       sortDirection: "asc",
     });
-    const result = await listIndustriesPaginated(query);
+    const result = await withDbQuery(
+      () =>
+        logDbOperation(tag, "listPaginated", () => listIndustriesPaginated(query)),
+      5000
+    );
     return NextResponse.json({
       industries: result.industries,
       meta: result.meta,
       sortFields: Object.keys(INDUSTRY_SORT_ALLOWLIST),
     });
   } catch (e) {
-    console.error("[superuser/industries] GET:", e);
-    await resetSql();
+    console.error(`${tag} GET:`, e);
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
+    if (isQueryTimeoutError(e)) {
+      return NextResponse.json(
+        { error: "Abfrage hat zu lange gedauert. Bitte erneut versuchen." },
+        { status: 504 }
+      );
+    }
+    if (isDbConnectionError(e)) {
+      return NextResponse.json(
+        { error: "Datenbankverbindung unterbrochen. Bitte erneut versuchen." },
+        { status: 503 }
+      );
     }
     if (msg.includes("does not exist")) {
       return NextResponse.json(
@@ -75,7 +108,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ industry }, { status: 201 });
   } catch (e) {
     console.error("[superuser/industries] POST:", e);
-    await resetSql();
+    await resetSqlOnFailure(e);
     const msg = e instanceof Error ? e.message : "";
     if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });

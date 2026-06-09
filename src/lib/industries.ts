@@ -517,19 +517,62 @@ export async function listBusinessTypesPaginated(
   };
 }
 
-export async function listIndustriesWithBusinessTypes(
+export async function listIndustriesWithBusinessTypesForSelect(
   filter: "active" | "archived" | "all" = "all"
 ): Promise<Array<Industry & { businessTypes: BusinessType[] }>> {
-  const industries = await listIndustries(filter);
-  const businessTypes = await listBusinessTypes({ filter });
+  const sql = getSql();
+  const industryActive =
+    filter === "active"
+      ? sql`AND i.active = TRUE`
+      : filter === "archived"
+        ? sql`AND i.active = FALSE`
+        : sql``;
+  const businessTypeActive =
+    filter === "active"
+      ? sql`AND bt.active = TRUE`
+      : filter === "archived"
+        ? sql`AND bt.active = FALSE`
+        : sql``;
+
+  const industryRows = await sql`
+    SELECT i.*
+    FROM industries i
+    WHERE TRUE
+    ${industryActive}
+    ORDER BY i.sort_order, i.name
+  `;
+
+  const businessTypeRows = await sql`
+    SELECT bt.*, i.name AS industry_name, i.slug AS industry_slug
+    FROM business_types bt
+    JOIN industries i ON i.id = bt.industry_id
+    WHERE TRUE
+    ${industryActive}
+    ${businessTypeActive}
+    ORDER BY bt.sort_order, bt.name
+  `;
+
   const byIndustry = new Map<number, BusinessType[]>();
-  for (const bt of businessTypes) {
+  for (const row of businessTypeRows) {
+    const bt = mapBusinessType(row as Record<string, unknown>);
     const list = byIndustry.get(bt.industryId) ?? [];
     list.push(bt);
     byIndustry.set(bt.industryId, list);
   }
-  return industries.map((industry) => ({
-    ...industry,
-    businessTypes: byIndustry.get(industry.id) ?? [],
-  }));
+
+  return industryRows.map((row) => {
+    const industry = mapIndustry(row as Record<string, unknown>);
+    return {
+      ...industry,
+      businessTypeCount: byIndustry.get(industry.id)?.length ?? 0,
+      companyCount: 0,
+      businessTypes: byIndustry.get(industry.id) ?? [],
+    };
+  });
+}
+
+export async function listIndustriesWithBusinessTypes(
+  filter: "active" | "archived" | "all" = "all"
+): Promise<Array<Industry & { businessTypes: BusinessType[] }>> {
+  return listIndustriesWithBusinessTypesForSelect(filter);
 }

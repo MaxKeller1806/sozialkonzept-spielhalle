@@ -1,5 +1,5 @@
 import type postgres from "postgres";
-import { getSql } from "./db";
+import { getSql, logDbOperation } from "./db";
 import { OPERATOR_COMPANY_SLUG } from "./branding-theme";
 import type { UserListFilter } from "./tenant";
 
@@ -20,9 +20,12 @@ export interface SuperuserUsersListResult {
   companies: Array<{ id: number; name: string }>;
   total: number;
   limit: number;
+  page: number;
+  pageSize: number;
 }
 
-const LIST_LIMIT = 100;
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
 
 function buildFilters(
   sql: postgres.Sql,
@@ -79,66 +82,91 @@ function mapUser(r: Record<string, unknown>): SuperuserUserRow {
   };
 }
 
+function parsePageSize(value: number | undefined): number {
+  if (value == null || !Number.isFinite(value)) return DEFAULT_PAGE_SIZE;
+  return Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(value)));
+}
+
 export async function fetchSuperuserUsersList(params: {
   filter?: UserListFilter;
   companyId?: number | null;
   role?: "admin" | "employee" | null;
   search?: string | null;
+  page?: number;
+  pageSize?: number;
 }): Promise<SuperuserUsersListResult> {
-  const sql = getSql();
-  const filter = params.filter ?? "all";
-  const companyId = params.companyId ?? null;
-  const role = params.role ?? null;
-  const search = params.search?.trim().toLowerCase() ?? "";
+  return logDbOperation(
+    "superuser/users",
+    "fetchSuperuserUsersList",
+    async () => {
+      const sql = getSql();
+      const filter = params.filter ?? "all";
+      const companyId = params.companyId ?? null;
+      const role = params.role ?? null;
+      const search = params.search?.trim().toLowerCase() ?? "";
+      const page = Math.max(1, params.page ?? 1);
+      const pageSize = parsePageSize(params.pageSize);
+      const offset = (page - 1) * pageSize;
 
-  const { activeFilter, companyFilter, roleFilter, searchFilter } = buildFilters(sql, {
-    filter,
-    companyId,
-    role,
-    search,
-  });
+      const { activeFilter, companyFilter, roleFilter, searchFilter } = buildFilters(
+        sql,
+        { filter, companyId, role, search }
+      );
 
-  const [userRows, companyRows] = await Promise.all([
-    sql`
-      SELECT
-        u.id,
-        u.first_name,
-        u.last_name,
-        u.email,
-        u.role,
-        u.active,
-        u.last_login_at,
-        u.company_id,
-        c.name AS company_name,
-        COUNT(*) OVER()::int AS total_count
-      FROM users u
-      LEFT JOIN companies c ON c.id = u.company_id
-      WHERE u.role IN ('admin', 'employee')
-      ${activeFilter}
-      ${companyFilter}
-      ${roleFilter}
-      ${searchFilter}
-      ORDER BY u.active DESC, c.name ASC NULLS LAST, u.role ASC, u.last_name ASC, u.first_name ASC
-      LIMIT ${LIST_LIMIT}
-    `,
-    sql`
-      SELECT id, name
-      FROM companies
-      WHERE slug != ${OPERATOR_COMPANY_SLUG}
-      ORDER BY name ASC
-      LIMIT 200
-    `,
-  ]);
+      const countRows = await sql`
+        SELECT COUNT(*)::int AS total_count
+        FROM users u
+        WHERE u.role IN ('admin', 'employee')
+        ${activeFilter}
+        ${companyFilter}
+        ${roleFilter}
+        ${searchFilter}
+      `;
+      const total = Number(countRows[0]?.total_count ?? 0);
 
-  const total = userRows.length > 0 ? Number(userRows[0].total_count ?? userRows.length) : 0;
+      const userRows = await sql`
+        SELECT
+          u.id,
+          u.first_name,
+          u.last_name,
+          u.email,
+          u.role,
+          u.active,
+          u.last_login_at,
+          u.company_id,
+          c.name AS company_name
+        FROM users u
+        LEFT JOIN companies c ON c.id = u.company_id
+        WHERE u.role IN ('admin', 'employee')
+        ${activeFilter}
+        ${companyFilter}
+        ${roleFilter}
+        ${searchFilter}
+        ORDER BY u.active DESC, c.name ASC NULLS LAST, u.role ASC, u.last_name ASC, u.first_name ASC
+        LIMIT ${pageSize}
+        OFFSET ${offset}
+      `;
 
-  return {
-    users: userRows.map((r) => mapUser(r as Record<string, unknown>)),
-    companies: companyRows.map((r) => ({
-      id: Number(r.id),
-      name: String(r.name),
-    })),
-    total,
-    limit: LIST_LIMIT,
-  };
+      const companyRows = await sql`
+        SELECT id, name
+        FROM companies
+        WHERE slug != ${OPERATOR_COMPANY_SLUG}
+        ORDER BY name ASC
+        LIMIT 200
+      `;
+
+      return {
+        users: userRows.map((r) => mapUser(r as Record<string, unknown>)),
+        companies: companyRows.map((r) => ({
+          id: Number(r.id),
+          name: String(r.name),
+        })),
+        total,
+        limit: pageSize,
+        page,
+        pageSize,
+      };
+    },
+    (result) => result.users.length
+  );
 }

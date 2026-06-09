@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSuperuser } from "@/lib/auth";
+import { hashPassword, requireSuperuser, resolveInitialPassword } from "@/lib/auth";
 import { isDbConnectionError, getSql, resetSqlOnFailure, withDbQuery } from "@/lib/db";
 import { generateLicenseKey, hashLicenseKey } from "@/lib/license";
 import {
@@ -69,6 +69,8 @@ export async function POST(request: Request) {
       licenseExpiresAt,
       industryId,
       businessTypeId,
+      adminEmail,
+      adminPassword,
     } = body;
 
     if (!name || !slug) {
@@ -142,17 +144,44 @@ export async function POST(request: Request) {
 
     const company = mapCompany(rows[0] as Record<string, unknown>);
 
-    const adminHash = (await import("@/lib/auth")).hashPassword("admin123");
-    await sql`
+    const resolvedAdminEmail = adminEmail?.trim()
+      ? String(adminEmail).trim().toLowerCase()
+      : `admin@${normalizedSlug}.local`;
+
+    const { password: initialPassword, error: passwordError } =
+      resolveInitialPassword(adminPassword);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
+    }
+
+    const existingAdmin = await sql`
+      SELECT id FROM users WHERE LOWER(email) = ${resolvedAdminEmail} LIMIT 1
+    `;
+    if (existingAdmin.length > 0) {
+      return NextResponse.json(
+        { error: "Admin-E-Mail bereits vergeben." },
+        { status: 409 }
+      );
+    }
+
+    const adminHash = hashPassword(initialPassword);
+    const adminRows = await sql`
       INSERT INTO users (
         first_name, last_name, email, password_hash, role, company_id, active, must_change_password
       )
       VALUES (
-        'Admin', ${name}, ${`admin@${normalizedSlug}.local`}, ${adminHash},
+        'Admin', ${name}, ${resolvedAdminEmail}, ${adminHash},
         'admin', ${company.id}, TRUE, TRUE
       )
-      ON CONFLICT (email) DO NOTHING
+      RETURNING id
     `;
+
+    if (adminRows.length === 0) {
+      return NextResponse.json(
+        { error: "Admin-Benutzer konnte nicht angelegt werden." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       {
@@ -164,7 +193,10 @@ export async function POST(request: Request) {
           licenseStatus: company.licenseStatus,
         },
         licenseKey,
-        adminEmail: `admin@${normalizedSlug}.local`,
+        adminAccess: {
+          email: resolvedAdminEmail,
+          initialPassword,
+        },
       },
       { status: 201 }
     );
