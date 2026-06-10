@@ -8,6 +8,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: "V2.5.0",
     date: "10.06.2026",
+    commit: "df78400",
     summary:
       "Verantwortlichkeiten in Zertifikaten, zweizeiliger Header, einheitliches Certiano-Logo.",
     sections: [
