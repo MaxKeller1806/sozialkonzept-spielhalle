@@ -85,7 +85,23 @@ npm run db:migrate
 
 Tracking-Tabelle: `public.schema_migrations` (Spalten: `filename`, `applied_at`).
 
-### 2.3 Connection Strings kopieren
+### 2.3 Storage (Logo-Upload / Branding)
+
+Branding-Logos werden in **Supabase Storage** gespeichert (nicht im Vercel-Dateisystem).
+
+1. Migration `20260610180000_certiano_assets_storage.sql` ausführen (`npm run db:migrate`)
+2. Supabase → **Project Settings** → **API**:
+   - **Project URL** → `SUPABASE_URL`
+   - **service_role** (secret) → `SUPABASE_SERVICE_ROLE_KEY` (nur Server)
+
+| Bereich | Bucket-Pfad |
+|---------|-------------|
+| Certiano-Branding | `operator/logo-<timestamp>.<ext>` |
+| Firmenbranding | `companies/company-<id>/logo-<timestamp>.<ext>` |
+
+Logo-URLs werden in `companies.logo_url` gespeichert.
+
+### 2.4 Connection Strings kopieren
 
 Supabase → **Project Settings** → **Database**:
 
@@ -96,7 +112,7 @@ Supabase → **Project Settings** → **Database**:
 
 Für `DATABASE_URL` in Vercel immer den **Transaction pooler**-String verwenden (`?pgbouncer=true` falls angeboten).
 
-### 2.4 Demo-Daten (optional)
+### 2.5 Demo-Daten (optional)
 
 Nach der Migration:
 
@@ -130,6 +146,9 @@ Vercel → Projekt → **Settings** → **Environment Variables**:
 | `DATABASE_URL` | Supabase Transaction pooler URI | Production, Preview |
 | `SESSION_SECRET` | Zufallsstring ≥ 32 Zeichen | Production, Preview |
 | `APP_URL` | `https://ihr-projekt.vercel.app` | Production |
+| `SUPABASE_URL` | Supabase Project URL | Production, Preview |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service_role Key (secret) | Production, Preview |
+| `SUPABASE_STORAGE_BUCKET` | `certiano-assets` (optional, Standardwert) | Production, Preview |
 | `NODE_ENV` | `production` | Production |
 
 `APP_URL` nach dem ersten Deploy auf die tatsächliche Vercel-URL setzen (wichtig für Zertifikat-QR-Codes).
@@ -163,7 +182,8 @@ Vercel baut und deployed automatisch. Erster Build dauert ca. 2–3 Minuten.
 - [ ] `SESSION_SECRET` ist ein einzigartiger, langer Zufallswert
 - [ ] `APP_URL` zeigt auf die produktive Vercel-Domain (mit `https://`)
 - [ ] `DATABASE_URL` nutzt den Supabase **Pooler** (Port 6543)
-- [ ] SQL-Migration wurde ausgeführt
+- [ ] SQL-Migration wurde ausgeführt (inkl. Storage-Bucket `certiano-assets`)
+- [ ] `SUPABASE_URL` und `SUPABASE_SERVICE_ROLE_KEY` in Vercel gesetzt (Logo-Upload)
 - [ ] Demo-Passwörter geändert oder Demo-User entfernt
 - [ ] Vercel-Deployment erfolgreich (Build-Logs ohne Fehler)
 
@@ -185,6 +205,6 @@ Lerninhalte liegen in `data/course.json` (im Git-Repo). Änderungen über das Ad
 | DB-Verbindungsfehler | Pooler-URL (6543), Passwort, IP-Allowlist in Supabase |
 | Migration Timeout / initial_schema erneut | Direct Connection (5432) nutzen; `npm run db:migrate:status`; bei Legacy-DB `npm run db:migrate:baseline -- --yes`, dann `npm run db:migrate` |
 | Login schlägt fehl | `npm run db:seed` ausführen oder User in Supabase Table Editor prüfen |
-| QR-Code falscher Link | `APP_URL` auf produktive Domain setzen, Redeploy |
+| Logo-Upload 500 auf Vercel | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` setzen; Migration `20260610180000_certiano_assets_storage.sql` ausführen; Redeploy |
 
 Weitere Details: `.env.example`

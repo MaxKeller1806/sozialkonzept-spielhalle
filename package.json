@@ -20,6 +20,7 @@
     "seed:safety": "node scripts/seed-safety-content.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.1",
     "archiver": "^8.0.0",
     "bcryptjs": "^3.0.3",
     "iron-session": "^8.0.4",

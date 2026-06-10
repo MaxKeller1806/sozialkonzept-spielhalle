@@ -144,10 +144,15 @@ export function CompanyBrandingForm({ companyId }: CompanyBrandingFormProps) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Logo-Upload fehlgeschlagen.");
+        setError(data.error ?? "Logo konnte nicht hochgeladen werden.");
         return;
       }
-      updateForm({ logoUrl: data.logoUrl ?? "" });
+      if (data.logoUrl) {
+        updateForm({ logoUrl: data.logoUrl });
+        setMessage("Logo hochgeladen und gespeichert.");
+      }
+    } catch {
+      setError("Logo konnte nicht hochgeladen werden. Bitte erneut versuchen.");
     } finally {
       setUploadingLogo(false);
     }
