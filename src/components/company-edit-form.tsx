@@ -340,6 +340,11 @@ export function CompanyEditForm({
                     Kursfreigaben
                   </Button>
                 </Link>
+                <Link href={`/certiano/companies/${companyId}/data-export`}>
+                  <Button type="button" variant="secondary">
+                    Datenexport
+                  </Button>
+                </Link>
               </>
             )}
           </div>

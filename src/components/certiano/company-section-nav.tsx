@@ -4,7 +4,7 @@ import Link from "next/link";
 
 type CompanySectionNavProps = {
   companyId: number;
-  active: "data" | "branding";
+  active: "data" | "branding" | "data-export";
 };
 
 const linkClass = (isActive: boolean) =>
@@ -33,6 +33,9 @@ export function CompanySectionNav({ companyId, active }: CompanySectionNavProps)
       </Link>
       <Link href={`${base}/courses`} className={linkClass(false)}>
         Kursfreigaben
+      </Link>
+      <Link href={`${base}/data-export`} className={linkClass(active === "data-export")}>
+        Datenexport
       </Link>
     </nav>
   );

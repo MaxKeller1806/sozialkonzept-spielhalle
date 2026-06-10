@@ -4,6 +4,7 @@ import {
   IconBuilding,
   IconCertificate,
   IconDashboard,
+  IconDownload,
   IconSettings,
   IconUser,
   IconUsers,
@@ -63,6 +64,12 @@ export function getCertianoSidebarItems(companyId?: number): SidebarNavItem[] {
       label: "Zertifikate & Nachweise",
       icon: <IconCertificate />,
       match: (p) => p.startsWith("/certiano/zertifikate"),
+    },
+    {
+      href: "/certiano/exportprotokolle",
+      label: "Exportprotokolle",
+      icon: <IconDownload />,
+      match: (p) => p.startsWith("/certiano/exportprotokolle"),
     },
     {
       href: "/certiano/einstellungen",

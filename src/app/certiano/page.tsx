@@ -223,6 +223,10 @@ function CertianoCompaniesContent() {
       {
         items: [
           {
+            label: "Datenexport",
+            href: `/certiano/companies/${company.id}/data-export`,
+          },
+          {
             label: "Verantwortlichkeiten",
             href: "/certiano/verantwortlichkeiten",
           },
@@ -270,12 +274,18 @@ function CertianoCompaniesContent() {
         href: `/certiano/companies/${company.id}/branding`,
       },
       {
+        key: "data-export",
+        label: "Datenexport",
+        icon: <IconDownload />,
+        href: `/certiano/companies/${company.id}/data-export`,
+      },
+      {
         key: "audit",
         label: "Audit-Export",
         icon: <IconDownload />,
         onClick: () =>
           setMessage(
-            "Audit-Export ist im Admin-Dashboard der Firma unter „Audit-Export“ verfügbar."
+            "Der Audit-Export für Behörden und Zertifizierungen ist im Admin-Dashboard der Firma unter „Audit-Export“ verfügbar. Für DSGVO und Datenportabilität nutzen Sie „Datenexport“."
           ),
       },
       {

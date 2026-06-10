@@ -1,0 +1,308 @@
+================================================================================
+CERTIANO CAMPUS – Änderungen und Releases
+Projekt: sozialkonzept-spielhalle
+Stand: 10.06.2026
+================================================================================
+
+
+================================================================================
+RELEASE V2.2.1 – Alpha
+Commit: f4377bf | 10.06.2026, 21:24 Uhr
+================================================================================
+
+LOGIN – Firmenkennung über company_code
+---------------------------------------
+- Login akzeptiert künftig die feste Firmen-ID (companies.company_code) als
+  „Firmenkennung“ (z. B. F0001, F0002, F0004).
+- UI-Feld: „Firmenkennung“ mit Platzhalter „z. B. F0004“.
+- Groß-/Kleinschreibung egal (f0004 = F0004), Leerzeichen am Anfang/Ende werden
+  ignoriert.
+- Slug/Firmenname wird für den manuellen Login nicht mehr verwendet.
+- Einheitliches Login-Formular auf /login: Firmenkennung + E-Mail + Passwort
+  (kein separater Schritt „Firma laden“ mehr).
+- Bei firmenspezifischer Login-Adresse (Subdomain/Custom-Domain): nur E-Mail +
+  Passwort sichtbar.
+- Fehlermeldungen:
+  · Firma nicht gefunden: „Firma nicht gefunden. Bitte prüfen Sie die
+    Firmenkennung.“
+  · Falsche Zugangsdaten: „Ungültige Anmeldedaten.“ (unverändert)
+- Superuser-Login unter /certiano/login unverändert (E-Mail + Passwort).
+
+Geänderte/neu angelegte Dateien:
+- src/lib/tenant.ts – getCompanyByCompanyCode() (trim + UPPER-Vergleich)
+- src/lib/tenant-resolve.ts – normalizeCompanyCode, getTenantCompanyByCode,
+  resolveTenant/resolveLoginCompanyId mit companyCode
+- src/app/api/auth/login/route.ts – companyCode im Request-Body, 404 bei
+  unbekannter Kennung
+- src/app/api/public/tenant/route.ts – Query-Param firma als company_code
+- src/app/api/public/branding/route.ts – Query-Param firma als company_code
+- src/app/login/page.tsx – Server Component (Tenant-Auflösung vor Render)
+- src/app/login/login-form.tsx – Client-Formular (neu)
+- src/app/certiano/login/page.tsx – Server Component
+- src/app/certiano/login/certiano-login-form.tsx – Client-Formular (neu)
+
+LOGIN – Branding-Flicker behoben
+--------------------------------
+- Ursache: Branding wurde clientseitig per useEffect/API nach dem ersten Render
+  geladen → kurz sichtbares Default-Theme (#000080), danach Wechsel.
+- Lösung:
+  · Branding serverseitig vor dem Rendern laden (/login: resolveTenant,
+    /certiano/login: fetchOperatorBranding)
+  · Branding als Props an Client-Formulare übergeben
+  · BrandingProvider setzt CSS-Variablen zusätzlich inline (className="contents")
+    → korrekte Farben ab erstem Paint
+  · Kein Lade-Spinner und kein Client-Fetch für Branding beim initialen Render
+- Login-Seiten mit dynamic = "force-dynamic" (kein Build-Time-Prerender gegen DB)
+
+
+================================================================================
+HOTFIX – Branding-Logo-Upload (Vercel)
+Commit: d3195fd | 10.06.2026, 21:06 Uhr
+================================================================================
+
+- Logo-Upload auf Vercel funktionierte nicht (500, lokales fs.writeFile).
+- Upload läuft jetzt serverseitig über Supabase Storage.
+- Logo-URLs werden pro Firma in der Datenbank persistiert.
+- Diagnose-Logging in der Upload-Route ([branding-upload] POST entered).
+
+Neue/geänderte Dateien:
+- src/lib/supabase-storage.ts – Server-only Supabase-Client
+- src/lib/branding-logo-persist.ts – Firmenvalidierung + DB-Persistenz
+- src/lib/branding-upload.ts – Supabase-Storage-Upload
+- src/app/api/superuser/branding/logo/route.ts – erweitert
+- supabase/migrations/20260610180000_certiano_assets_storage.sql
+  (Bucket certiano-assets)
+- .env.example, DEPLOYMENT.md – neue Env-Vars dokumentiert
+
+Neue Umgebungsvariablen:
+- SUPABASE_URL
+- SUPABASE_SERVICE_ROLE_KEY
+- SUPABASE_STORAGE_BUCKET (Standard: certiano-assets)
+
+Speicherpfade:
+- Operator: operator/logo-<timestamp>.<ext>
+- Firma: companies/company-<id>/logo-<timestamp>.<ext>
+
+
+================================================================================
+RELEASE V2.2 – Alpha
+Commit: 92d8133 | 10.06.2026, 19:25 Uhr
+================================================================================
+
+BRANDING-STRUKTUR
+-----------------
+- Trennung Certiano-Branding (Plattform) vs. Firmenbranding (pro Mandant).
+- Certiano-Branding: /certiano/einstellungen/branding
+- Firmenbranding: /certiano/companies/[id]/branding
+- Neue Formulare: CertianoBrandingForm, CompanyBrandingForm, BrandingLivePreview
+- BrandLogo-Komponente mit festen Containern (Sidebar ~48px, Vorschau 150×150),
+  object-contain, kein dynamisches Bbox-Scaling.
+
+FIRMENKÜRZEL (company_code)
+---------------------------
+- Migration: 20260610140000_company_code.sql
+- Automatische Vergabe beim Anlegen (F0001, F0002, …) via company_code_seq
+- Anzeige in Certiano-Firmenliste als „Kürzel“
+- src/lib/company-code.ts – allocateCompanyCode()
+
+ADMIN-UI / TABELLEN
+-------------------
+- AdminDataTable komplett überarbeitet (Spaltenbreiten, Sichtbarkeit, Footer)
+- TableActionBar mit ResizeObserver-Overflow
+- ActionMenu, TableActionIcons, TableQuickActions, StatusDot, EntityTableCell
+- Certiano-Firmenübersicht (/certiano/page.tsx): Zwei-Zeilen-Layout, Status-Dots,
+  Suche, Kürzel-Spalte
+- Benutzerverwaltung, Branchen, Hauptthemen, Verantwortlichkeiten überarbeitet
+- ResizableTableParts, SearchFilterBar, IndustryIcon
+
+BRANDING-FUNKTIONEN
+-------------------
+- Automatische Textfarben (branding-text-colors.ts)
+- Branding-Presets (branding-presets.ts)
+- Migration: 20260621130000_company_branding_text_colors.sql
+- Logo-Upload-Route (lokal, vor Supabase-Fix)
+- Operator-Branding-Cache (operator-branding.ts)
+
+FIRMENSTAMMDATEN
+----------------
+- Ansprechpartner-Feld (Migration: 20260621120000_company_contact_person.sql)
+- Firmenstatus-Labels (company-status-labels.ts)
+- Kurzname/Slug in Formular für Dokumentvariablen beibehalten
+- „Platzhalter“-Spalte aus Verantwortlichkeiten entfernt (war berechnet, nicht DB)
+
+TERMINOLOGIE (UI)
+-----------------
+- Entwicklerbegriffe durch fachliche Bezeichnungen ersetzt:
+  · Slug → Kurzname / Web-Kurzname
+  · ID → Kürzel (company_code)
+  · Kein „Tenant“, „Mandantencode“, „Interne ID“ in der UI
+
+
+================================================================================
+RELEASE V2.1 – Alpha
+Commit: bba61a2 | 10.06.2026, 01:04 Uhr
+================================================================================
+
+- Kurszuweisung pro Firma mit Themenauswahl (CourseProvisionTopicPicker)
+- Kurszuweisungsoptionen-API (course-assignment-options)
+- Firmen-Löschfunktion mit Danger Zone (company-delete, delete-options)
+- Passwort-Reset für Firmenbenutzer durch Superuser
+- Branchen-API erweitert (Industries CRUD)
+- Superuser-Benutzerliste überarbeitet (superuser-users-list)
+- AdminCredentialsDialog für neue Zugangsdaten
+- Firmen-Detailseite: eigene Benutzerseite /certiano/companies/[id]/users
+
+
+================================================================================
+RELEASE V2.0 – Alphatest
+Commit: 84bec22 | 09.06.2026, 23:06 Uhr
+================================================================================
+
+- Audit-Export für Admins (PDF-Download, audit-export-table)
+- Admin-Overrides für Kursbereitstellung (Provision)
+- Firmen-Admin-Einstellungen (company-admin-settings)
+- Migrationen: provision_admin_overrides, company_admin_overrides
+- PDF-Export-Bibliothek erweitert (pdf-export.ts)
+- Dashboard: Zertifikate, Seminare, Inhalte, Audit-Export-Seiten
+
+
+================================================================================
+FEATURE – Multi-Topic-Zuweisung für Kurse
+Commit: 4c41c36 | 09.06.2026, 17:36 Uhr
+================================================================================
+
+- Kurse können mehreren Hauptthemen zugeordnet werden
+- Migration: 20260618120000_course_topic_assignments.sql
+- course-topics.ts, course-hierarchy.ts erweitert
+- Master-Course- und Seminar-Detailseiten überarbeitet
+- Admin- und Superuser-APIs für Kurs-Themen-Zuweisung
+
+
+================================================================================
+FEATURE – Kurs-Themen-Gruppierung
+Commit: 2adbf7f
+================================================================================
+
+- Kurse nach Themen gruppierbar
+- course-topics Erweiterungen
+
+
+================================================================================
+PERFORMANCE & INFRASTRUKTUR
+Commits: f90673a, 6e88099, 6f3d91c, cfa0ebd, 19bcb6f
+================================================================================
+
+- Admin-Dashboard-Timeout behoben (Single DB Round Trip)
+- Dashboard-Trainingszähler optimiert + DB-Indizes
+- Sicheres Migrations-Tracking (db-migrate, baseline)
+- .env.local wird automatisch für DB-CLI-Skripte geladen
+- Dashboard-Summary-Queries optimiert
+
+
+================================================================================
+ERWEITERUNG – Certiano Admin & Superuser
+Commit: 283f4b3 | 08.06.2026
+================================================================================
+
+- Dokumentvorlagen-Designer (Draft, Preview, Publish)
+- Mitarbeiterkategorien, Verantwortlichkeiten, Datenschutzstatus
+- Trainingsstatus, Zertifikate, Dashboard-Summary
+- Branchen und Geschäftstypen (Business Types)
+- Umfangreiche Seed-/Test-Skripte (E2E-Designer, Safety Content, PDF-Tests)
+- Superuser-APIs für Firmen, Kurse, Benutzer erweitert
+
+
+================================================================================
+SUPABASE RLS
+Commit: 8e1045d
+================================================================================
+
+- Row Level Security für public-Tabellen aktiviert
+
+
+================================================================================
+Certiano Campus Updates
+Commits: 2e4b27c, 587aabd, c88a36d
+================================================================================
+
+- Superuser-Bereich und Kursverwaltung erweitert
+- Laufende Campus-Verbesserungen
+
+
+================================================================================
+RELEASE – Mandantentrennung & Superuser-Bereich
+Commit: bb18778 | 01.06.2026
+================================================================================
+
+- Certiano-Admin unter /certiano (eigener Bereich)
+- Certiano-Login unter /certiano/login (Superuser)
+- Mandantentrennung in Auth, APIs und UI
+- Branding-Seiten für Operator und Mandanten
+- Login-Flow mit Portal-Trennung (tenant vs. certiano)
+
+
+================================================================================
+RELEASE – Mandantenfähigkeit, Superuser & Lizenzsystem
+Commit: f0ac876 | 31.05.2026
+================================================================================
+
+- Multi-Tenant-Architektur (companies, company_id auf users)
+- Superuser-Verwaltung (/superuser → später /certiano)
+- Lizenzsystem (license_status, license_expires_at)
+- Datenschutz-Bestätigung (Privacy Policy Flow)
+- Passwort-Änderung erzwingen (must_change_password)
+- Öffentliche Branding-API (/api/public/branding)
+- Firmen-Dashboard: Firma, Lizenz, Datenschutz
+- Mandanten-Login unter /login
+
+
+================================================================================
+FRÜHERE COMMITS
+================================================================================
+
+bb34ab9 – Fix Login, Datenschutz, Seed
+ba88081 – Login-Timeout durch Auto-Seed behoben
+33354e7 – Migration für Mandantenfähigkeit korrigiert
+91f326c – Neue Benutzerprofilfelder
+97d3ff6 – Erster Commit
+
+
+================================================================================
+DATENBANK-MIGRATIONEN (Übersicht)
+================================================================================
+
+20260610140000_company_code.sql          – Firmenkürzel F0001, F0002, …
+20260610180000_certiano_assets_storage.sql – Supabase Storage Bucket
+20260621120000_company_contact_person.sql  – Ansprechpartner
+20260621130000_company_branding_text_colors.sql – Textfarben im Branding
+20260620120000_company_admin_overrides.sql – Admin-Overrides pro Firma
+20260619130000_provision_admin_overrides_defaults.sql
+20260619120000_provision_admin_overrides.sql
+20260618120000_course_topic_assignments.sql – Multi-Topic-Zuweisung
+(+ ältere Migrationen für Mandantenfähigkeit, Lizenz, Datenschutz, RLS)
+
+
+================================================================================
+WICHTIGE ROUTEN (Stand V2.2.1)
+================================================================================
+
+Öffentlich:
+  /login                          – Mandanten-Login (Firmenkennung + E-Mail + PW)
+  /certiano/login                 – Superuser-Login
+
+Certiano-Admin:
+  /certiano                       – Firmenübersicht
+  /certiano/einstellungen/branding – Certiano-Branding (Plattform)
+  /certiano/companies/[id]/branding – Firmenbranding
+  /certiano/companies/[id]        – Firmendetails
+
+API (Auswahl):
+  POST /api/auth/login            – Login (portal: tenant | certiano)
+  GET  /api/public/tenant?firma=  – Tenant-Auflösung per company_code
+  GET  /api/public/operator-branding – Certiano-Branding
+  POST /api/superuser/branding/logo – Logo-Upload (Supabase Storage)
+
+
+================================================================================
+ENDE
+================================================================================
