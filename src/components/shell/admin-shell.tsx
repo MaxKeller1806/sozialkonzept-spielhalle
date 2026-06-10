@@ -76,9 +76,6 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
       navAriaLabel="Administration"
       ready={ready}
       loadingFallback={<LoadingStatus />}
-      topbar={{
-        showNotifications: true,
-      }}
     >
       {children}
     </AppShell>

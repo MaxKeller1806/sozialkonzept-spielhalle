@@ -106,8 +106,9 @@ export function AccessibilityWidget() {
     paused,
     rate,
     hasLesson,
+    hasReadableContent,
     setRate,
-    speakLesson,
+    speakCurrent,
     pause,
     resume,
     stop,
@@ -201,7 +202,9 @@ export function AccessibilityWidget() {
                   <p className="a11y-widget-hint">
                     {hasLesson
                       ? "Lektionstext kann vorgelesen werden."
-                      : "Öffnen Sie eine Lektion, um Inhalte vorlesen zu lassen."}
+                      : hasReadableContent
+                        ? "Seiteninhalt kann vorgelesen werden."
+                        : "Auf dieser Seite ist kein vorlesbarer Inhalt verfügbar."}
                   </p>
 
                   <SegmentGroup
@@ -217,8 +220,8 @@ export function AccessibilityWidget() {
                       <button
                         type="button"
                         className="a11y-widget-btn a11y-widget-btn-primary"
-                        onClick={speakLesson}
-                        disabled={!hasLesson}
+                        onClick={speakCurrent}
+                        disabled={!hasReadableContent}
                       >
                         Vorlesen starten
                       </button>

@@ -33,12 +33,9 @@ function loadOperatorBranding(): Promise<OperatorBrandingState | null> {
       const controller = new AbortController();
       const timeout = window.setTimeout(() => controller.abort(), 8000);
       try {
-        let res = await fetch("/api/superuser/operator-branding", {
+        const res = await fetch("/api/public/operator-branding", {
           signal: controller.signal,
         });
-        if (res.status === 401 || res.status === 403) {
-          res = await fetch("/api/public/operator-branding", { signal: controller.signal });
-        }
         if (!res.ok) {
           const fallback = { name: APP_NAME, branding: DEFAULT_BRANDING };
           operatorBrandingCache = fallback;

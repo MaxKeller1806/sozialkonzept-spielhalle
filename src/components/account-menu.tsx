@@ -32,14 +32,12 @@ function menuItems(role: UserRole, userId: number): MenuItem[] {
         { type: "link", href: "/dashboard/konto", label: "Mein Konto" },
         releaseNotes,
         { type: "link", href: "/dashboard/firma", label: "Meine Firma" },
-        { type: "link", href: "/dashboard/uebersicht", label: "Dashboard" },
         { type: "logout", label: "Abmelden" },
       ];
     case "employee":
       return [
         { type: "link", href: "/konto", label: "Mein Konto" },
         releaseNotes,
-        { type: "link", href: "/schulung", label: "Meine Schulungen" },
         { type: "logout", label: "Abmelden" },
       ];
   }

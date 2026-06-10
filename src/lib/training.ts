@@ -15,17 +15,33 @@ export async function getActiveAttempt(
   userId: number,
   courseId: string
 ): Promise<TrainingAttempt | undefined> {
+  const map = await getActiveAttemptsByCourseIds(userId, [courseId]);
+  return map.get(courseId);
+}
+
+/** Active (incomplete) attempt per course in one query (training list). */
+export async function getActiveAttemptsByCourseIds(
+  userId: number,
+  courseIds: string[]
+): Promise<Map<string, TrainingAttempt>> {
+  const map = new Map<string, TrainingAttempt>();
+  if (courseIds.length === 0) return map;
+
   await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
-    SELECT * FROM training_attempts
-    WHERE user_id = ${userId} AND course_id = ${courseId} AND completed_at IS NULL
-    ORDER BY started_at DESC
-    LIMIT 1
+    SELECT DISTINCT ON (course_id) *
+    FROM training_attempts
+    WHERE user_id = ${userId}
+      AND course_id IN ${sql(courseIds)}
+      AND completed_at IS NULL
+    ORDER BY course_id, started_at DESC
   `;
-  return rows[0]
-    ? mapTrainingAttempt(rows[0] as Record<string, unknown>)
-    : undefined;
+  for (const row of rows) {
+    const attempt = mapTrainingAttempt(row as Record<string, unknown>);
+    map.set(attempt.courseId, attempt);
+  }
+  return map;
 }
 
 export async function startAttempt(

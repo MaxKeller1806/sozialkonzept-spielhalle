@@ -92,24 +92,46 @@ export async function getLatestCertificate(
   userId: number,
   courseId?: string
 ): Promise<Certificate | undefined> {
+  if (courseId) {
+    const map = await getLatestCertificatesByCourseIds(userId, [courseId]);
+    return map.get(courseId);
+  }
   await ensureSeeded();
   const sql = getSql();
-  const rows = courseId
-    ? await sql`
-        SELECT * FROM certificates
-        WHERE user_id = ${userId} AND course_id = ${courseId} AND revoked = FALSE
-        ORDER BY issued_at DESC
-        LIMIT 1
-      `
-    : await sql`
-        SELECT * FROM certificates
-        WHERE user_id = ${userId} AND revoked = FALSE
-        ORDER BY issued_at DESC
-        LIMIT 1
-      `;
+  const rows = await sql`
+    SELECT * FROM certificates
+    WHERE user_id = ${userId} AND revoked = FALSE
+    ORDER BY issued_at DESC
+    LIMIT 1
+  `;
   return rows[0]
     ? mapCertificate(rows[0] as Record<string, unknown>)
     : undefined;
+}
+
+/** Latest non-revoked certificate per course in one query (training list). */
+export async function getLatestCertificatesByCourseIds(
+  userId: number,
+  courseIds: string[]
+): Promise<Map<string, Certificate>> {
+  const map = new Map<string, Certificate>();
+  if (courseIds.length === 0) return map;
+
+  await ensureSeeded();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT DISTINCT ON (course_id) *
+    FROM certificates
+    WHERE user_id = ${userId}
+      AND course_id IN ${sql(courseIds)}
+      AND revoked = FALSE
+    ORDER BY course_id, issued_at DESC
+  `;
+  for (const row of rows) {
+    const cert = mapCertificate(row as Record<string, unknown>);
+    map.set(cert.courseId, cert);
+  }
+  return map;
 }
 
 export type EmployeeCertificateListRow = {

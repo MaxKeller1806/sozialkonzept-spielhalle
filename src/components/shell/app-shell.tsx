@@ -14,10 +14,6 @@ export type AppShellBrand = {
   portalName: string;
 };
 
-export type AppShellTopbarOptions = {
-  showNotifications?: boolean;
-};
-
 export type AppShellProps = {
   children: React.ReactNode;
   storageKey: string;
@@ -26,7 +22,6 @@ export type AppShellProps = {
   navAriaLabel: string;
   navVariant?: "light" | "dark";
   contentClassName?: string;
-  topbar?: AppShellTopbarOptions;
   ready?: boolean;
   loadingFallback?: React.ReactNode;
 };
@@ -80,7 +75,6 @@ export function AppShell({
   navAriaLabel,
   navVariant = "light",
   contentClassName = "app-content mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-8",
-  topbar,
   ready = true,
   loadingFallback = <LoadingStatus />,
 }: AppShellProps) {
@@ -153,7 +147,6 @@ export function AppShell({
           contextName={brand.companyName}
           portalName={brand.portalName}
           onOpenMobileNav={() => setMobileNavOpen(true)}
-          showNotifications={topbar?.showNotifications}
         />
         <PageMain className={contentClassName}>{children}</PageMain>
       </div>

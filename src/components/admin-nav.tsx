@@ -1,12 +1,9 @@
 import {
-  IconAccount,
   IconBuilding,
   IconDashboard,
-  IconEmployeeCategories,
   IconExport,
   IconFeedback,
   IconPrivacy,
-  IconResponsibilities,
   IconSeminars,
   IconTrainingStatus,
   IconUsers,
@@ -26,6 +23,12 @@ export type AdminNavKey =
   | "audit-export"
   | "konto";
 
+const MITARBEITER_PATHS =
+  (p: string) =>
+    p === "/dashboard" ||
+    p.startsWith("/dashboard/mitarbeiterkategorien") ||
+    p.startsWith("/dashboard/verantwortlichkeiten");
+
 export const ADMIN_SIDEBAR_ITEMS: SidebarNavItem[] = [
   {
     href: "/dashboard/uebersicht",
@@ -37,19 +40,30 @@ export const ADMIN_SIDEBAR_ITEMS: SidebarNavItem[] = [
     href: "/dashboard",
     label: "Mitarbeiter",
     icon: <IconUsers />,
-    match: (p) => p === "/dashboard",
+    match: MITARBEITER_PATHS,
+    children: [
+      {
+        href: "/dashboard",
+        label: "Mitarbeiter",
+        match: (p) => p === "/dashboard",
+      },
+      {
+        href: "/dashboard/mitarbeiterkategorien",
+        label: "Mitarbeiterkategorien",
+        match: (p) => p.startsWith("/dashboard/mitarbeiterkategorien"),
+      },
+      {
+        href: "/dashboard/verantwortlichkeiten",
+        label: "Verantwortlichkeiten",
+        match: (p) => p.startsWith("/dashboard/verantwortlichkeiten"),
+      },
+    ],
   },
   {
-    href: "/dashboard/mitarbeiterkategorien",
-    label: "Mitarbeiterkategorien",
-    icon: <IconEmployeeCategories />,
-    match: (p) => p.startsWith("/dashboard/mitarbeiterkategorien"),
-  },
-  {
-    href: "/dashboard/verantwortlichkeiten",
-    label: "Verantwortlichkeiten",
-    icon: <IconResponsibilities />,
-    match: (p) => p.startsWith("/dashboard/verantwortlichkeiten"),
+    href: "/dashboard/schulungsstatus",
+    label: "Schulungsstatus",
+    icon: <IconTrainingStatus />,
+    match: (p) => p.startsWith("/dashboard/schulungsstatus"),
   },
   {
     href: "/dashboard/seminare",
@@ -59,28 +73,11 @@ export const ADMIN_SIDEBAR_ITEMS: SidebarNavItem[] = [
       p.startsWith("/dashboard/seminare") || p.startsWith("/dashboard/inhalte"),
   },
   {
-    href: "/dashboard/schulungsstatus",
-    label: "Schulungsstatus",
-    icon: <IconTrainingStatus />,
-    match: (p) => p.startsWith("/dashboard/schulungsstatus"),
-  },
-  {
-    href: "/dashboard/feedback",
-    label: "Rückmeldungen",
-    icon: <IconFeedback />,
-    match: (p) => p.startsWith("/dashboard/feedback"),
-  },
-  {
-    href: "/dashboard/datenschutz",
-    label: "Datenschutz",
-    icon: <IconPrivacy />,
-    match: (p) => p.startsWith("/dashboard/datenschutz"),
-  },
-  {
-    href: "/dashboard/audit-export",
-    label: "Audit-Export",
-    icon: <IconExport />,
-    match: (p) => p.startsWith("/dashboard/audit-export"),
+    href: "/dashboard/firma",
+    label: "Meine Firma",
+    icon: <IconBuilding />,
+    match: (p) =>
+      p.startsWith("/dashboard/firma") || p.startsWith("/dashboard/lizenz"),
   },
   {
     href: "/dashboard/standorte",
@@ -89,17 +86,22 @@ export const ADMIN_SIDEBAR_ITEMS: SidebarNavItem[] = [
     match: (p) => p.startsWith("/dashboard/standorte"),
   },
   {
-    href: "/dashboard/firma",
-    label: "Meine Firma",
-    icon: <IconBuilding />,
-    match: (p) =>
-      p.startsWith("/dashboard/firma") || p.startsWith("/dashboard/lizenz"),
+    href: "/dashboard/audit-export",
+    label: "Audit-Export",
+    icon: <IconExport />,
+    match: (p) => p.startsWith("/dashboard/audit-export"),
   },
   {
-    href: "/dashboard/konto",
-    label: "Mein Konto",
-    icon: <IconAccount />,
-    match: (p) => p.startsWith("/dashboard/konto"),
+    href: "/dashboard/datenschutz",
+    label: "Datenschutz",
+    icon: <IconPrivacy />,
+    match: (p) => p.startsWith("/dashboard/datenschutz"),
+  },
+  {
+    href: "/dashboard/feedback",
+    label: "Rückmeldungen",
+    icon: <IconFeedback />,
+    match: (p) => p.startsWith("/dashboard/feedback"),
   },
 ];
 

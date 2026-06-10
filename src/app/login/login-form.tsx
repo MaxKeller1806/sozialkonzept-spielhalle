@@ -2,11 +2,11 @@
 
 import { useId, useState } from "react";
 import {
-  ArrowRight,
   Building2,
   Eye,
   EyeOff,
   Lock,
+  LogIn,
   Mail,
 } from "lucide-react";
 import {
@@ -134,23 +134,24 @@ export function LoginForm({
 
   return (
     <BrandingProvider branding={branding}>
-      <main id="main-content" className="min-h-screen" tabIndex={-1}>
+      <main id="main-content" data-readable-content="" className="min-h-screen" tabIndex={-1}>
         <TenantLoginLayout
           brandingColumn={
-            <TenantLoginBrandingColumn operatorLogoUrl={operatorLogoUrl} />
-          }
-          loginColumn={
-            <TenantLoginFormColumn
+            <TenantLoginBrandingColumn
+              operatorLogoUrl={operatorLogoUrl}
               portal={portal}
               companyLogoUrl={isBranded ? tenant.branding.logoUrl : null}
               companyName={isBranded ? tenant.companyName : null}
-            >
-              <div className="mb-6 text-center">
-                <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
-                  Willkommen zurück!
+            />
+          }
+          loginColumn={
+            <TenantLoginFormColumn>
+              <div className="mb-8 text-center">
+                <h2 className="text-2xl font-bold text-slate-900 sm:text-[1.75rem]">
+                  Willkommen
                 </h2>
                 <p className="mt-2 text-sm text-slate-500">
-                  Bitte melden Sie sich mit Ihren Zugangsdaten an.
+                  Bitte melden Sie sich an, um fortzufahren.
                 </p>
               </div>
 
@@ -159,7 +160,7 @@ export function LoginForm({
                   <LoginField
                     label="Firmenkennung"
                     icon={Building2}
-                    placeholder="z. B. EXTREME-BOWLING"
+                    placeholder="z. B. F0001"
                     value={companyCode}
                     onChange={(e) => setCompanyCode(e.target.value)}
                     autoComplete="organization"
@@ -171,7 +172,7 @@ export function LoginForm({
                   icon={Mail}
                   type="email"
                   autoComplete="email"
-                  placeholder="ihre.email@firma.de"
+                  placeholder="ihre@email.de"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -198,15 +199,26 @@ export function LoginForm({
                     </button>
                   }
                 />
+
+                <p className="text-right">
+                  <a
+                    href="#"
+                    className="text-sm font-medium text-[#2563eb] transition hover:text-[#1d4ed8] hover:underline"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    Passwort vergessen?
+                  </a>
+                </p>
+
                 <ErrorMessage message={error} />
                 <button
                   type="submit"
                   disabled={loading}
                   aria-busy={loading}
-                  className="bg-brand mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="bg-brand mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
+                  {!loading && <LogIn size={18} aria-hidden="true" />}
                   {loading ? "Wird angemeldet…" : "Anmelden"}
-                  {!loading && <ArrowRight size={18} aria-hidden="true" />}
                 </button>
               </form>
             </TenantLoginFormColumn>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireEmployee } from "@/lib/auth";
-import { getLatestCertificate } from "@/lib/certificate";
+import { getLatestCertificate, getLatestCertificatesByCourseIds } from "@/lib/certificate";
 import { getCertificateStatus } from "@/lib/status";
 import {
   formatEmployeeSeminarStatus,
@@ -14,6 +14,7 @@ import {
 import {
   allLessonsComplete,
   getActiveAttempt,
+  getActiveAttemptsByCourseIds,
   getEffectiveLessonProgress,
   startAttempt,
   assertUserCourseAccess,
@@ -34,12 +35,17 @@ export async function GET(request: Request) {
     return await withDbRetry(async () => {
       if (!courseIdParam) {
         const courses = await getUserAssignedCourses(user.id, user.companyId);
-        const enriched = [];
-        for (const c of courses) {
-          const cert = await getLatestCertificate(user.id, c.id);
-          const attempt = await getActiveAttempt(user.id, c.id);
+        const courseIds = courses.map((c) => c.id);
+        const [certificatesByCourse, attemptsByCourse] = await Promise.all([
+          getLatestCertificatesByCourseIds(user.id, courseIds),
+          getActiveAttemptsByCourseIds(user.id, courseIds),
+        ]);
+
+        const enriched = courses.map((c) => {
+          const cert = certificatesByCourse.get(c.id);
+          const attempt = attemptsByCourse.get(c.id);
           const seminarStatus = getEmployeeSeminarStatus(cert);
-          enriched.push({
+          return {
             id: c.id,
             title: c.title,
             fullTitle: c.title,
@@ -70,8 +76,8 @@ export async function GET(request: Request) {
               cert?.validUntil ?? null
             ),
             inProgress: !!attempt,
-          });
-        }
+          };
+        });
         return NextResponse.json({
           courses: enriched,
           mainCategories: Object.values(MAIN_CATEGORIES),

@@ -230,7 +230,13 @@ export function PageMain({
   style?: React.CSSProperties;
 }) {
   return (
-    <main id="main-content" className={className} style={style} tabIndex={-1}>
+    <main
+      id="main-content"
+      data-readable-content=""
+      className={className}
+      style={style}
+      tabIndex={-1}
+    >
       {children}
     </main>
   );

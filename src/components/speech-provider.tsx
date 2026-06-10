@@ -15,6 +15,7 @@ import {
   SPEECH_RATE_MAP,
   type SpeechRate,
 } from "@/lib/a11y-storage";
+import { extractReadablePageText } from "@/lib/readable-page-text";
 
 interface SpeechContextValue {
   supported: boolean;
@@ -22,9 +23,10 @@ interface SpeechContextValue {
   paused: boolean;
   rate: SpeechRate;
   hasLesson: boolean;
+  hasReadableContent: boolean;
   setRate: (rate: SpeechRate) => void;
   speak: (text: string) => void;
-  speakLesson: () => void;
+  speakCurrent: () => void;
   pause: () => void;
   resume: () => void;
   stop: () => void;
@@ -50,6 +52,7 @@ export function SpeechProvider({ children }: { children: React.ReactNode }) {
   const [paused, setPaused] = useState(false);
   const [rate, setRateState] = useState<SpeechRate>("normal");
   const [lessonText, setLessonText] = useState<string | null>(null);
+  const [hasPageContent, setHasPageContent] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const lessonTextRef = useRef<string | null>(null);
   const prevLessonKeyRef = useRef<string | null>(null);
@@ -78,6 +81,14 @@ export function SpeechProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     stop();
   }, [pathname, stop]);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const text = extractReadablePageText();
+      setHasPageContent(Boolean(text.trim()));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pathname, lessonText]);
 
   const registerLesson = useCallback(
     (key: string, text: string) => {
@@ -132,9 +143,14 @@ export function SpeechProvider({ children }: { children: React.ReactNode }) {
     [supported, rate, stop]
   );
 
-  const speakLesson = useCallback(() => {
-    const text = lessonTextRef.current;
-    if (text) speak(text);
+  const speakCurrent = useCallback(() => {
+    const lesson = lessonTextRef.current?.trim();
+    if (lesson) {
+      speak(lesson);
+      return;
+    }
+    const pageText = extractReadablePageText();
+    if (pageText) speak(pageText);
   }, [speak]);
 
   const pause = useCallback(() => {
@@ -149,6 +165,9 @@ export function SpeechProvider({ children }: { children: React.ReactNode }) {
     setPaused(false);
   }, [speaking, paused]);
 
+  const hasLesson = Boolean(lessonText?.trim());
+  const hasReadableContent = hasLesson || hasPageContent;
+
   return (
     <SpeechContext.Provider
       value={{
@@ -156,10 +175,11 @@ export function SpeechProvider({ children }: { children: React.ReactNode }) {
         speaking,
         paused,
         rate,
-        hasLesson: Boolean(lessonText?.trim()),
+        hasLesson,
+        hasReadableContent,
         setRate,
         speak,
-        speakLesson,
+        speakCurrent,
         pause,
         resume,
         stop,
