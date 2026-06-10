@@ -2,7 +2,12 @@ import {
   normalizeBranding,
   OPERATOR_COMPANY_SLUG,
 } from "./branding-theme";
-import { getCompanyById, getCompanyByLoginDomain, getCompanyBySlug } from "./tenant";
+import {
+  getCompanyByCompanyCode,
+  getCompanyById,
+  getCompanyByLoginDomain,
+  getCompanyBySlug,
+} from "./tenant";
 import type { Company, CompanyBranding } from "./types";
 
 export type TenantResolutionSource = "subdomain" | "domain" | "slug" | "query";
@@ -22,6 +27,10 @@ export function normalizeCompanySlug(raw: string): string {
     .replace(/[^a-z0-9-]/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+export function normalizeCompanyCode(raw: string): string {
+  return raw.trim().toUpperCase();
 }
 
 export function getTenantBaseDomain(): string {
@@ -74,6 +83,15 @@ export async function getTenantCompanyBySlug(
   return isTenantCompany(company) ? company : undefined;
 }
 
+export async function getTenantCompanyByCode(
+  codeRaw: string
+): Promise<Company | undefined> {
+  const code = normalizeCompanyCode(codeRaw);
+  if (!code) return undefined;
+  const company = await getCompanyByCompanyCode(code);
+  return isTenantCompany(company) ? company : undefined;
+}
+
 export function companyToResolvedTenant(
   company: Company,
   source: TenantResolutionSource
@@ -89,10 +107,12 @@ export function companyToResolvedTenant(
 
 export async function resolveTenant(params: {
   host?: string | null;
-  slug?: string | null;
+  companyCode?: string | null;
 }): Promise<ResolvedTenant | null> {
   const host = params.host?.split(":")[0].toLowerCase() ?? null;
-  const slugParam = params.slug?.trim() ? normalizeCompanySlug(params.slug) : null;
+  const codeParam = params.companyCode?.trim()
+    ? normalizeCompanyCode(params.companyCode)
+    : null;
 
   if (host) {
     const byDomain = await getCompanyByLoginDomain(host);
@@ -109,13 +129,10 @@ export async function resolveTenant(params: {
     }
   }
 
-  if (slugParam) {
-    const bySlug = await getTenantCompanyBySlug(slugParam);
-    if (bySlug) {
-      return companyToResolvedTenant(
-        bySlug,
-        params.host ? "slug" : "query"
-      );
+  if (codeParam) {
+    const byCode = await getTenantCompanyByCode(codeParam);
+    if (byCode) {
+      return companyToResolvedTenant(byCode, "query");
     }
   }
 
@@ -123,15 +140,15 @@ export async function resolveTenant(params: {
 }
 
 export async function resolveLoginCompanyId(params: {
-  companySlug?: string | null;
+  companyCode?: string | null;
   companyId?: number | null;
 }): Promise<number | null> {
   if (params.companyId != null && Number.isFinite(params.companyId)) {
     const company = await getCompanyById(Number(params.companyId));
     return isTenantCompany(company) ? company.id : null;
   }
-  if (params.companySlug?.trim()) {
-    const company = await getTenantCompanyBySlug(params.companySlug);
+  if (params.companyCode?.trim()) {
+    const company = await getTenantCompanyByCode(params.companyCode);
     return company?.id ?? null;
   }
   return null;

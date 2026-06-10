@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { applyBrandingCssVars } from "@/lib/branding-theme";
+import { applyBrandingCssVars, brandingToCssVars } from "@/lib/branding-theme";
 import type { CompanyBranding } from "@/lib/types";
+import type { CSSProperties } from "react";
 
 export function BrandingProvider({
   branding,
@@ -11,6 +12,8 @@ export function BrandingProvider({
   branding: Partial<CompanyBranding> | null | undefined;
   children: React.ReactNode;
 }) {
+  const cssVars = brandingToCssVars(branding) as CSSProperties;
+
   useEffect(() => {
     applyBrandingCssVars(branding);
   }, [
@@ -22,5 +25,9 @@ export function BrandingProvider({
     branding?.loginBackgroundUrl,
   ]);
 
-  return <>{children}</>;
+  return (
+    <div className="contents" style={cssVars}>
+      {children}
+    </div>
+  );
 }

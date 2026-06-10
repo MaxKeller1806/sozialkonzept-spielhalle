@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const slugParam =
+    const companyCode =
       url.searchParams.get("firma") ??
       url.searchParams.get("slug") ??
       null;
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       request.headers.get("host") ??
       url.searchParams.get("host");
 
-    const tenant = await resolveTenant({ host, slug: slugParam });
+    const tenant = await resolveTenant({ host, companyCode });
 
     if (!tenant) {
       return NextResponse.json({ branding: null });

@@ -109,6 +109,18 @@ export async function getCompanyBySlug(slug: string): Promise<Company | undefine
   return rows[0] ? mapCompany(rows[0] as Record<string, unknown>) : undefined;
 }
 
+export async function getCompanyByCompanyCode(
+  codeRaw: string
+): Promise<Company | undefined> {
+  const sql = getSql();
+  const normalized = codeRaw.trim().toUpperCase();
+  if (!normalized) return undefined;
+  const rows = await sql`
+    SELECT * FROM companies WHERE UPPER(company_code) = ${normalized} LIMIT 1
+  `;
+  return rows[0] ? mapCompany(rows[0] as Record<string, unknown>) : undefined;
+}
+
 export async function getCompanyByLoginDomain(
   domain: string
 ): Promise<Company | undefined> {

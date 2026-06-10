@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       email?: string;
       password?: string;
       portal?: string;
-      companySlug?: string;
+      companyCode?: string;
       companyId?: number;
     };
     try {
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       t("1-read-request");
       return NextResponse.json({ error: "Ungültige Anfrage." }, { status: 400 });
     }
-    const { email, password, portal, companySlug, companyId } = body;
+    const { email, password, portal, companyCode, companyId } = body;
     t("1-read-request");
 
     if (!email || !password) {
@@ -83,11 +83,28 @@ export async function POST(request: Request) {
       );
     }
 
-    const { resolveLoginCompanyId } = await import("@/lib/tenant-resolve");
+    const { resolveLoginCompanyId, getTenantCompanyByCode } = await import(
+      "@/lib/tenant-resolve"
+    );
 
     if (portal !== "certiano") {
+      const hasCompanyCode = Boolean(companyCode?.trim());
+
+      if (hasCompanyCode) {
+        const company = await getTenantCompanyByCode(companyCode!);
+        if (!company) {
+          return NextResponse.json(
+            {
+              error:
+                "Firma nicht gefunden. Bitte prüfen Sie die Firmenkennung.",
+            },
+            { status: 404 }
+          );
+        }
+      }
+
       const expectedCompanyId = await resolveLoginCompanyId({
-        companySlug: companySlug ?? null,
+        companyCode: companyCode ?? null,
         companyId: companyId ?? null,
       });
 
