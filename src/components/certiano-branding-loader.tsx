@@ -73,6 +73,23 @@ export function useCertianoBranding(): OperatorBrandingState {
   return useContext(CertianoBrandingContext);
 }
 
+/** Operator-Logo für Sidebar in Admin- und Mitarbeiterportal (ohne BrandingProvider). */
+export function useOperatorBrandingLogo(): string | null {
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadOperatorBranding().then((d) => {
+      if (!cancelled) setLogoUrl(d?.branding.logoUrl ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return logoUrl;
+}
+
 export function CertianoBrandingLoader({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<OperatorBrandingState>(
     operatorBrandingCache ?? { name: APP_NAME, branding: DEFAULT_BRANDING }

@@ -6,6 +6,59 @@ import type { ReleaseNote } from "./types";
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "V2.5.0",
+    date: "10.06.2026",
+    summary:
+      "Verantwortlichkeiten in Zertifikaten, zweizeiliger Header, einheitliches Certiano-Logo.",
+    sections: [
+      {
+        title: "Verantwortlichkeiten & Zertifikate",
+        category: "features",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Firmenweite „Verantwortliche Person“ in „Meine Firma“ entfernt – Verantwortlichkeiten pro Thema unter „Verantwortlichkeiten“ bleiben zentral.",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Neue Platzhalter in Zertifikats- und Nachweisvorlagen: {{responsible_person}}, {{responsibility_name}}, {{responsible_email}} – aufgelöst aus Verantwortlichkeiten zum Kurs-Hauptthema.",
+            visibility: ["superuser", "admin", "employee"],
+          },
+        ],
+      },
+      {
+        title: "Header & Navigation",
+        category: "ui",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Topbar mit zwei Zeilen: Kontextname (Firma bzw. Certiano Campus) und Portalname darunter.",
+            visibility: ["superuser", "admin", "employee"],
+          },
+          {
+            text: "Globale Suchleiste im Betreiberportal entfernt.",
+            visibility: ["superuser", "admin"],
+          },
+        ],
+      },
+      {
+        title: "Branding & Logo",
+        category: "ui",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Sidebar in Betreiber- und Mitarbeiterportal zeigt das Certiano-Logo (Operator-Branding).",
+            visibility: ["superuser", "admin", "employee"],
+          },
+          {
+            text: "Firmenlogo-Upload vorübergehend deaktiviert – Hinweis auf zukünftige Version.",
+            visibility: ["superuser", "admin"],
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "V2.4.0",
     date: "10.06.2026",
     summary:

@@ -110,6 +110,8 @@ export function LogoUploadField({
   onUpload,
   onRemove,
   fileInputRef,
+  deferred = false,
+  deferredMessage = "Diese Funktion befindet sich derzeit in Vorbereitung.",
 }: {
   label: string;
   logoUrl: string;
@@ -117,7 +119,20 @@ export function LogoUploadField({
   onUpload: (file: File) => void;
   onRemove: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
+  deferred?: boolean;
+  deferredMessage?: string;
 }) {
+  if (deferred) {
+    return (
+      <div>
+        <span className="mb-1.5 block text-sm font-medium text-slate-700">{label}</span>
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm text-slate-600">{deferredMessage}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <span className="mb-1.5 block text-sm font-medium text-slate-700">{label}</span>

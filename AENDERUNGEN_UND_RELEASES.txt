@@ -1,8 +1,48 @@
 ================================================================================
 CERTIANO CAMPUS – Änderungen und Releases
 Projekt: sozialkonzept-spielhalle
-Stand: 10.06.2026 (V2.4.0)
+Stand: 10.06.2026 (V2.5.0)
 ================================================================================
+
+
+================================================================================
+RELEASE V2.5.0 – Alpha
+Commit: (pending) | 10.06.2026
+================================================================================
+
+VERANTWORTLICHKEITEN & ZERTIFIKATE
+-----------------------------------
+- Firmenweite „Verantwortliche Person“ in „Meine Firma“ entfernt
+  (Zertifikat-Signaturblock). Verantwortlichkeiten pro Thema unter
+  „Verantwortlichkeiten“ bleiben zentral.
+- Neue Platzhalter in Zertifikats- und Nachweisvorlagen:
+  · {{responsible_person}} – zugewiesene Person zum Kurs-Hauptthema
+  · {{responsibility_name}} – Name der Verantwortlichkeit
+  · {{responsible_email}} – E-Mail der zugewiesenen Person (optional)
+  · Bestehende themenspezifische Platzhalter (z. B.
+    {{responsible_person_sozialkonzept}}) weiterhin unterstützt
+
+HEADER & NAVIGATION
+-------------------
+- Topbar zeigt zwei Zeilen: Kontextname (Firma / Certiano Campus) oben,
+  Portalname (Betreiber-/Mitarbeiter-/Entwicklerportal) darunter
+- Globale Suchleiste im Betreiberportal entfernt (Certiano bereits in V2.3.1)
+
+BRANDING & LOGO
+---------------
+- Sidebar in Betreiber- und Mitarbeiterportal zeigt Certiano-Logo
+  (Operator-Branding), nicht mehr das Firmenlogo
+- Firmenlogo-Upload vorübergehend deaktiviert (Admin „Meine Firma“ und
+  Certiano Firmenbranding) – Hinweis: „in Vorbereitung“ / zukünftige Version
+
+Neue/geänderte Dateien (Auswahl):
+  · src/lib/responsibility-placeholders.ts – generische Platzhalter
+  · src/lib/certificate-responsibility-placeholders.ts – Auflösung je Kurs
+  · src/lib/pdf.ts – Platzhalterersetzung in Vorlagen
+  · src/components/shell/app-topbar.tsx – zweizeiliger Header
+  · src/components/shell/admin-shell.tsx, employee-shell.tsx – Operator-Logo
+  · src/app/dashboard/firma/page.tsx – Signatur & Logo-Upload entfernt
+  · src/components/certiano/company-branding-form.tsx – Logo-Upload deaktiviert
 
 
 ================================================================================

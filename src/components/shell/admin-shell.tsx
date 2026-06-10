@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ADMIN_SIDEBAR_ITEMS } from "@/components/admin-nav";
 import { AppShell } from "@/components/shell/app-shell";
+import { useOperatorBrandingLogo } from "@/components/certiano-branding-loader";
 import {
   TenantBrandingLoader,
   useTenantBranding,
@@ -18,6 +19,7 @@ const ADMIN_ALLOWED_REDIRECT_PREFIXES = [
 
 function AdminShellInner({ children }: { children: React.ReactNode }) {
   const tenant = useTenantBranding();
+  const operatorLogoUrl = useOperatorBrandingLogo();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -48,7 +50,7 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
       storageKey="admin-sidebar-collapsed"
       navItems={ADMIN_SIDEBAR_ITEMS}
       brand={{
-        logoUrl: tenant?.branding.logoUrl,
+        logoUrl: operatorLogoUrl,
         companyName,
         portalName: PORTAL_NAME_ADMIN,
       }}
@@ -56,9 +58,7 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
       ready={ready}
       loadingFallback={<LoadingStatus />}
       topbar={{
-        showSearch: true,
         showNotifications: true,
-        searchPlaceholder: "Suchen…",
       }}
     >
       {children}

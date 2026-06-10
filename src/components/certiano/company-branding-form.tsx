@@ -243,6 +243,8 @@ export function CompanyBrandingForm({ companyId }: CompanyBrandingFormProps) {
             onUpload={handleLogoUpload}
             onRemove={() => updateForm({ logoUrl: "" })}
             fileInputRef={fileInputRef}
+            deferred
+            deferredMessage="Die Unterstützung für individuelle Firmenlogos wird in einer zukünftigen Version verfügbar sein."
           />
         </section>
 

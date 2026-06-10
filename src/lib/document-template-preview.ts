@@ -106,6 +106,14 @@ export async function generateGlobalDocumentTemplatePreviewPdf(
     instructionCode: "N7",
     instructionTitle: "Verhalten bei einem Überfall",
     templateConfig: revision.config,
+    responsibilityPlaceholders: {
+      responsible_person_sozialkonzept: "Beispiel Person",
+    },
+    genericResponsibility: {
+      responsiblePerson: "Beispiel Person",
+      responsibilityName: "Sozialkonzept",
+      responsibleEmail: "beispiel@firma.de",
+    },
   });
 
   return {

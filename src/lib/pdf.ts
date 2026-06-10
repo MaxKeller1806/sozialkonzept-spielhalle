@@ -2,6 +2,11 @@ import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import { getAppUrl } from "./certificate";
 import type { DocumentTemplateConfig } from "./document-template";
+import {
+  applyResponsibilityPlaceholders,
+  type GenericResponsibilityContext,
+  type ResponsibilityPlaceholderMap,
+} from "./responsibility-placeholders";
 import type {
   Certificate,
   CompanyBranding,
@@ -35,9 +40,11 @@ type TemplatePlaceholderContext = {
 
 function applyTemplatePlaceholders(
   text: string,
-  ctx: TemplatePlaceholderContext
+  ctx: TemplatePlaceholderContext,
+  responsibilityPlaceholders?: ResponsibilityPlaceholderMap,
+  genericResponsibility?: GenericResponsibilityContext | null
 ): string {
-  return text
+  const base = text
     .replace(/\{\{courseCertificateTitle\}\}/g, ctx.courseCertificateTitle)
     .replace(/\{\{courseName\}\}/g, ctx.courseName)
     .replace(/\{\{courseVersion\}\}/g, ctx.courseVersion)
@@ -50,6 +57,12 @@ function applyTemplatePlaceholders(
     .replace(/\{\{instructionCode\}\}/g, ctx.instructionCode)
     .replace(/\{\{instructionTitle\}\}/g, ctx.instructionTitle)
     .replace(/\{\{companyName\}\}/g, ctx.companyName);
+
+  return applyResponsibilityPlaceholders(
+    base,
+    responsibilityPlaceholders ?? {},
+    genericResponsibility
+  );
 }
 
 export async function generateCertificatePdf(
@@ -63,6 +76,8 @@ export async function generateCertificatePdf(
     instructionCode?: string | null;
     instructionTitle?: string | null;
     templateConfig?: DocumentTemplateConfig;
+    responsibilityPlaceholders?: ResponsibilityPlaceholderMap;
+    genericResponsibility?: GenericResponsibilityContext | null;
   }
 ): Promise<Buffer> {
   const verifyUrl = `${getAppUrl()}/verify/${cert.verificationToken}`;
@@ -225,6 +240,8 @@ function generateCertificatePdfFromTemplate(
     documentSignature?: CompanyDocumentSignature;
     instructionCode?: string | null;
     instructionTitle?: string | null;
+    responsibilityPlaceholders?: ResponsibilityPlaceholderMap;
+    genericResponsibility?: GenericResponsibilityContext | null;
   },
   qrBuffer: Buffer | null
 ): Promise<Buffer> {
@@ -246,10 +263,30 @@ function generateCertificatePdfFromTemplate(
     instructionTitle: opts.instructionTitle ?? "",
     companyName: opts.companyName ?? "",
   };
-  const title = applyTemplatePlaceholders(templateConfig.title, ctx);
-  const subtitle = applyTemplatePlaceholders(templateConfig.subtitle, ctx);
-  const bodyText = applyTemplatePlaceholders(templateConfig.bodyText, ctx);
-  const footerText = applyTemplatePlaceholders(templateConfig.footerText, ctx);
+  const title = applyTemplatePlaceholders(
+    templateConfig.title,
+    ctx,
+    opts.responsibilityPlaceholders,
+    opts.genericResponsibility
+  );
+  const subtitle = applyTemplatePlaceholders(
+    templateConfig.subtitle,
+    ctx,
+    opts.responsibilityPlaceholders,
+    opts.genericResponsibility
+  );
+  const bodyText = applyTemplatePlaceholders(
+    templateConfig.bodyText,
+    ctx,
+    opts.responsibilityPlaceholders,
+    opts.genericResponsibility
+  );
+  const footerText = applyTemplatePlaceholders(
+    templateConfig.footerText,
+    ctx,
+    opts.responsibilityPlaceholders,
+    opts.genericResponsibility
+  );
   const { visibility } = templateConfig;
 
   return new Promise((resolve, reject) => {

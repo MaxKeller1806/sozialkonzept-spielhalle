@@ -3,20 +3,18 @@
 import { AccountMenu } from "@/components/account-menu";
 
 export type AppTopbarProps = {
-  breadcrumb?: string;
+  contextName?: string;
+  portalName?: string;
   onOpenMobileNav: () => void;
-  showSearch?: boolean;
   showNotifications?: boolean;
-  searchPlaceholder?: string;
   accountMenuVariant?: "light" | "dark";
 };
 
 export function AppTopbar({
-  breadcrumb,
+  contextName,
+  portalName,
   onOpenMobileNav,
-  showSearch = false,
   showNotifications = false,
-  searchPlaceholder = "Suchen…",
   accountMenuVariant = "light",
 }: AppTopbarProps) {
   return (
@@ -40,40 +38,22 @@ export function AppTopbar({
         </svg>
       </button>
 
-      {breadcrumb ? (
-        <p className="min-w-0 truncate text-sm font-medium text-slate-600 lg:text-base">
-          {breadcrumb}
-        </p>
+      {contextName || portalName ? (
+        <div className="min-w-0">
+          {contextName ? (
+            <p className="truncate text-base font-semibold text-slate-900 sm:text-lg">
+              {contextName}
+            </p>
+          ) : null}
+          {portalName ? (
+            <p className="truncate text-xs text-slate-500 sm:text-sm">{portalName}</p>
+          ) : null}
+        </div>
       ) : (
         <div className="hidden flex-1 lg:block" />
       )}
 
       <div className="ml-auto flex items-center gap-3">
-        {showSearch && (
-          <label className="relative hidden sm:block">
-            <span className="sr-only">Suchen</span>
-            <svg
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            <input
-              type="search"
-              placeholder={searchPlaceholder}
-              className="focus-brand w-48 rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-700 lg:w-56"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") e.preventDefault();
-              }}
-            />
-          </label>
-        )}
-
         {showNotifications && (
           <button
             type="button"
@@ -103,12 +83,5 @@ export function AppTopbar({
 
 /** @deprecated Nutze AppTopbar */
 export function AdminTopbar(props: AppTopbarProps) {
-  return (
-    <AppTopbar
-      showSearch
-      showNotifications
-      searchPlaceholder="Suchen…"
-      {...props}
-    />
-  );
+  return <AppTopbar showNotifications {...props} />;
 }

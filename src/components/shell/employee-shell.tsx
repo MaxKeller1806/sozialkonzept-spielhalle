@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { EMPLOYEE_SIDEBAR_ITEMS } from "@/components/employee-nav";
 import { AppShell } from "@/components/shell/app-shell";
+import { useOperatorBrandingLogo } from "@/components/certiano-branding-loader";
 import {
   TenantBrandingLoader,
   useTenantBranding,
@@ -19,6 +20,7 @@ const EMPLOYEE_ALLOWED_REDIRECT_PREFIXES = [
 
 function EmployeeShellInner({ children }: { children: React.ReactNode }) {
   const tenant = useTenantBranding();
+  const operatorLogoUrl = useOperatorBrandingLogo();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ function EmployeeShellInner({ children }: { children: React.ReactNode }) {
       storageKey="employee-sidebar-collapsed"
       navItems={EMPLOYEE_SIDEBAR_ITEMS}
       brand={{
-        logoUrl: tenant?.branding.logoUrl,
+        logoUrl: operatorLogoUrl,
         companyName: tenant?.companyName || APP_NAME,
         portalName: PORTAL_NAME_EMPLOYEE,
       }}

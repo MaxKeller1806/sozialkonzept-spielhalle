@@ -15,9 +15,7 @@ export type AppShellBrand = {
 };
 
 export type AppShellTopbarOptions = {
-  showSearch?: boolean;
   showNotifications?: boolean;
-  searchPlaceholder?: string;
 };
 
 export type AppShellProps = {
@@ -25,7 +23,6 @@ export type AppShellProps = {
   storageKey: string;
   navItems: SidebarNavItem[];
   brand: AppShellBrand;
-  breadcrumb?: string;
   navAriaLabel: string;
   navVariant?: "light" | "dark";
   contentClassName?: string;
@@ -80,7 +77,6 @@ export function AppShell({
   storageKey,
   navItems,
   brand,
-  breadcrumb,
   navAriaLabel,
   navVariant = "light",
   contentClassName = "app-content mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-8",
@@ -108,8 +104,6 @@ export function AppShell({
       return next;
     });
   }, [storageKey]);
-
-  const resolvedBreadcrumb = breadcrumb ?? brand.portalName;
 
   if (!ready) {
     return loadingFallback;
@@ -156,11 +150,10 @@ export function AppShell({
 
       <div className="app-layout-main flex min-h-screen min-h-dvh min-w-0 flex-col">
         <AppTopbar
-          breadcrumb={resolvedBreadcrumb}
+          contextName={brand.companyName}
+          portalName={brand.portalName}
           onOpenMobileNav={() => setMobileNavOpen(true)}
-          showSearch={topbar?.showSearch}
           showNotifications={topbar?.showNotifications}
-          searchPlaceholder={topbar?.searchPlaceholder}
         />
         <PageMain className={contentClassName}>{children}</PageMain>
       </div>

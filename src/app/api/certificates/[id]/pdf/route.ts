@@ -9,6 +9,7 @@ import { getCourseForContext } from "@/lib/course";
 import { getCourseMeta } from "@/lib/course-db";
 import { getDocumentTemplateRevisionById } from "@/lib/document-template";
 import { getCompanyById } from "@/lib/tenant";
+import { getCertificateResponsibilityPlaceholders } from "@/lib/certificate-responsibility-placeholders";
 import { generateCertificatePdf } from "@/lib/pdf";
 
 export async function GET(
@@ -57,6 +58,9 @@ export async function GET(
       templateConfig = revision?.config;
     }
 
+    const { responsibilityPlaceholders, genericResponsibility } =
+      await getCertificateResponsibilityPlaceholders(cert.companyId, cert.courseId);
+
     const pdf = await generateCertificatePdf(certUser, cert, course, {
       companyName: company?.name,
       branding: company?.branding,
@@ -64,6 +68,8 @@ export async function GET(
       instructionCode: courseMeta?.instructionCode ?? null,
       instructionTitle: courseMeta?.instructionTitle ?? null,
       templateConfig,
+      responsibilityPlaceholders,
+      genericResponsibility,
     });
 
     return new NextResponse(new Uint8Array(pdf), {

@@ -10,6 +10,7 @@ import { getCourseForContext } from "./course";
 import { getCourseMeta } from "./course-db";
 import { filterCourseForCompany } from "./content-provisions";
 import { getDocumentTemplateRevisionById } from "./document-template";
+import { getCertificateResponsibilityPlaceholders } from "./certificate-responsibility-placeholders";
 import { generateCertificatePdf } from "./pdf";
 import {
   generateExamDocumentationPdf,
@@ -227,6 +228,9 @@ async function renderCertificatePdfBuffer(cert: Certificate): Promise<Buffer> {
     templateConfig = revision?.config;
   }
 
+  const { responsibilityPlaceholders, genericResponsibility } =
+    await getCertificateResponsibilityPlaceholders(cert.companyId!, cert.courseId);
+
   return generateCertificatePdf(user, cert, course, {
     companyName: company?.name,
     branding: company?.branding,
@@ -234,6 +238,8 @@ async function renderCertificatePdfBuffer(cert: Certificate): Promise<Buffer> {
     instructionCode: courseMeta?.instructionCode ?? null,
     instructionTitle: courseMeta?.instructionTitle ?? null,
     templateConfig,
+    responsibilityPlaceholders,
+    genericResponsibility,
   });
 }
 

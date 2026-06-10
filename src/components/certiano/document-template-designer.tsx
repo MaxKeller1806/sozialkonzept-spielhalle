@@ -466,7 +466,8 @@ function DocumentTemplateEditor() {
                       />
                       <p className="text-xs text-slate-500">
                         Platzhalter: {"{{courseName}}"}, {"{{courseCertificateTitle}}"},
-                        {" {{courseVersion}}"}, {"{{companyName}}"} u. a.
+                        {" {{courseVersion}}"}, {"{{companyName}}"}, {"{{responsible_person}}"},
+                        {" {{responsibility_name}}"}, {"{{responsible_email}}"} u. a.
                       </p>
                     </div>
                   </section>
@@ -532,9 +533,11 @@ function DocumentTemplateEditor() {
                   <section>
                     <SectionTitle>Signatur</SectionTitle>
                     <p className="mb-4 text-sm text-slate-600">
-                      Die konkrete Person und Position legt jede Firma unter{" "}
-                      <strong>Meine Firma</strong> fest. Hier steuern Sie nur
-                      Layout und Beschriftungen.
+                      Verantwortliche Personen werden pro Thema unter{" "}
+                      <strong>Verantwortlichkeiten</strong> zugewiesen und können in
+                      Textfeldern über Platzhalter wie{" "}
+                      <code className="text-xs">{"{{responsible_person}}"}</code> eingefügt
+                      werden. Hier steuern Sie nur Layout und Beschriftungen.
                     </p>
                     <div className="space-y-4">
                       <Input

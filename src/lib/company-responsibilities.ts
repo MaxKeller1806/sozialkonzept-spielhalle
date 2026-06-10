@@ -327,6 +327,68 @@ export async function getCompanyResponsibilityPlaceholderValues(
   );
 }
 
+export type CourseResponsibilityContext = {
+  responsiblePerson: string;
+  responsibilityName: string;
+  responsibleEmail: string;
+};
+
+/** Verantwortlichkeit passend zum Kurs-Hauptthema (Slug-Abgleich). */
+export async function getCourseResponsibilityContext(
+  companyId: number,
+  courseId: string
+): Promise<CourseResponsibilityContext | null> {
+  await ensureSeeded();
+  const sql = getSql();
+
+  const topicRows = await sql`
+    SELECT ct.slug
+    FROM course_topic_assignments cta
+    JOIN course_topics ct ON ct.id = cta.topic_id
+    WHERE cta.course_id = ${courseId}
+    ORDER BY ct.sort_order ASC, ct.name ASC
+  `;
+
+  let slugs = topicRows.map((r) => String(r.slug));
+
+  if (slugs.length === 0) {
+    const legacyRows = await sql`
+      SELECT ct.slug
+      FROM courses c
+      JOIN course_topics ct ON ct.id = c.topic_id
+      WHERE c.id = ${courseId}
+        AND c.company_id = ${companyId}
+        AND c.topic_id IS NOT NULL
+      LIMIT 1
+    `;
+    slugs = legacyRows.map((r) => String(r.slug));
+  }
+
+  for (const slug of slugs) {
+    const rows = await sql`
+      SELECT rt.name, u.first_name, u.last_name, u.email
+      FROM responsibility_types rt
+      JOIN company_responsibilities cr
+        ON cr.responsibility_type_id = rt.id AND cr.company_id = ${companyId}
+      JOIN users u ON u.id = cr.user_id
+      WHERE rt.slug = ${slug}
+        AND rt.active = TRUE
+        AND cr.user_id IS NOT NULL
+      LIMIT 1
+    `;
+    if (rows.length > 0) {
+      const row = rows[0];
+      return {
+        responsiblePerson: `${String(row.first_name)} ${String(row.last_name)}`.trim(),
+        responsibilityName: String(row.name),
+        responsibleEmail: row.email != null ? String(row.email) : "",
+      };
+    }
+  }
+
+  return null;
+}
+
 export async function listActiveResponsibilityTypeSlugs(): Promise<string[]> {
   const types = await listActiveResponsibilityTypes();
   return types.map((t) => t.slug);

@@ -28,9 +28,6 @@ export async function PATCH(request: Request) {
 
     if (body.name !== undefined) patch.name = body.name;
     const fields: [string, string][] = [
-      ["certSignaturePerson", "cert_signature_person"],
-      ["certSignaturePosition", "cert_signature_position"],
-      ["certSignatureText", "cert_signature_text"],
       ["street", "street"],
       ["postalCode", "postal_code"],
       ["city", "city"],
@@ -47,7 +44,6 @@ export async function PATCH(request: Request) {
       ["textSecondaryColor", "text_secondary_color"],
       ["menuTextColor", "menu_text_color"],
       ["buttonTextColor", "button_text_color"],
-      ["logoUrl", "logo_url"],
       ["loginBackgroundUrl", "login_background_url"],
     ];
     for (const [jsKey, dbKey] of fields) {
