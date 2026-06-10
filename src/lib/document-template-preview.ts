@@ -1,4 +1,5 @@
 import { generateCertificatePdf } from "./pdf";
+import { normalizeBranding } from "./branding-theme";
 import type { Certificate, CourseData, User } from "./types";
 import type { DocumentType } from "./document-template";
 import { getGlobalDocumentTemplateDetail } from "./document-template-db";
@@ -89,14 +90,14 @@ export async function generateGlobalDocumentTemplatePreviewPdf(
   const { user, cert, course } = buildPreviewFixtures(detail.template.documentType);
   const pdf = await generateCertificatePdf(user, cert, course, {
     companyName: "Beispiel Spielhalle GmbH",
-    branding: {
+    branding: normalizeBranding({
       primaryColor: revision.config.styling.primaryColor,
       secondaryColor: "#4040a0",
       backgroundColor: "#f8fafc",
       accentColor: "#2563eb",
       logoUrl: null,
       loginBackgroundUrl: null,
-    },
+    }),
     documentSignature: {
       responsiblePerson: "Beispiel Person",
       position: "Beispiel Funktion",

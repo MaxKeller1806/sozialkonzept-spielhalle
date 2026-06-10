@@ -120,7 +120,7 @@ export function CourseAssignmentPicker({
         </p>
         <Input
           label="Suchen"
-          placeholder="Code, Titel oder Kategorie…"
+          placeholder="Kürzel, Titel oder Kategorie…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           disabled={disabled}

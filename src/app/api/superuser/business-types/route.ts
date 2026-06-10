@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     }
     if (msg.includes("unique") || msg.includes("duplicate")) {
       return NextResponse.json(
-        { error: "Slug in dieser Branche bereits vergeben." },
+        { error: "Kurzname in dieser Branche bereits vergeben." },
         { status: 409 }
       );
     }

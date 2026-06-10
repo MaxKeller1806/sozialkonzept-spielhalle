@@ -12,6 +12,10 @@ export interface CompanyBranding {
   secondaryColor: string;
   backgroundColor: string;
   accentColor: string;
+  textColor: string;
+  textSecondaryColor: string;
+  menuTextColor: string;
+  buttonTextColor: string;
   logoUrl: string | null;
   loginBackgroundUrl: string | null;
 }
@@ -41,6 +45,7 @@ export interface CompanyLocation {
 export interface Company {
   id: number;
   slug: string;
+  companyCode: string;
   name: string;
   street: string | null;
   postalCode: string | null;
@@ -62,6 +67,12 @@ export interface Company {
   businessTypeName?: string | null;
   allowAdminValidityOverride: boolean;
   allowAdminPassingScoreOverride: boolean;
+  /** Ansprechpartner (Name). */
+  contactPerson: string | null;
+  /** Vorbereitet für spätere Nutzung. */
+  contactPersonEmail: string | null;
+  /** Vorbereitet für spätere Nutzung. */
+  contactPersonPhone: string | null;
   createdAt: string;
 }
 

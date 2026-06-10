@@ -74,7 +74,7 @@ function CertianoOverviewContent() {
     <>
       <PageHeader
         title="Dashboard"
-        description="Plattformüberblick für den Certiano-Betreiberbereich."
+        description="Plattformüberblick für Certiano."
       />
 
       {loading ? (

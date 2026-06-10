@@ -7,6 +7,7 @@ import type {
   CourseAssignmentOptions,
   CourseAssignmentTopicGroup,
 } from "@/lib/course-assignment-options";
+import { formatCourseCodeTitle } from "@/lib/course-display";
 
 type Props = {
   companyId: number;
@@ -83,8 +84,24 @@ function IndeterminateCheckbox({
 }
 
 function courseLabel(course: CourseAssignmentOption): string {
-  const parts = [course.code, course.title].filter(Boolean);
-  return parts.join(" ");
+  const { code, displayTitle } = formatCourseCodeTitle(course.code, course.title);
+  if (code && displayTitle) return `${code} ${displayTitle}`;
+  return code ?? displayTitle ?? "—";
+}
+
+function renderCourseTitle(course: CourseAssignmentOption) {
+  const { code, displayTitle } = formatCourseCodeTitle(course.code, course.title);
+  if (!code) {
+    return <span>{displayTitle}</span>;
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-700">
+        {code}
+      </span>
+      <span>{displayTitle}</span>
+    </span>
+  );
 }
 
 export function CourseProvisionTopicPicker({
@@ -345,7 +362,7 @@ export function CourseProvisionTopicPicker({
           onChange={() => toggleCourse(course.id)}
         />
         <span className="text-sm">
-          {courseLabel(course)}
+          {renderCourseTitle(course)}
           {!course.active && (
             <span className="ml-2 text-xs text-amber-700">(inaktiv)</span>
           )}
@@ -469,7 +486,7 @@ export function CourseProvisionTopicPicker({
         <div className="min-w-[200px] flex-1">
           <Input
             label="Suchen"
-            placeholder="Seminartitel, BAV-Code oder Hauptthema…"
+            placeholder="Titel, Kürzel oder Hauptthema…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             disabled={saving}

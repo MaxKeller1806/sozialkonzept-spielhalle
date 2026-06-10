@@ -130,7 +130,7 @@ export default function MasterCoursesPage() {
               onChange={(e) => setForm({ ...form, title: e.target.value })}
             />
             <Input
-              label="Kurzname (Slug)"
+              label="Kurzname"
               required
               value={form.slug}
               onChange={(e) => setForm({ ...form, slug: e.target.value })}

@@ -17,9 +17,11 @@ const CERTIANO_QUICK_LINKS = [
 function CertianoShellInner({
   children,
   companyId,
+  contentClassName,
 }: {
   children: React.ReactNode;
   companyId?: number;
+  contentClassName?: string;
 }) {
   const { branding, name } = useCertianoBranding();
   const navItems = getCertianoSidebarItems(companyId);
@@ -32,11 +34,14 @@ function CertianoShellInner({
         logoUrl: branding.logoUrl,
         companyName: name || APP_NAME,
         productName: "Certiano Campus",
-        areaLabel: "Betreiberbereich",
+        areaLabel: "Certiano",
       }}
       quickLinks={CERTIANO_QUICK_LINKS}
       navAriaLabel="Certiano"
-      contentClassName="app-content mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-8"
+      contentClassName={
+        contentClassName ??
+        "app-content mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-8"
+      }
       topbar={{
         showSearch: true,
         searchPlaceholder: "Firma oder Benutzer suchen…",
@@ -50,13 +55,15 @@ function CertianoShellInner({
 export function CertianoShell({
   children,
   companyId,
+  contentClassName,
 }: {
   children: React.ReactNode;
   companyId?: number;
+  contentClassName?: string;
 }) {
   return (
     <CertianoBrandingLoader>
-      <CertianoShellInner companyId={companyId}>
+      <CertianoShellInner companyId={companyId} contentClassName={contentClassName}>
         {children}
       </CertianoShellInner>
     </CertianoBrandingLoader>

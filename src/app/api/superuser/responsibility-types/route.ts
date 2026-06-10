@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
     if (msg.includes("unique") || msg.includes("duplicate")) {
-      return NextResponse.json({ error: "Slug bereits vergeben." }, { status: 409 });
+      return NextResponse.json({ error: "Kurzname bereits vergeben." }, { status: 409 });
     }
     return NextResponse.json({ error: "Anlegen fehlgeschlagen." }, { status: 500 });
   }

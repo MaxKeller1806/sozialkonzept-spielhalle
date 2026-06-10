@@ -185,13 +185,7 @@ function IndustriesPageContent() {
         </>
       ),
     },
-    { key: "slug", header: "Slug", sortable: true, render: (i) => i.slug },
-    {
-      key: "businessTypeCount",
-      header: "Betriebstypen",
-      sortable: true,
-      render: (i) => i.businessTypeCount ?? 0,
-    },
+    { key: "businessTypeCount", header: "Betriebstypen", sortable: true, render: (i) => i.businessTypeCount ?? 0 },
     {
       key: "companyCount",
       header: "Firmen",
@@ -281,7 +275,6 @@ function IndustriesPageContent() {
       sortable: true,
       render: (bt) => bt.industryName ?? "—",
     },
-    { key: "slug", header: "Slug", sortable: true, render: (bt) => bt.slug },
     {
       key: "companyCount",
       header: "Firmen",
@@ -392,13 +385,6 @@ function IndustriesPageContent() {
             }
           />
           <Input
-            label="Slug (optional)"
-            value={industryForm.slug}
-            onChange={(e) =>
-              setIndustryForm({ ...industryForm, slug: e.target.value })
-            }
-          />
-          <Input
             label="Beschreibung"
             value={industryForm.description}
             onChange={(e) =>
@@ -450,13 +436,6 @@ function IndustriesPageContent() {
             }
           />
           <Input
-            label="Slug (optional)"
-            value={businessTypeForm.slug}
-            onChange={(e) =>
-              setBusinessTypeForm({ ...businessTypeForm, slug: e.target.value })
-            }
-          />
-          <Input
             label="Beschreibung"
             value={businessTypeForm.description}
             onChange={(e) =>
@@ -483,6 +462,8 @@ function IndustriesPageContent() {
       <section className="mb-10">
         <h3 className="mb-4 text-base font-bold">Branchen</h3>
         <AdminDataTable
+          appearance="modern"
+          storageKey="superuser.industries"
           columns={industryColumns}
           rows={industriesList.rows}
           rowKey={(i) => i.id}
@@ -509,6 +490,8 @@ function IndustriesPageContent() {
       <section>
         <h3 className="mb-4 text-base font-bold">Betriebstypen</h3>
         <AdminDataTable
+          appearance="modern"
+          storageKey="superuser.businessTypes"
           columns={businessTypeColumns}
           rows={businessTypesList.rows}
           rowKey={(bt) => bt.id}

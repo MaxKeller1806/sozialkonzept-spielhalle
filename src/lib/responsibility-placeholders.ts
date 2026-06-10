@@ -1,5 +1,5 @@
 /**
- * Platzhalter für Zertifikat-/Nachweis-Designer (spätere Integration).
+ * Dokumentenvariablen für Zertifikat-/Nachweis-Designer.
  * Beispiel: {{responsible_person_sozialkonzept}}
  */
 

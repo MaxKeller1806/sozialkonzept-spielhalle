@@ -3,7 +3,14 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
+import { SearchFilterBar } from "@/components/search-filter-bar";
+import { ResizableTableShell, ResizableTh, tableBodyCellClass } from "@/components/resizable-table-parts";
 import { Button } from "@/components/ui";
+import { useTableColumnWidths } from "@/hooks/use-table-column-widths";
+import {
+  tableWidthStorageKey,
+  type TableColumnLayout,
+} from "@/lib/table-column-widths";
 import {
   PAGE_SIZE_OPTIONS,
   parsePageSize,
@@ -21,6 +28,19 @@ import {
 
 type CategoryOption = { id: number; name: string };
 type LocationOption = { id: number; label: string };
+
+const AUDIT_EXPORT_COLUMNS: TableColumnLayout[] = [
+  { key: "select", defaultWidth: 44, minWidth: 44, resizable: false },
+  { key: "name", defaultWidth: 180, minWidth: 120 },
+  { key: "email", defaultWidth: 200, minWidth: 140 },
+  { key: "location", defaultWidth: 120, minWidth: 90 },
+  { key: "category", defaultWidth: 140, minWidth: 100 },
+  { key: "joined", defaultWidth: 110, minWidth: 90 },
+  { key: "left", defaultWidth: 110, minWidth: 90 },
+  { key: "certificates", defaultWidth: 88, minWidth: 72 },
+  { key: "lastCompleted", defaultWidth: 130, minWidth: 100 },
+  { key: "status", defaultWidth: 120, minWidth: 90 },
+];
 
 function AuditExportTableInner() {
   const router = useRouter();
@@ -201,94 +221,86 @@ function AuditExportTableInner() {
     router.push(pathname);
   }
 
+  const hasActiveFilters =
+    !!search ||
+    status !== "active" ||
+    employmentFilter !== "active" ||
+    !!categoryId ||
+    !!locationId ||
+    page > 1;
+
+  const { visibleColumns, widths, startResize } = useTableColumnWidths(
+    tableWidthStorageKey("admin.auditExport"),
+    AUDIT_EXPORT_COLUMNS
+  );
+
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-end gap-3">
-        <label className="block text-sm">
-          <span className="font-medium text-slate-700">Suche</span>
-          <input
-            type="search"
-            defaultValue={search}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                updateParams({
-                  search: (e.target as HTMLInputElement).value.trim() || null,
-                });
-              }
-            }}
-            placeholder="Name, E-Mail…"
-            className="mt-1 block min-w-[200px] rounded-xl border border-slate-300 px-3 py-2"
-          />
-        </label>
-        <label className="block text-sm">
-          <span className="font-medium text-slate-700">Standort</span>
-          <select
-            value={locationId}
-            onChange={(e) => updateParams({ locationId: e.target.value || null })}
-            className="mt-1 block min-w-[160px] rounded-xl border border-slate-300 px-3 py-2"
-          >
-            <option value="">Alle</option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>
-                {loc.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm">
-          <span className="font-medium text-slate-700">Kategorie</span>
-          <select
-            value={categoryId}
-            onChange={(e) => updateParams({ categoryId: e.target.value || null })}
-            className="mt-1 block min-w-[160px] rounded-xl border border-slate-300 px-3 py-2"
-          >
-            <option value="">Alle</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm">
-          <span className="font-medium text-slate-700">Beschäftigung</span>
-          <select
-            value={employmentFilter}
-            onChange={(e) =>
-              updateParams({
-                employmentFilter:
-                  e.target.value === "active" ? null : e.target.value,
+      <SearchFilterBar
+        className="mb-6"
+        search={search}
+        searchPlaceholder="Name, E-Mail…"
+        onSearchChange={(value) =>
+          updateParams({ search: value.trim() || null })
+        }
+        filters={[
+          {
+            key: "locationId",
+            label: "Standort",
+            value: locationId,
+            options: [
+              { value: "", label: "Alle Standorte" },
+              ...locations.map((loc) => ({
+                value: String(loc.id),
+                label: loc.label,
+              })),
+            ],
+            onChange: (value) =>
+              updateParams({ locationId: value || null }),
+          },
+          {
+            key: "categoryId",
+            label: "Kategorie",
+            value: categoryId,
+            options: [
+              { value: "", label: "Alle Kategorien" },
+              ...categories.map((c) => ({
+                value: String(c.id),
+                label: c.name,
+              })),
+            ],
+            onChange: (value) =>
+              updateParams({ categoryId: value || null }),
+          },
+          {
+            key: "employmentFilter",
+            label: "Beschäftigung",
+            value: employmentFilter,
+            options: (["active", "departed", "all"] as EmploymentFilter[]).map(
+              (f) => ({
+                value: f,
+                label: employmentFilterLabel(f),
               })
-            }
-            className="mt-1 block min-w-[160px] rounded-xl border border-slate-300 px-3 py-2"
-          >
-            {(["active", "departed", "all"] as EmploymentFilter[]).map((f) => (
-              <option key={f} value={f}>
-                {employmentFilterLabel(f)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm">
-          <span className="font-medium text-slate-700">Konto</span>
-          <select
-            value={status}
-            onChange={(e) =>
+            ),
+            onChange: (value) =>
               updateParams({
-                status: e.target.value === "all" ? null : e.target.value,
-              })
-            }
-            className="mt-1 block min-w-[140px] rounded-xl border border-slate-300 px-3 py-2"
-          >
-            <option value="active">Aktiv</option>
-            <option value="archived">Inaktiv</option>
-            <option value="all">Alle</option>
-          </select>
-        </label>
-        <Button type="button" variant="secondary" onClick={resetFilters}>
-          Filter zurücksetzen
-        </Button>
-      </div>
+                employmentFilter: value === "active" ? null : value,
+              }),
+          },
+        ]}
+        statusFilter={status}
+        statusLabel="Konto"
+        statusOptions={[
+          { value: "active", label: "Aktiv" },
+          { value: "archived", label: "Inaktiv" },
+          { value: "all", label: "Alle" },
+        ]}
+        onStatusChange={(value) =>
+          updateParams({ status: value === "all" ? null : value })
+        }
+        hasActiveFilters={hasActiveFilters}
+        onResetFilters={resetFilters}
+      />
 
       <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
         <p className="mb-3 text-sm font-semibold text-slate-800">Exportoptionen</p>
@@ -370,27 +382,45 @@ function AuditExportTableInner() {
       {loading ? (
         <p className="text-sm text-slate-600">Lädt…</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="min-w-full text-sm">
+        <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200">
+          <ResizableTableShell columns={visibleColumns} widths={widths} tableClassName="text-sm">
             <thead className="bg-slate-50 text-left">
               <tr>
-                <th className="px-3 py-2">
+                <ResizableTh col={visibleColumns[0]} onResizeStart={startResize}>
                   <input
                     type="checkbox"
                     checked={allVisibleSelected}
                     onChange={toggleAllVisible}
                     aria-label="Alle sichtbaren auswählen"
                   />
-                </th>
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">E-Mail</th>
-                <th className="px-3 py-2">Standort</th>
-                <th className="px-3 py-2">Kategorie</th>
-                <th className="px-3 py-2">Eintritt</th>
-                <th className="px-3 py-2">Austritt</th>
-                <th className="px-3 py-2">Nachweise</th>
-                <th className="px-3 py-2">Letzter Abschluss</th>
-                <th className="px-3 py-2">Status</th>
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[1]} onResizeStart={startResize}>
+                  Name
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[2]} onResizeStart={startResize}>
+                  E-Mail
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[3]} onResizeStart={startResize}>
+                  Standort
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[4]} onResizeStart={startResize}>
+                  Kategorie
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[5]} onResizeStart={startResize}>
+                  Eintritt
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[6]} onResizeStart={startResize}>
+                  Austritt
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[7]} onResizeStart={startResize}>
+                  Nachweise
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[8]} onResizeStart={startResize}>
+                  Letzter Abschluss
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[9]} onResizeStart={startResize}>
+                  Status
+                </ResizableTh>
               </tr>
             </thead>
             <tbody>
@@ -401,40 +431,66 @@ function AuditExportTableInner() {
                   </td>
                 </tr>
               ) : (
-                rows.map((row) => (
-                  <tr key={row.id} className="border-t border-slate-100">
-                    <td className="px-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(row.id)}
-                        onChange={() => toggleOne(row.id)}
-                        aria-label={`${row.firstName} ${row.lastName} auswählen`}
-                      />
-                    </td>
-                    <td className="px-3 py-2 font-medium">
-                      {row.lastName}, {row.firstName}
-                    </td>
-                    <td className="px-3 py-2">{row.email}</td>
-                    <td className="px-3 py-2">{row.locationLabel ?? "—"}</td>
-                    <td className="px-3 py-2">
-                      {row.employeeCategoryName ?? "—"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {formatTrainingDate(row.joinedCompanyAt)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {formatTrainingDate(row.leftCompanyAt)}
-                    </td>
-                    <td className="px-3 py-2">{row.certificateCount}</td>
-                    <td className="px-3 py-2">
-                      {formatTrainingDate(row.lastCompletedAt)}
-                    </td>
-                    <td className="px-3 py-2">{row.statusLabel}</td>
-                  </tr>
-                ))
+                rows.map((row) => {
+                  const nameLabel = `${row.lastName}, ${row.firstName}`;
+                  return (
+                    <tr key={row.id} className="border-t border-slate-100 hover:bg-slate-50">
+                      <td className={`${tableBodyCellClass(undefined, "px-3 py-2")} !overflow-visible`}>
+                        <input
+                          type="checkbox"
+                          checked={selected.has(row.id)}
+                          onChange={() => toggleOne(row.id)}
+                          aria-label={`${row.firstName} ${row.lastName} auswählen`}
+                        />
+                      </td>
+                      <td
+                        className={`${tableBodyCellClass(undefined, "px-3 py-2 font-medium")}`}
+                        title={nameLabel}
+                      >
+                        {nameLabel}
+                      </td>
+                      <td
+                        className={tableBodyCellClass(undefined, "px-3 py-2")}
+                        title={row.email}
+                      >
+                        {row.email}
+                      </td>
+                      <td
+                        className={tableBodyCellClass(undefined, "px-3 py-2")}
+                        title={row.locationLabel ?? undefined}
+                      >
+                        {row.locationLabel ?? "—"}
+                      </td>
+                      <td
+                        className={tableBodyCellClass(undefined, "px-3 py-2")}
+                        title={row.employeeCategoryName ?? undefined}
+                      >
+                        {row.employeeCategoryName ?? "—"}
+                      </td>
+                      <td className={tableBodyCellClass(undefined, "px-3 py-2")}>
+                        {formatTrainingDate(row.joinedCompanyAt)}
+                      </td>
+                      <td className={tableBodyCellClass(undefined, "px-3 py-2")}>
+                        {formatTrainingDate(row.leftCompanyAt)}
+                      </td>
+                      <td className={tableBodyCellClass(undefined, "px-3 py-2")}>
+                        {row.certificateCount}
+                      </td>
+                      <td className={tableBodyCellClass(undefined, "px-3 py-2")}>
+                        {formatTrainingDate(row.lastCompletedAt)}
+                      </td>
+                      <td
+                        className={tableBodyCellClass(undefined, "px-3 py-2")}
+                        title={row.statusLabel}
+                      >
+                        {row.statusLabel}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
-          </table>
+          </ResizableTableShell>
         </div>
       )}
 

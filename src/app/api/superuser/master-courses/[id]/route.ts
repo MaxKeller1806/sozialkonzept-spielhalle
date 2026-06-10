@@ -188,7 +188,7 @@ export async function POST(
         const messages: Record<string, string> = {
           NOT_FOUND: "Master-Kurs nicht gefunden.",
           ALREADY_HAS_CONTENT: "Dieser Master-Kurs enthält bereits Inhalte.",
-          NO_SOURCE: "Kein Firmenkurs mit Inhalten für diesen Slug gefunden.",
+          NO_SOURCE: "Kein Firmenkurs mit Inhalten für diesen Kurzname gefunden.",
         };
         return NextResponse.json(
           { error: messages[result.reason] ?? "Import fehlgeschlagen." },

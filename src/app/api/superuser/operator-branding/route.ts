@@ -74,6 +74,10 @@ export async function PATCH(request: Request) {
       ["secondaryColor", "secondary_color"],
       ["backgroundColor", "background_color"],
       ["accentColor", "accent_color"],
+      ["textColor", "text_color"],
+      ["textSecondaryColor", "text_secondary_color"],
+      ["menuTextColor", "menu_text_color"],
+      ["buttonTextColor", "button_text_color"],
       ["logoUrl", "logo_url"],
       ["loginBackgroundUrl", "login_background_url"],
     ];
@@ -106,6 +110,7 @@ export async function PATCH(request: Request) {
         INSERT INTO companies (
           slug, name, status, license_status, license_activated_at,
           primary_color, secondary_color, background_color, accent_color,
+          text_color, text_secondary_color, menu_text_color, button_text_color,
           logo_url, login_background_url
         )
         VALUES (
@@ -118,6 +123,10 @@ export async function PATCH(request: Request) {
           ${b.secondaryColor},
           ${b.backgroundColor},
           ${b.accentColor},
+          ${b.textColor},
+          ${b.textSecondaryColor},
+          ${b.menuTextColor},
+          ${b.buttonTextColor},
           ${b.logoUrl},
           ${b.loginBackgroundUrl}
         )

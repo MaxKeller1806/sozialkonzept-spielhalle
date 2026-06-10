@@ -32,6 +32,10 @@ export async function fetchOperatorBranding(): Promise<OperatorBrandingPayload> 
       secondary_color,
       background_color,
       accent_color,
+      text_color,
+      text_secondary_color,
+      menu_text_color,
+      button_text_color,
       logo_url,
       login_background_url
     FROM companies
@@ -59,6 +63,13 @@ export async function fetchOperatorBranding(): Promise<OperatorBrandingPayload> 
       backgroundColor:
         row.background_color != null ? String(row.background_color) : undefined,
       accentColor: row.accent_color != null ? String(row.accent_color) : undefined,
+      textColor: row.text_color != null ? String(row.text_color) : undefined,
+      textSecondaryColor:
+        row.text_secondary_color != null ? String(row.text_secondary_color) : undefined,
+      menuTextColor:
+        row.menu_text_color != null ? String(row.menu_text_color) : undefined,
+      buttonTextColor:
+        row.button_text_color != null ? String(row.button_text_color) : undefined,
       logoUrl: row.logo_url != null ? String(row.logo_url) : null,
       loginBackgroundUrl:
         row.login_background_url != null ? String(row.login_background_url) : null,

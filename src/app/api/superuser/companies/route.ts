@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { hashPassword, requireSuperuser, resolveInitialPassword } from "@/lib/auth";
 import { isDbConnectionError, getSql, resetSqlOnFailure, withDbQuery } from "@/lib/db";
 import { generateLicenseKey, hashLicenseKey } from "@/lib/license";
+import { allocateCompanyCode } from "@/lib/company-code";
 import {
   validateCompanyIndustryAssignment,
 } from "@/lib/industries";
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
       businessTypeId,
       adminEmail,
       adminPassword,
+      contactPerson,
     } = body;
 
     if (!name || !slug) {
@@ -129,12 +131,13 @@ export async function POST(request: Request) {
 
     const rows = await sql`
       INSERT INTO companies (
-        slug, name, email, phone, website,
+        company_code, slug, name, email, phone, website, contact_person,
         status, license_status, license_key_hash, license_expires_at,
         industry_id, business_type_id
       )
       VALUES (
-        ${normalizedSlug}, ${name}, ${email ?? null}, ${phone ?? null}, ${website ?? null},
+        ${await allocateCompanyCode(sql)}, ${normalizedSlug}, ${name}, ${email ?? null}, ${phone ?? null}, ${website ?? null},
+        ${contactPerson?.trim() ? String(contactPerson).trim() : null},
         'pending', 'unlicensed', ${licenseHash},
         ${licenseExpiresAt ? new Date(licenseExpiresAt).toISOString() : null},
         ${industryFields.industryId}, ${industryFields.businessTypeId}
@@ -187,6 +190,7 @@ export async function POST(request: Request) {
       {
         company: {
           id: company.id,
+          companyCode: company.companyCode,
           name: company.name,
           slug: company.slug,
           status: company.status,

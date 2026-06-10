@@ -1,4 +1,81 @@
-import type { Certificate, FeedbackEntry, TrainingAttempt, User } from "../types";
+import type {
+  Certificate,
+  Company,
+  FeedbackEntry,
+  TrainingAttempt,
+  User,
+} from "../types";
+import { normalizeBranding } from "../branding-theme";
+
+export function mapCompany(row: Record<string, unknown>): Company {
+  return {
+    id: Number(row.id),
+    slug: String(row.slug),
+    companyCode: String(row.company_code ?? ""),
+    name: String(row.name),
+    street: row.street != null ? String(row.street) : null,
+    postalCode: row.postal_code != null ? String(row.postal_code) : null,
+    city: row.city != null ? String(row.city) : null,
+    country: row.country != null ? String(row.country) : null,
+    email: row.email != null ? String(row.email) : null,
+    phone: row.phone != null ? String(row.phone) : null,
+    website: row.website != null ? String(row.website) : null,
+    loginDomain: row.login_domain != null ? String(row.login_domain) : null,
+    branding: normalizeBranding({
+      primaryColor: String(row.primary_color ?? "#000080"),
+      secondaryColor: String(row.secondary_color ?? "#4040a0"),
+      backgroundColor: String(row.background_color ?? "#f8fafc"),
+      accentColor: String(row.accent_color ?? "#2563eb"),
+      textColor: row.text_color != null ? String(row.text_color) : undefined,
+      textSecondaryColor:
+        row.text_secondary_color != null ? String(row.text_secondary_color) : undefined,
+      menuTextColor:
+        row.menu_text_color != null ? String(row.menu_text_color) : undefined,
+      buttonTextColor:
+        row.button_text_color != null ? String(row.button_text_color) : undefined,
+      logoUrl: row.logo_url != null ? String(row.logo_url) : null,
+      loginBackgroundUrl:
+        row.login_background_url != null ? String(row.login_background_url) : null,
+    }),
+    documentSignature: {
+      responsiblePerson:
+        row.cert_signature_person != null
+          ? String(row.cert_signature_person)
+          : null,
+      position:
+        row.cert_signature_position != null
+          ? String(row.cert_signature_position)
+          : null,
+      customText:
+        row.cert_signature_text != null ? String(row.cert_signature_text) : null,
+    },
+    status: row.status as Company["status"],
+    licenseStatus: row.license_status as Company["licenseStatus"],
+    licenseExpiresAt: row.license_expires_at
+      ? new Date(String(row.license_expires_at)).toISOString()
+      : null,
+    licenseActivatedAt: row.license_activated_at
+      ? new Date(String(row.license_activated_at)).toISOString()
+      : null,
+    industryId: row.industry_id != null ? Number(row.industry_id) : null,
+    businessTypeId:
+      row.business_type_id != null ? Number(row.business_type_id) : null,
+    industryName: row.industry_name != null ? String(row.industry_name) : null,
+    businessTypeName:
+      row.business_type_name != null ? String(row.business_type_name) : null,
+    allowAdminValidityOverride: Boolean(row.allow_admin_validity_override ?? false),
+    allowAdminPassingScoreOverride: Boolean(
+      row.allow_admin_passing_score_override ?? false
+    ),
+    contactPerson:
+      row.contact_person != null ? String(row.contact_person) : null,
+    contactPersonEmail:
+      row.contact_person_email != null ? String(row.contact_person_email) : null,
+    contactPersonPhone:
+      row.contact_person_phone != null ? String(row.contact_person_phone) : null,
+    createdAt: new Date(String(row.created_at)).toISOString(),
+  };
+}
 
 export function mapUser(row: Record<string, unknown>): User {
   return {

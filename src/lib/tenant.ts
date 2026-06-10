@@ -1,6 +1,9 @@
 import { getSql } from "./db";
+import { mapCompany } from "./db/row-mappers";
 import { brandingToCssVars as themeBrandingToCssVars } from "./branding-theme";
 import { OPERATOR_COMPANY_SLUG } from "./branding-theme";
+
+export { mapCompany };
 import {
   buildListMeta,
   buildOrderBySql,
@@ -11,18 +14,22 @@ import {
 import type { Company, CompanyBranding, PrivacyPolicyVersion, SessionUser } from "./types";
 
 export const COMPANY_SORT_ALLOWLIST = {
+  companyCode: "c.company_code",
   name: "c.name",
   industryName: "i.name",
   businessTypeName: "bt.name",
   status: "c.status",
   licenseStatus: "c.license_status",
+  locationCount: "location_count",
   employeeCount: "employee_count",
   adminCount: "admin_count",
+  contactPerson: "c.contact_person",
   createdAt: "c.created_at",
 } as const;
 
 export type CompanySummaryRow = {
   id: number;
+  companyCode: string;
   name: string;
   status: string;
   licenseStatus: string;
@@ -30,6 +37,8 @@ export type CompanySummaryRow = {
   createdAt: string;
   employeeCount: number;
   adminCount: number;
+  locationCount: number;
+  contactPerson: string | null;
   adminContacts: Array<{ name: string; email: string }>;
   industryId: number | null;
   businessTypeId: number | null;
@@ -52,6 +61,7 @@ function mapCompanySummaryRow(row: Record<string, unknown>): CompanySummaryRow {
 
   return {
     id: Number(row.id),
+    companyCode: String(row.company_code ?? ""),
     name: String(row.name),
     status: String(row.status),
     licenseStatus: String(row.license_status),
@@ -61,6 +71,9 @@ function mapCompanySummaryRow(row: Record<string, unknown>): CompanySummaryRow {
     createdAt: new Date(String(row.created_at)).toISOString(),
     employeeCount: Number(row.employee_count ?? 0),
     adminCount: Number(row.admin_count ?? 0),
+    locationCount: Number(row.location_count ?? 0),
+    contactPerson:
+      row.contact_person != null ? String(row.contact_person) : null,
     adminContacts,
     industryId: row.industry_id != null ? Number(row.industry_id) : null,
     businessTypeId:
@@ -68,62 +81,6 @@ function mapCompanySummaryRow(row: Record<string, unknown>): CompanySummaryRow {
     industryName: row.industry_name != null ? String(row.industry_name) : null,
     businessTypeName:
       row.business_type_name != null ? String(row.business_type_name) : null,
-  };
-}
-
-export function mapCompany(row: Record<string, unknown>): Company {
-  return {
-    id: Number(row.id),
-    slug: String(row.slug),
-    name: String(row.name),
-    street: row.street != null ? String(row.street) : null,
-    postalCode: row.postal_code != null ? String(row.postal_code) : null,
-    city: row.city != null ? String(row.city) : null,
-    country: row.country != null ? String(row.country) : null,
-    email: row.email != null ? String(row.email) : null,
-    phone: row.phone != null ? String(row.phone) : null,
-    website: row.website != null ? String(row.website) : null,
-    loginDomain: row.login_domain != null ? String(row.login_domain) : null,
-    branding: {
-      primaryColor: String(row.primary_color ?? "#000080"),
-      secondaryColor: String(row.secondary_color ?? "#4040a0"),
-      backgroundColor: String(row.background_color ?? "#f8fafc"),
-      accentColor: String(row.accent_color ?? "#2563eb"),
-      logoUrl: row.logo_url != null ? String(row.logo_url) : null,
-      loginBackgroundUrl:
-        row.login_background_url != null ? String(row.login_background_url) : null,
-    },
-    documentSignature: {
-      responsiblePerson:
-        row.cert_signature_person != null
-          ? String(row.cert_signature_person)
-          : null,
-      position:
-        row.cert_signature_position != null
-          ? String(row.cert_signature_position)
-          : null,
-      customText:
-        row.cert_signature_text != null ? String(row.cert_signature_text) : null,
-    },
-    status: row.status as Company["status"],
-    licenseStatus: row.license_status as Company["licenseStatus"],
-    licenseExpiresAt: row.license_expires_at
-      ? new Date(String(row.license_expires_at)).toISOString()
-      : null,
-    licenseActivatedAt: row.license_activated_at
-      ? new Date(String(row.license_activated_at)).toISOString()
-      : null,
-    industryId: row.industry_id != null ? Number(row.industry_id) : null,
-    businessTypeId:
-      row.business_type_id != null ? Number(row.business_type_id) : null,
-    industryName: row.industry_name != null ? String(row.industry_name) : null,
-    businessTypeName:
-      row.business_type_name != null ? String(row.business_type_name) : null,
-    allowAdminValidityOverride: Boolean(row.allow_admin_validity_override ?? false),
-    allowAdminPassingScoreOverride: Boolean(
-      row.allow_admin_passing_score_override ?? false
-    ),
-    createdAt: new Date(String(row.created_at)).toISOString(),
   };
 }
 
@@ -264,8 +221,10 @@ export async function listCompanySummaries(
   const searchFilter = searchPattern
     ? sql`AND (
         LOWER(c.name) LIKE ${searchPattern}
+        OR LOWER(c.company_code) LIKE ${searchPattern}
         OR LOWER(COALESCE(i.name, '')) LIKE ${searchPattern}
         OR LOWER(COALESCE(bt.name, '')) LIKE ${searchPattern}
+        OR LOWER(COALESCE(c.contact_person, '')) LIKE ${searchPattern}
       )`
     : sql``;
 
@@ -304,9 +263,16 @@ export async function listCompanySummaries(
       FROM users
       WHERE role = 'admin' AND active = TRUE
       GROUP BY company_id
+    ),
+    location_stats AS (
+      SELECT company_id, COUNT(*)::int AS location_count
+      FROM company_locations
+      WHERE active = TRUE
+      GROUP BY company_id
     )
     SELECT
       c.id,
+      c.company_code,
       c.name,
       c.status,
       c.license_status,
@@ -314,10 +280,12 @@ export async function listCompanySummaries(
       c.created_at,
       c.industry_id,
       c.business_type_id,
+      c.contact_person,
       i.name AS industry_name,
       bt.name AS business_type_name,
       COALESCE(us.employee_count, 0) AS employee_count,
       COALESCE(us.admin_count, 0) AS admin_count,
+      COALESCE(ls.location_count, 0) AS location_count,
       COALESCE(ac.admin_contacts, '[]'::json) AS admin_contacts,
       COUNT(*) OVER()::int AS total_count
     FROM companies c
@@ -325,6 +293,7 @@ export async function listCompanySummaries(
     LEFT JOIN business_types bt ON bt.id = c.business_type_id
     LEFT JOIN user_stats us ON us.company_id = c.id
     LEFT JOIN admin_contacts ac ON ac.company_id = c.id
+    LEFT JOIN location_stats ls ON ls.company_id = c.id
     WHERE c.slug != ${OPERATOR_COMPANY_SLUG}
     ${statusFilter}
     ${industryFilter}

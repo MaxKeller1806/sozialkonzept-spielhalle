@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { SearchFilterBar } from "@/components/search-filter-bar";
+import { ResizableTableShell, ResizableTh, tableBodyCellClass } from "@/components/resizable-table-parts";
 import { Button } from "@/components/ui";
+import { useTableColumnWidths } from "@/hooks/use-table-column-widths";
+import {
+  tableWidthStorageKey,
+  type TableColumnLayout,
+} from "@/lib/table-column-widths";
 import {
   PAGE_SIZE_OPTIONS,
   parsePageSize,
@@ -28,6 +35,18 @@ import {
 
 type CategoryOption = { id: number; name: string };
 type LocationOption = { id: number; label: string };
+
+const TRAINING_STATUS_COLUMNS: TableColumnLayout[] = [
+  { key: "expand", defaultWidth: 44, minWidth: 44, resizable: false },
+  { key: "employee", defaultWidth: 200, minWidth: 140 },
+  { key: "category", defaultWidth: 140, minWidth: 100 },
+  { key: "location", defaultWidth: 120, minWidth: 90 },
+  { key: "joined", defaultWidth: 110, minWidth: 90 },
+  { key: "courses", defaultWidth: 88, minWidth: 72 },
+  { key: "expired", defaultWidth: 88, minWidth: 72 },
+  { key: "dueSoon", defaultWidth: 88, minWidth: 72 },
+  { key: "nextDue", defaultWidth: 130, minWidth: 100 },
+];
 
 function TrainingStatusTableInner() {
   const router = useRouter();
@@ -181,69 +200,53 @@ function TrainingStatusTableInner() {
   const total = meta?.total ?? 0;
   const totalPages = meta?.totalPages ?? 1;
 
+  const { visibleColumns, widths, startResize } = useTableColumnWidths(
+    tableWidthStorageKey("admin.trainingStatus"),
+    TRAINING_STATUS_COLUMNS
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3">
-        <label className="min-w-[200px] flex-1">
-          <span className="sr-only">Suche</span>
-          <input
-            type="search"
-            placeholder="Mitarbeiter, E-Mail oder Seminar…"
-            defaultValue={search}
-            className="focus-brand w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                replaceParams(
-                  { search: (e.target as HTMLInputElement).value || null },
-                  true
-                );
-              }
-            }}
-          />
-        </label>
-        <select
-          className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-          value={categoryId}
-          onChange={(e) =>
-            replaceParams({ categoryId: e.target.value || null }, true)
-          }
-        >
-          <option value="">Alle Kategorien</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-          value={locationId}
-          onChange={(e) =>
-            replaceParams({ locationId: e.target.value || null }, true)
-          }
-          aria-label="Standort"
-        >
-          <option value="">Alle Standorte</option>
-          {locations.map((loc) => (
-            <option key={loc.id} value={loc.id}>
-              {loc.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-          value={trainingFilter}
-          onChange={(e) =>
-            replaceParams(
-              {
-                trainingFilter:
-                  e.target.value === "all" ? null : e.target.value,
-              },
-              true
-            )
-          }
-        >
-            {(
+      <SearchFilterBar
+        search={search}
+        searchPlaceholder="Mitarbeiter, E-Mail oder Seminar…"
+        onSearchChange={(value) =>
+          replaceParams({ search: value.trim() || null }, true)
+        }
+        filters={[
+          {
+            key: "categoryId",
+            label: "Kategorie",
+            value: categoryId,
+            options: [
+              { value: "", label: "Alle Kategorien" },
+              ...categories.map((c) => ({
+                value: String(c.id),
+                label: c.name,
+              })),
+            ],
+            onChange: (value) =>
+              replaceParams({ categoryId: value || null }, true),
+          },
+          {
+            key: "locationId",
+            label: "Standort",
+            value: locationId,
+            options: [
+              { value: "", label: "Alle Standorte" },
+              ...locations.map((loc) => ({
+                value: String(loc.id),
+                label: loc.label,
+              })),
+            ],
+            onChange: (value) =>
+              replaceParams({ locationId: value || null }, true),
+          },
+          {
+            key: "trainingFilter",
+            label: "Schulungsstatus",
+            value: trainingFilter,
+            options: (
               [
                 "all",
                 "expired",
@@ -254,49 +257,48 @@ function TrainingStatusTableInner() {
                 "in_progress",
                 "failed",
               ] as TrainingStatusFilter[]
-            ).map((f) => (
-            <option key={f} value={f}>
-              {trainingStatusFilterLabel(f)}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-          value={employmentFilter}
-          onChange={(e) =>
-            replaceParams(
-              {
-                employmentFilter:
-                  e.target.value === "active" ? null : e.target.value,
-              },
-              true
-            )
-          }
-          aria-label="Beschäftigungsstatus"
-        >
-          {(["active", "departed", "all"] as EmploymentFilter[]).map((f) => (
-            <option key={f} value={f}>
-              {employmentFilterLabel(f)}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-          value={status}
-          onChange={(e) =>
-            replaceParams({ status: e.target.value === "all" ? null : e.target.value }, true)
-          }
-        >
-          <option value="active">Aktive Mitarbeiter</option>
-          <option value="archived">Archivierte</option>
-          <option value="all">Alle</option>
-        </select>
-        {hasActiveFilters && (
-          <Button type="button" variant="secondary" className="!w-auto" onClick={resetFilters}>
-            Filter zurücksetzen
-          </Button>
-        )}
-      </div>
+            ).map((f) => ({
+              value: f,
+              label: trainingStatusFilterLabel(f),
+            })),
+            onChange: (value) =>
+              replaceParams(
+                { trainingFilter: value === "all" ? null : value },
+                true
+              ),
+          },
+          {
+            key: "employmentFilter",
+            label: "Beschäftigung",
+            value: employmentFilter,
+            options: (["active", "departed", "all"] as EmploymentFilter[]).map(
+              (f) => ({
+                value: f,
+                label: employmentFilterLabel(f),
+              })
+            ),
+            onChange: (value) =>
+              replaceParams(
+                {
+                  employmentFilter: value === "active" ? null : value,
+                },
+                true
+              ),
+          },
+        ]}
+        statusFilter={status}
+        statusLabel="Konto"
+        statusOptions={[
+          { value: "active", label: "Aktive Mitarbeiter" },
+          { value: "archived", label: "Archivierte" },
+          { value: "all", label: "Alle" },
+        ]}
+        onStatusChange={(value) =>
+          replaceParams({ status: value === "all" ? null : value }, true)
+        }
+        hasActiveFilters={hasActiveFilters}
+        onResetFilters={resetFilters}
+      />
 
       {error && (
         <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
@@ -311,43 +313,53 @@ function TrainingStatusTableInner() {
             : "Keine Mitarbeiter gefunden."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[900px] text-left text-sm">
+        <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <ResizableTableShell
+            columns={visibleColumns}
+            widths={widths}
+            tableClassName="text-left text-sm"
+          >
             <thead className="border-b bg-slate-50 text-slate-600">
               <tr>
-                <th className="w-10 p-3" />
-                <th className="p-3">
+                <ResizableTh col={visibleColumns[0]} onResizeStart={startResize}>
+                  <span className="sr-only">Details</span>
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[1]} onResizeStart={startResize}>
                   <button type="button" className="font-semibold hover:text-brand" onClick={() => toggleSort("lastName")}>
                     Mitarbeiter{sortIndicator("lastName")}
                   </button>
-                </th>
-                <th className="p-3">Kategorie</th>
-                <th className="p-3">Standort</th>
-                <th className="p-3">
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[2]} onResizeStart={startResize}>
+                  Kategorie
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[3]} onResizeStart={startResize}>
+                  Standort
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[4]} onResizeStart={startResize}>
                   <button type="button" className="font-semibold hover:text-brand" onClick={() => toggleSort("joinedCompanyAt")}>
                     Eintritt{sortIndicator("joinedCompanyAt")}
                   </button>
-                </th>
-                <th className="p-3">
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[5]} onResizeStart={startResize}>
                   <button type="button" className="font-semibold hover:text-brand" onClick={() => toggleSort("courseCount")}>
                     Schulungen{sortIndicator("courseCount")}
                   </button>
-                </th>
-                <th className="p-3">
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[6]} onResizeStart={startResize}>
                   <button type="button" className="font-semibold hover:text-brand" onClick={() => toggleSort("expiredCount")}>
                     Abgelaufen{sortIndicator("expiredCount")}
                   </button>
-                </th>
-                <th className="p-3">
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[7]} onResizeStart={startResize}>
                   <button type="button" className="font-semibold hover:text-brand" onClick={() => toggleSort("dueSoonCount")}>
                     Bald fällig{sortIndicator("dueSoonCount")}
                   </button>
-                </th>
-                <th className="p-3">
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[8]} onResizeStart={startResize}>
                   <button type="button" className="font-semibold hover:text-brand" onClick={() => toggleSort("nextDueAt")}>
                     Nächste Fälligkeit{sortIndicator("nextDueAt")}
                   </button>
-                </th>
+                </ResizableTh>
               </tr>
             </thead>
             <tbody>
@@ -360,7 +372,7 @@ function TrainingStatusTableInner() {
                 />
               ))}
             </tbody>
-          </table>
+          </ResizableTableShell>
         </div>
       )}
 
@@ -418,11 +430,12 @@ function EmployeeRow({
   onToggle: () => void;
 }) {
   const { summary } = employee;
+  const employeeTitle = `${employee.firstName} ${employee.lastName} · ${employee.email}`;
 
   return (
     <>
       <tr className="border-b last:border-0 hover:bg-slate-50">
-        <td className="p-3">
+        <td className={`${tableBodyCellClass()} !overflow-visible`}>
           <button
             type="button"
             className="rounded p-1 text-slate-500 hover:bg-slate-200"
@@ -433,32 +446,45 @@ function EmployeeRow({
             {expanded ? "▼" : "▶"}
           </button>
         </td>
-        <td className="p-3">
-          <span className="font-medium">
+        <td className={tableBodyCellClass()} title={employeeTitle}>
+          <div className="truncate font-medium">
             {employee.firstName} {employee.lastName}
-          </span>
-          <br />
-          <span className="text-slate-500">{employee.email}</span>
+          </div>
+          <div className="truncate text-slate-500">{employee.email}</div>
         </td>
-        <td className="p-3">{employee.employeeCategoryName ?? "—"}</td>
-        <td className="p-3">{employee.locationLabel ?? "—"}</td>
-        <td className="p-3">{formatTrainingDate(employee.joinedCompanyAt)}</td>
-        <td className="p-3">{summary.courseCount}</td>
-        <td className="p-3">
+        <td
+          className={tableBodyCellClass()}
+          title={employee.employeeCategoryName ?? undefined}
+        >
+          {employee.employeeCategoryName ?? "—"}
+        </td>
+        <td
+          className={tableBodyCellClass()}
+          title={employee.locationLabel ?? undefined}
+        >
+          {employee.locationLabel ?? "—"}
+        </td>
+        <td className={tableBodyCellClass()}>
+          {formatTrainingDate(employee.joinedCompanyAt)}
+        </td>
+        <td className={tableBodyCellClass()}>{summary.courseCount}</td>
+        <td className={tableBodyCellClass()}>
           {summary.expiredCount > 0 ? (
             <span className="font-medium text-red-700">{summary.expiredCount}</span>
           ) : (
             "0"
           )}
         </td>
-        <td className="p-3">
+        <td className={tableBodyCellClass()}>
           {summary.dueSoonCount > 0 ? (
             <span className="font-medium text-amber-700">{summary.dueSoonCount}</span>
           ) : (
             "0"
           )}
         </td>
-        <td className="p-3">{formatTrainingDate(summary.nextDueAt)}</td>
+        <td className={tableBodyCellClass()}>
+          {formatTrainingDate(summary.nextDueAt)}
+        </td>
       </tr>
       {expanded && (
         <tr className="border-b bg-slate-50/80">

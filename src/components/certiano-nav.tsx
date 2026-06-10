@@ -4,7 +4,6 @@ import {
   IconBuilding,
   IconCertificate,
   IconDashboard,
-  IconPalette,
   IconSettings,
   IconUser,
   IconUsers,
@@ -60,12 +59,6 @@ export function getCertianoSidebarItems(companyId?: number): SidebarNavItem[] {
       match: (p) => p.startsWith("/certiano/master-courses"),
     },
     {
-      href: "/certiano/branding",
-      label: "Branding",
-      icon: <IconPalette />,
-      match: (p) => p.startsWith("/certiano/branding"),
-    },
-    {
       href: "/certiano/zertifikate",
       label: "Zertifikate & Nachweise",
       icon: <IconCertificate />,
@@ -75,7 +68,8 @@ export function getCertianoSidebarItems(companyId?: number): SidebarNavItem[] {
       href: "/certiano/einstellungen",
       label: "Plattform-Einstellungen",
       icon: <IconSettings />,
-      match: (p) => p.startsWith("/certiano/einstellungen"),
+      match: (p) =>
+        p.startsWith("/certiano/einstellungen") || p.startsWith("/certiano/branding"),
     },
     {
       href: "/certiano/konto",

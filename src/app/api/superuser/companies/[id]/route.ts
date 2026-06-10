@@ -27,6 +27,7 @@ export async function GET(
     return NextResponse.json({
       company: {
         id: company.id,
+        companyCode: company.companyCode || null,
         name: company.name,
         slug: company.slug,
         status: company.status,
@@ -46,6 +47,9 @@ export async function GET(
         businessTypeName: company.businessTypeName ?? null,
         allowAdminValidityOverride: company.allowAdminValidityOverride,
         allowAdminPassingScoreOverride: company.allowAdminPassingScoreOverride,
+        contactPerson: company.contactPerson,
+        contactPersonEmail: company.contactPersonEmail,
+        contactPersonPhone: company.contactPersonPhone,
         createdAt: company.createdAt,
       },
     });
@@ -93,6 +97,10 @@ export async function PATCH(
       ["secondaryColor", "secondary_color"],
       ["backgroundColor", "background_color"],
       ["accentColor", "accent_color"],
+      ["textColor", "text_color"],
+      ["textSecondaryColor", "text_secondary_color"],
+      ["menuTextColor", "menu_text_color"],
+      ["buttonTextColor", "button_text_color"],
       ["logoUrl", "logo_url"],
       ["loginBackgroundUrl", "login_background_url"],
       ["loginDomain", "login_domain"],
@@ -103,6 +111,9 @@ export async function PATCH(
       ["email", "email"],
       ["phone", "phone"],
       ["website", "website"],
+      ["contactPerson", "contact_person"],
+      ["contactPersonEmail", "contact_person_email"],
+      ["contactPersonPhone", "contact_person_phone"],
     ];
 
     for (const [jsKey, dbKey] of fields) {
@@ -168,6 +179,7 @@ export async function PATCH(
       company: company
         ? {
             id: company.id,
+            companyCode: company.companyCode || null,
             name: company.name,
             slug: company.slug,
             status: company.status,
@@ -187,6 +199,9 @@ export async function PATCH(
             businessTypeName: company.businessTypeName ?? null,
             allowAdminValidityOverride: company.allowAdminValidityOverride,
             allowAdminPassingScoreOverride: company.allowAdminPassingScoreOverride,
+            contactPerson: company.contactPerson,
+            contactPersonEmail: company.contactPersonEmail,
+            contactPersonPhone: company.contactPersonPhone,
             createdAt: company.createdAt,
           }
         : null,

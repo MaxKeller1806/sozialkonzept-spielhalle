@@ -111,12 +111,6 @@ function HauptthemenPageContent() {
       render: (t) => t.name,
     },
     {
-      key: "slug",
-      header: "Slug",
-      sortable: true,
-      render: (t) => t.slug,
-    },
-    {
       key: "sortOrder",
       header: "Reihenfolge",
       sortable: true,
@@ -192,11 +186,6 @@ function HauptthemenPageContent() {
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
             <Input
-              label="Slug (optional)"
-              value={form.slug}
-              onChange={(e) => setForm({ ...form, slug: e.target.value })}
-            />
-            <Input
               label="Beschreibung (optional)"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -227,6 +216,8 @@ function HauptthemenPageContent() {
         </AdminModal>
 
         <AdminDataTable
+          appearance="modern"
+          storageKey="superuser.topics"
           columns={columns}
           rows={rows}
           rowKey={(t) => t.id}
@@ -235,7 +226,7 @@ function HauptthemenPageContent() {
           onRetry={reload}
           emptyMessage="Noch keine Hauptthemen angelegt."
           search={state.search}
-          searchPlaceholder="Name oder Slug…"
+          searchPlaceholder="Name suchen…"
           onSearchChange={setSearch}
           statusFilter={state.status}
           onStatusChange={setStatus}

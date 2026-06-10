@@ -223,7 +223,7 @@ export function DocumentTemplateSeminarsOverview() {
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         <Input
           label="Suche"
-          placeholder="Titel, Code oder Kategorie…"
+          placeholder="Titel, Kürzel oder Kategorie…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

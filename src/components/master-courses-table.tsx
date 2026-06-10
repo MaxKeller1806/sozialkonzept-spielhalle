@@ -69,6 +69,10 @@ function MasterCoursesTableInner({
       key: "title",
       header: "Titel",
       sortable: true,
+      defaultWidth: 240,
+      minWidth: 140,
+      truncate: true,
+      getCellTitle: (c) => c.title,
       render: (c) => (
         <>
           <span className="font-medium">{c.title}</span>
@@ -81,29 +85,36 @@ function MasterCoursesTableInner({
     {
       key: "validityLabel",
       header: "Gültigkeit",
+      defaultWidth: 120,
       render: (c) => c.validityLabel ?? "—",
     },
     {
       key: "status",
       header: "Status",
       sortable: true,
+      defaultWidth: 100,
       render: (c) => formatMasterStatus(c.status),
     },
     {
       key: "createdAt",
       header: "Erstellt",
       sortable: true,
+      defaultWidth: 110,
       render: (c) => new Date(c.createdAt).toLocaleDateString("de-DE"),
     },
     {
       key: "updatedAt",
       header: "Aktualisiert",
       sortable: true,
+      defaultWidth: 110,
       render: (c) => new Date(c.updatedAt).toLocaleDateString("de-DE"),
     },
     {
       key: "actions",
       header: "Aktionen",
+      defaultWidth: 120,
+      resizable: false,
+      sticky: "right",
       render: (c) => (
         <div className="flex flex-col gap-2">
           <Link
@@ -135,6 +146,8 @@ function MasterCoursesTableInner({
 
   return (
     <AdminDataTable
+      appearance="modern"
+      storageKey="superuser.masterCourses"
       columns={columns}
       rows={rows}
       rowKey={(c) => c.id}

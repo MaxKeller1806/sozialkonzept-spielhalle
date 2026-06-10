@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { BrandLogo } from "@/components/brand-logo";
 import { APP_NAME, CUSTOMER_LOGIN_SUBTITLE } from "@/lib/branding";
 import { BrandingProvider } from "@/components/branding-provider";
 import { DEFAULT_BRANDING } from "@/lib/branding-theme";
@@ -161,12 +162,7 @@ function LoginPageInner() {
       >
         <header className="mb-8 text-center">
           {isBranded && branding.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={branding.logoUrl}
-              alt=""
-              className="mx-auto mb-4 h-12 w-auto max-w-[200px] object-contain"
-            />
+            <BrandLogo src={branding.logoUrl} variant="login" className="mb-4" />
           ) : null}
           {isBranded ? (
             <p className="text-brand-muted text-sm font-semibold uppercase tracking-wide">

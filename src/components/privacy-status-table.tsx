@@ -2,7 +2,13 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ResizableTableShell, ResizableTh, tableBodyCellClass } from "@/components/resizable-table-parts";
 import { Button } from "@/components/ui";
+import { useTableColumnWidths } from "@/hooks/use-table-column-widths";
+import {
+  tableWidthStorageKey,
+  type TableColumnLayout,
+} from "@/lib/table-column-widths";
 import {
   PAGE_SIZE_OPTIONS,
   parsePageSize,
@@ -28,6 +34,17 @@ import {
 
 type CategoryOption = { id: number; name: string };
 type LocationOption = { id: number; label: string };
+
+const PRIVACY_STATUS_COLUMNS: TableColumnLayout[] = [
+  { key: "employee", defaultWidth: 200, minWidth: 140 },
+  { key: "category", defaultWidth: 140, minWidth: 100 },
+  { key: "location", defaultWidth: 120, minWidth: 90 },
+  { key: "joined", defaultWidth: 110, minWidth: 90 },
+  { key: "left", defaultWidth: 110, minWidth: 90 },
+  { key: "privacyStatus", defaultWidth: 130, minWidth: 100 },
+  { key: "acceptedAt", defaultWidth: 130, minWidth: 100 },
+  { key: "version", defaultWidth: 90, minWidth: 72 },
+];
 
 function PrivacyStatusTableInner() {
   const router = useRouter();
@@ -184,6 +201,11 @@ function PrivacyStatusTableInner() {
   const total = meta?.total ?? 0;
   const totalPages = meta?.totalPages ?? 1;
 
+  const { visibleColumns, widths, startResize } = useTableColumnWidths(
+    tableWidthStorageKey("admin.privacyStatus"),
+    PRIVACY_STATUS_COLUMNS
+  );
+
   return (
     <div className="space-y-4">
       {stats && (
@@ -334,11 +356,15 @@ function PrivacyStatusTableInner() {
             : "Keine Mitarbeiter gefunden."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="w-full min-w-[960px] text-left text-sm">
+        <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <ResizableTableShell
+            columns={visibleColumns}
+            widths={widths}
+            tableClassName="text-left text-sm"
+          >
             <thead className="border-b bg-slate-50 text-slate-600">
               <tr>
-                <th className="p-3">
+                <ResizableTh col={visibleColumns[0]} onResizeStart={startResize}>
                   <button
                     type="button"
                     className="font-semibold hover:text-brand"
@@ -346,10 +372,14 @@ function PrivacyStatusTableInner() {
                   >
                     Mitarbeiter{sortIndicator("lastName")}
                   </button>
-                </th>
-                <th className="p-3">Kategorie</th>
-                <th className="p-3">Standort</th>
-                <th className="p-3">
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[1]} onResizeStart={startResize}>
+                  Kategorie
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[2]} onResizeStart={startResize}>
+                  Standort
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[3]} onResizeStart={startResize}>
                   <button
                     type="button"
                     className="font-semibold hover:text-brand"
@@ -357,8 +387,8 @@ function PrivacyStatusTableInner() {
                   >
                     Eintritt{sortIndicator("joinedCompanyAt")}
                   </button>
-                </th>
-                <th className="p-3">
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[4]} onResizeStart={startResize}>
                   <button
                     type="button"
                     className="font-semibold hover:text-brand"
@@ -366,8 +396,8 @@ function PrivacyStatusTableInner() {
                   >
                     Austritt{sortIndicator("leftCompanyAt")}
                   </button>
-                </th>
-                <th className="p-3">
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[5]} onResizeStart={startResize}>
                   <button
                     type="button"
                     className="font-semibold hover:text-brand"
@@ -375,8 +405,8 @@ function PrivacyStatusTableInner() {
                   >
                     Datenschutz{sortIndicator("privacyStatus")}
                   </button>
-                </th>
-                <th className="p-3">
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[6]} onResizeStart={startResize}>
                   <button
                     type="button"
                     className="font-semibold hover:text-brand"
@@ -384,49 +414,65 @@ function PrivacyStatusTableInner() {
                   >
                     Bestätigt am{sortIndicator("acceptedAt")}
                   </button>
-                </th>
-                <th className="p-3">Version</th>
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[7]} onResizeStart={startResize}>
+                  Version
+                </ResizableTh>
               </tr>
             </thead>
             <tbody>
-              {rows.map((employee) => (
-                <tr key={employee.id} className="border-b last:border-0">
-                  <td className="p-3">
-                    <span className="font-medium">
-                      {employee.firstName} {employee.lastName}
-                    </span>
-                    <br />
-                    <span className="text-slate-500">{employee.email}</span>
-                  </td>
-                  <td className="p-3">
-                    {employee.employeeCategoryName ?? "—"}
-                  </td>
-                  <td className="p-3">{employee.locationLabel ?? "—"}</td>
-                  <td className="p-3">
-                    {formatPrivacyDate(employee.joinedCompanyAt)}
-                  </td>
-                  <td className="p-3">
-                    {formatPrivacyDate(employee.leftCompanyAt)}
-                  </td>
-                  <td className="p-3">
-                    <span
-                      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${privacyStatusBadgeClass(employee.statusKey)}`}
+              {rows.map((employee) => {
+                const employeeTitle = `${employee.firstName} ${employee.lastName} · ${employee.email}`;
+                return (
+                  <tr key={employee.id} className="border-b last:border-0 hover:bg-slate-50">
+                    <td className={tableBodyCellClass()} title={employeeTitle}>
+                      <div className="truncate font-medium">
+                        {employee.firstName} {employee.lastName}
+                      </div>
+                      <div className="truncate text-slate-500">{employee.email}</div>
+                    </td>
+                    <td
+                      className={tableBodyCellClass()}
+                      title={employee.employeeCategoryName ?? undefined}
                     >
-                      {privacyStatusLabel(employee.statusKey)}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    {employee.statusKey === "departed"
-                      ? "—"
-                      : formatPrivacyDate(employee.acceptedAt)}
-                  </td>
-                  <td className="p-3">
-                    {employee.acceptedVersion ?? "—"}
-                  </td>
-                </tr>
-              ))}
+                      {employee.employeeCategoryName ?? "—"}
+                    </td>
+                    <td
+                      className={tableBodyCellClass()}
+                      title={employee.locationLabel ?? undefined}
+                    >
+                      {employee.locationLabel ?? "—"}
+                    </td>
+                    <td className={tableBodyCellClass()}>
+                      {formatPrivacyDate(employee.joinedCompanyAt)}
+                    </td>
+                    <td className={tableBodyCellClass()}>
+                      {formatPrivacyDate(employee.leftCompanyAt)}
+                    </td>
+                    <td className={tableBodyCellClass()}>
+                      <span
+                        className={`inline-block max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-medium ${privacyStatusBadgeClass(employee.statusKey)}`}
+                        title={privacyStatusLabel(employee.statusKey)}
+                      >
+                        {privacyStatusLabel(employee.statusKey)}
+                      </span>
+                    </td>
+                    <td className={tableBodyCellClass()}>
+                      {employee.statusKey === "departed"
+                        ? "—"
+                        : formatPrivacyDate(employee.acceptedAt)}
+                    </td>
+                    <td
+                      className={tableBodyCellClass()}
+                      title={employee.acceptedVersion ?? undefined}
+                    >
+                      {employee.acceptedVersion ?? "—"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
-          </table>
+          </ResizableTableShell>
         </div>
       )}
 

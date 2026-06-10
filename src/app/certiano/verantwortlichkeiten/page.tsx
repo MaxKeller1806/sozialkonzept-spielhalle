@@ -120,21 +120,6 @@ function VerantwortlichkeitenPageContent() {
       ),
     },
     {
-      key: "slug",
-      header: "Slug",
-      sortable: true,
-      render: (item) => item.slug,
-    },
-    {
-      key: "placeholder",
-      header: "Platzhalter (später)",
-      render: (item) => (
-        <code className="text-xs text-slate-600">
-          {formatResponsibilityPlaceholder(item.slug)}
-        </code>
-      ),
-    },
-    {
       key: "assignmentCount",
       header: "Zuordnungen",
       sortable: true,
@@ -197,6 +182,8 @@ function VerantwortlichkeitenPageContent() {
       )}
 
       <AdminDataTable
+        appearance="modern"
+        storageKey="superuser.responsibilities"
         columns={columns}
         rows={list.rows}
         rowKey={(item) => item.id}
@@ -205,7 +192,7 @@ function VerantwortlichkeitenPageContent() {
         onRetry={list.reload}
         emptyMessage="Noch keine Verantwortungstypen angelegt."
         search={list.state.search}
-        searchPlaceholder="Name oder Slug…"
+        searchPlaceholder="Name oder Kurzname…"
         onSearchChange={list.setSearch}
         statusFilter={list.state.status}
         onStatusChange={list.setStatus}
@@ -247,11 +234,16 @@ function VerantwortlichkeitenPageContent() {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
           <Input
-            label="Slug"
-            placeholder="sozialkonzept"
+            label="Kurzname"
+            required
+            placeholder="z. B. sozialkonzept"
             value={form.slug}
             onChange={(e) => setForm({ ...form, slug: e.target.value })}
           />
+          <p className="text-xs text-slate-500">
+            Der Kurzname wird intern für Dokumentenvariablen in Zertifikaten und
+            Nachweisen verwendet (z. B. im Zertifikatsdesigner).
+          </p>
           <Input
             label="Beschreibung"
             value={form.description}
@@ -264,10 +256,10 @@ function VerantwortlichkeitenPageContent() {
             onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
           />
           {form.slug.trim() ? (
-            <p className="text-xs text-slate-500">
-              Zukünftiger Platzhalter:{" "}
-              <code>{formatResponsibilityPlaceholder(form.slug)}</code>
-            </p>
+            <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              <span className="font-medium text-slate-700">Dokumentenvariable: </span>
+              <code className="break-all">{formatResponsibilityPlaceholder(form.slug)}</code>
+            </div>
           ) : null}
         </form>
       </AdminModal>

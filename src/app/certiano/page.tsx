@@ -1,7 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   AdminDataTable,
@@ -13,17 +14,52 @@ import { AdminModal } from "@/components/admin-modal";
 import { CertianoShell } from "@/components/certiano-shell";
 import { CompanyDangerZone } from "@/components/company-danger-zone";
 import { CompanyEditForm } from "@/components/company-edit-form";
+import { ActionMenu } from "@/components/action-menu";
+import { EntityTableCell } from "@/components/entity-table-cell";
 import { IndustryBusinessTypeSelect } from "@/components/industry-business-type-select";
 import { PageHeader } from "@/components/page-header";
-import { KpiCard } from "@/components/kpi-card";
+import { StatusDot, TableLegendBar } from "@/components/status-dot";
+import {
+  IconBookOpen,
+  IconBuilding,
+  IconDownload,
+  IconKey,
+  IconMapPin,
+  IconPalette,
+  IconUsers,
+} from "@/components/table-action-icons";
+import { TableActionBar, type TableActionBarItem } from "@/components/table-action-bar";
+import type { ActionMenuSection } from "@/components/action-menu";
 import { Button, Card, Input } from "@/components/ui";
 import { useAdminList } from "@/hooks/use-admin-list";
+import { formatContactPersonDisplay } from "@/lib/contact-person";
+import {
+  companyStatusDotClass,
+  companyStatusLabel,
+  licenseStatusDotClass,
+  licenseStatusLabel,
+} from "@/lib/company-status-labels";
 import type { CompanySummaryRow } from "@/lib/tenant";
 
 interface IndustryOption {
   id: number;
   name: string;
   businessTypes: Array<{ id: number; name: string }>;
+}
+
+function IconOnlyHeader({
+  label,
+  icon,
+}: {
+  label: string;
+  icon: ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center justify-center text-slate-400" title={label}>
+      <span className="sr-only">{label}</span>
+      {icon}
+    </span>
+  );
 }
 
 function CertianoCompaniesContent() {
@@ -67,6 +103,7 @@ function CertianoCompaniesContent() {
     name: "",
     slug: "",
     email: "",
+    contactPerson: "",
     adminEmail: "",
     adminPassword: "",
   });
@@ -95,6 +132,7 @@ function CertianoCompaniesContent() {
       name: "",
       slug: "",
       email: "",
+      contactPerson: "",
       adminEmail: "",
       adminPassword: "",
     });
@@ -109,6 +147,7 @@ function CertianoCompaniesContent() {
       name: "",
       slug: "",
       email: "",
+      contactPerson: "",
       adminEmail: "",
       adminPassword: "",
     });
@@ -135,6 +174,7 @@ function CertianoCompaniesContent() {
           name: form.name,
           slug: form.slug,
           email: form.email || null,
+          contactPerson: form.contactPerson || null,
           adminEmail: form.adminEmail || null,
           adminPassword: form.adminPassword || null,
           industryId: industryId === "" ? null : industryId,
@@ -161,171 +201,322 @@ function CertianoCompaniesContent() {
     }
   }
 
-  async function regenerateLicense(companyId: number) {
-    const res = await fetch(`/api/superuser/companies/${companyId}/license`, {
-      method: "POST",
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setNewLicense(data.licenseKey);
-      setMessage("Neuer Lizenzschlüssel erstellt (nur einmal sichtbar).");
-    }
-  }
 
-  async function toggleStatus(company: CompanySummaryRow) {
-    const newStatus = company.status === "active" ? "disabled" : "active";
-    await fetch(`/api/superuser/companies/${company.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    reload();
-  }
-
-  function openEditCompany(company: CompanySummaryRow) {
+  const openEditCompany = useCallback((company: CompanySummaryRow) => {
     setEditCompanyName(company.name);
     setEditCompanyId(company.id);
-  }
+  }, []);
 
   const closeEditCompany = useCallback(() => {
     setEditCompanyId(null);
     setEditCompanyName("");
   }, []);
 
-  const columns: AdminTableColumn<CompanySummaryRow>[] = [
-    {
-      key: "name",
-      header: "Firma",
-      sortable: true,
-      render: (c) => <span className="font-medium">{c.name}</span>,
-    },
-    {
-      key: "industryName",
-      header: "Branche",
-      sortable: true,
-      render: (c) => c.industryName ?? "—",
-    },
-    {
-      key: "businessTypeName",
-      header: "Betriebstyp",
-      sortable: true,
-      render: (c) => c.businessTypeName ?? "—",
-    },
-    {
-      key: "status",
-      header: "Status",
-      sortable: true,
-      render: (c) => c.status,
-    },
-    {
-      key: "licenseStatus",
-      header: "Lizenz",
-      sortable: true,
-      render: (c) => c.licenseStatus,
-    },
-    {
-      key: "adminCount",
-      header: "Admins",
-      sortable: true,
-      render: (c) => c.adminCount,
-    },
-    {
-      key: "employeeCount",
-      header: "Mitarbeiter",
-      sortable: true,
-      render: (c) => c.employeeCount,
-    },
-    {
-      key: "adminContacts",
-      header: "Admin-Kontakte",
-      render: (c) =>
-        c.adminContacts.length === 0 ? (
-          "—"
-        ) : (
-          <ul className="space-y-1">
-            {c.adminContacts.map((a) => (
-              <li key={a.email}>
-                <span className="font-medium">{a.name}</span>
-                <br />
-                <span className="text-slate-500">{a.email}</span>
-              </li>
-            ))}
-          </ul>
+  function primaryAdminEmail(company: CompanySummaryRow): string | null {
+    return company.adminContacts[0]?.email ?? null;
+  }
+
+  function buildCompanyMehrSections(
+    company: CompanySummaryRow
+  ): ActionMenuSection[] {
+    return [
+      {
+        items: [
+          {
+            label: "Verantwortlichkeiten",
+            href: "/certiano/verantwortlichkeiten",
+          },
+          {
+            label: "Zugangsdaten anzeigen",
+            href: `/certiano/companies/${company.id}/users`,
+          },
+          {
+            label: "Passwort zurücksetzen",
+            href: `/certiano/companies/${company.id}/users`,
+          },
+        ],
+      },
+      {
+        danger: true,
+        items: [
+          {
+            label: "Firma löschen",
+            destructive: true,
+            onClick: () => openEditCompany(company),
+          },
+        ],
+      },
+    ];
+  }
+
+  function buildTaskbarActions(company: CompanySummaryRow): TableActionBarItem[] {
+    return [
+      {
+        key: "users",
+        label: "Benutzer",
+        icon: <IconUsers />,
+        href: `/certiano/companies/${company.id}/users`,
+      },
+      {
+        key: "courses",
+        label: "Seminare",
+        icon: <IconBookOpen />,
+        href: `/certiano/companies/${company.id}/courses`,
+      },
+      {
+        key: "branding",
+        label: "Firmenbranding",
+        icon: <IconPalette />,
+        href: `/certiano/companies/${company.id}/branding`,
+      },
+      {
+        key: "audit",
+        label: "Audit-Export",
+        icon: <IconDownload />,
+        onClick: () =>
+          setMessage(
+            "Audit-Export ist im Admin-Dashboard der Firma unter „Audit-Export“ verfügbar."
+          ),
+      },
+      {
+        key: "licenses",
+        label: "Lizenzen",
+        icon: <IconKey />,
+        onClick: () => openEditCompany(company),
+      },
+      {
+        key: "locations",
+        label: "Standorte",
+        icon: <IconMapPin />,
+        href: `/certiano/companies/${company.id}`,
+      },
+    ];
+  }
+
+  const columns: AdminTableColumn<CompanySummaryRow>[] = useMemo(
+    () => [
+      {
+        key: "companyCode",
+        header: "Kürzel",
+        headerContent: <span className="font-bold normal-case text-brand">Kürzel</span>,
+        sortable: true,
+        defaultWidth: 56,
+        minWidth: 52,
+        maxWidth: 72,
+        className: "px-2 font-mono text-[13px] font-bold text-brand",
+        truncate: true,
+        getCellTitle: (c) => c.companyCode || undefined,
+        render: (c) => c.companyCode || "—",
+      },
+      {
+        key: "name",
+        header: "Firma",
+        sortable: true,
+        defaultWidth: 300,
+        minWidth: 220,
+        maxWidth: 420,
+        render: (c) => (
+          <EntityTableCell
+            name={c.name}
+            subtitle={primaryAdminEmail(c) ?? "Kein Admin hinterlegt"}
+            colorSeed={c.id}
+          />
         ),
-    },
-    {
-      key: "createdAt",
-      header: "Erstellt",
-      sortable: true,
-      render: (c) => new Date(c.createdAt).toLocaleDateString("de-DE"),
-    },
-    {
-      key: "actions",
-      header: "Aktionen",
-      render: (c) => (
-        <div className="flex flex-col gap-1">
-          <button
-            type="button"
-            className="text-left text-brand hover:underline"
-            onClick={() => openEditCompany(c)}
-          >
-            Bearbeiten
-          </button>
+      },
+      {
+        key: "industryName",
+        header: "Branche",
+        sortable: true,
+        defaultWidth: 140,
+        minWidth: 110,
+        maxWidth: 200,
+        truncate: true,
+        getCellTitle: (c) => c.industryName ?? undefined,
+        render: (c) => c.industryName ?? "—",
+      },
+      {
+        key: "businessTypeName",
+        header: "Betriebstyp",
+        sortable: true,
+        defaultWidth: 130,
+        minWidth: 110,
+        maxWidth: 180,
+        truncate: true,
+        getCellTitle: (c) => c.businessTypeName ?? undefined,
+        render: (c) => c.businessTypeName ?? "—",
+      },
+      {
+        key: "status",
+        header: "Status",
+        headerContent: (
+          <IconOnlyHeader
+            label="Status"
+            icon={<span className="inline-block h-2 w-2 rounded-full bg-slate-300" aria-hidden />}
+          />
+        ),
+        compactHeader: true,
+        sortable: true,
+        defaultWidth: 40,
+        minWidth: 36,
+        maxWidth: 48,
+        resizable: false,
+        className: "px-1 text-center",
+        render: (c) => (
+          <div className="flex justify-center">
+            <StatusDot
+              className={companyStatusDotClass(c.status)}
+              title={companyStatusLabel(c.status)}
+            />
+          </div>
+        ),
+      },
+      {
+        key: "licenseStatus",
+        header: "Lizenz",
+        headerContent: (
+          <IconOnlyHeader
+            label="Lizenz"
+            icon={<IconKey className="h-3.5 w-3.5" />}
+          />
+        ),
+        compactHeader: true,
+        sortable: true,
+        defaultWidth: 40,
+        minWidth: 36,
+        maxWidth: 48,
+        resizable: false,
+        className: "px-1 text-center",
+        render: (c) => (
+          <div className="flex justify-center">
+            <StatusDot
+              className={licenseStatusDotClass(c.licenseStatus)}
+              title={licenseStatusLabel(c.licenseStatus)}
+            />
+          </div>
+        ),
+      },
+      {
+        key: "locationCount",
+        header: "Standorte",
+        headerContent: (
+          <IconOnlyHeader
+            label="Standorte"
+            icon={<IconMapPin className="h-3.5 w-3.5" />}
+          />
+        ),
+        compactHeader: true,
+        sortable: true,
+        defaultWidth: 48,
+        minWidth: 40,
+        maxWidth: 56,
+        resizable: false,
+        stopRowClick: true,
+        className: "px-1 text-center tabular-nums",
+        render: (c) => (
           <Link
-            href={`/certiano/companies/${c.id}/users`}
+            href={`/certiano/companies/${c.id}`}
             className="text-brand hover:underline"
+            title="Standortverwaltung öffnen"
           >
-            Benutzer
+            {c.locationCount}
           </Link>
-          <Link
-            href={`/certiano/companies/${c.id}/courses`}
-            className="text-brand hover:underline"
-          >
-            Kurse
-          </Link>
-          <button
-            type="button"
-            className="text-left text-brand hover:underline"
-            onClick={() => regenerateLicense(c.id)}
-          >
-            Lizenz neu
-          </button>
-          <button
-            type="button"
-            className="text-left text-slate-600 hover:underline"
-            onClick={() => toggleStatus(c)}
-          >
-            {c.status === "active" ? "Deaktivieren" : "Aktivieren"}
-          </button>
-          <Link
-            href={`/certiano/branding?companyId=${c.id}`}
-            className="text-brand hover:underline"
-          >
-            Branding
-          </Link>
-        </div>
-      ),
-    },
-  ];
+        ),
+      },
+      {
+        key: "employeeCount",
+        header: "Mitarbeiter",
+        headerContent: (
+          <IconOnlyHeader
+            label="Mitarbeiter"
+            icon={<IconUsers className="h-3.5 w-3.5" />}
+          />
+        ),
+        compactHeader: true,
+        sortable: true,
+        defaultWidth: 48,
+        minWidth: 40,
+        maxWidth: 56,
+        resizable: false,
+        className: "px-1 text-center tabular-nums text-slate-800",
+        render: (c) => c.employeeCount,
+      },
+      {
+        key: "contactPerson",
+        header: "Ansprechpartner",
+        headerContent: <span>Ansprechpartner</span>,
+        sortable: true,
+        defaultWidth: 120,
+        minWidth: 96,
+        maxWidth: 180,
+        truncate: true,
+        getCellTitle: (c) => formatContactPersonDisplay(c.contactPerson),
+        render: (c) => formatContactPersonDisplay(c.contactPerson),
+      },
+      {
+        key: "createdAt",
+        header: "Erstellt am",
+        sortable: true,
+        defaultWidth: 100,
+        minWidth: 88,
+        maxWidth: 120,
+        render: (c) => new Date(c.createdAt).toLocaleDateString("de-DE"),
+      },
+      {
+        key: "rowMenu",
+        header: "",
+        defaultWidth: 40,
+        minWidth: 36,
+        maxWidth: 48,
+        resizable: false,
+        sticky: "right",
+        hideFromPicker: true,
+        compactHeader: true,
+        className: "px-1 text-right",
+        render: (c) => (
+          <ActionMenu
+            ariaLabel={`Menü für ${c.name}`}
+            triggerVariant="icon"
+            sections={[
+              {
+                items: [
+                  {
+                    label: "Verantwortlichkeiten",
+                    href: "/certiano/verantwortlichkeiten",
+                  },
+                  {
+                    label: "Passwort zurücksetzen",
+                    href: `/certiano/companies/${c.id}/users`,
+                  },
+                  {
+                    label: "Zugangsdaten anzeigen",
+                    href: `/certiano/companies/${c.id}/users`,
+                  },
+                ],
+              },
+              {
+                danger: true,
+                items: [
+                  {
+                    label: "Firma löschen",
+                    destructive: true,
+                    onClick: () => openEditCompany(c),
+                  },
+                ],
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [openEditCompany]
+  );
 
   return (
-    <CertianoShell>
+    <CertianoShell contentClassName="app-content mx-auto w-full max-w-[1400px] flex-1 px-4 py-8 sm:px-6">
       <PageHeader
         title="Firmen"
-        description="Aggregierte Übersicht aller Kundenfirmen."
-        actions={<Button onClick={openCreateModal}>Neue Firma</Button>}
+        description="Verwalten Sie alle Firmen und deren Einstellungen."
       />
-
-      {!loading && meta && (
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard label="Firmen gesamt" value={meta.total} />
-          <KpiCard
-            label="Aktive Firmen"
-            value={companies.filter((c) => c.status === "active").length}
-            accent="green"
-          />
-        </div>
-      )}
 
       {message && (
         <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">
@@ -369,8 +560,9 @@ function CertianoCompaniesContent() {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
           <Input
-            label="Kurzname (URL)"
+            label="Web-Kurzname"
             required
+            placeholder="z. B. meine-firma"
             value={form.slug}
             onChange={(e) => setForm({ ...form, slug: e.target.value })}
           />
@@ -381,14 +573,20 @@ function CertianoCompaniesContent() {
             onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
           <Input
+            label="Ansprechpartner (optional)"
+            value={form.contactPerson}
+            onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
+            placeholder="z. B. Max Mustermann"
+          />
+          <Input
             label="Admin-E-Mail (optional)"
             type="email"
-            placeholder="Leer = admin@kurzname.local"
+            placeholder="Leer = admin@[web-kurzname].local"
             value={form.adminEmail}
             onChange={(e) => setForm({ ...form, adminEmail: e.target.value })}
           />
           <p className="text-xs text-slate-500">
-            Wenn leer, wird automatisch eine Login-E-Mail erzeugt (z. B. admin@kurzname.local).
+            Wenn leer, wird automatisch eine Login-E-Mail erzeugt (z. B. admin@meine-firma.local).
           </p>
           <Input
             label="Admin-Erstpasswort (optional)"
@@ -477,15 +675,86 @@ function CertianoCompaniesContent() {
       </AdminDrawer>
 
       <AdminDataTable
+        appearance="modern"
+        storageKey="superuser.companies.v2"
         columns={columns}
         rows={companies}
         rowKey={(c) => c.id}
+        onRowClick={openEditCompany}
+        renderRowFooter={(c) => (
+          <TableActionBar
+            actions={buildTaskbarActions(c)}
+            mehrSections={buildCompanyMehrSections(c)}
+            ariaLabel={`Schnellaktionen für ${c.name}`}
+          />
+        )}
+        legendBar={
+          <TableLegendBar
+            groups={[
+              {
+                title: "Status",
+                items: [
+                  { dotClass: companyStatusDotClass("active"), label: "Aktiv" },
+                  {
+                    dotClass: companyStatusDotClass("pending"),
+                    label: "In Prüfung",
+                  },
+                  {
+                    dotClass: companyStatusDotClass("disabled"),
+                    label: "Inaktiv",
+                  },
+                  {
+                    dotClass: companyStatusDotClass("expired"),
+                    label: "Archiviert",
+                  },
+                ],
+              },
+              {
+                title: "Lizenz",
+                titleIcon: <IconKey className="h-3.5 w-3.5" />,
+                items: [
+                  {
+                    dotClass: licenseStatusDotClass("active"),
+                    label: "Lizenziert",
+                  },
+                  {
+                    dotClass: licenseStatusDotClass("unlicensed"),
+                    label: "Nicht lizenziert",
+                  },
+                  {
+                    dotClass: licenseStatusDotClass("expired"),
+                    label: "Abgelaufen",
+                  },
+                ],
+              },
+            ]}
+            iconHints={[
+              {
+                icon: <IconMapPin className="h-3.5 w-3.5" />,
+                label: "Standorte",
+              },
+              {
+                icon: <IconUsers className="h-3.5 w-3.5" />,
+                label: "Mitarbeiter",
+              },
+            ]}
+          />
+        }
+        resultLeading={<IconBuilding className="h-4 w-4" />}
+        resultLabel={(total) =>
+          total === 1 ? "1 Firma gefunden" : `${total} Firmen gefunden`
+        }
+        primaryAction={
+          <Button type="button" className="!w-auto" onClick={openCreateModal}>
+            + Firma hinzufügen
+          </Button>
+        }
         loading={loading}
         error={error}
         onRetry={reload}
         emptyMessage="Keine Firmen gefunden."
         search={state.search}
-        searchPlaceholder="Firma, Branche oder Betriebstyp…"
+        searchPlaceholder="Firma, Kürzel oder Ansprechpartner suchen…"
         onSearchChange={setSearch}
         statusFilter={state.status}
         onStatusChange={setStatus}
@@ -534,7 +803,6 @@ function CertianoCompaniesContent() {
         getSortState={getSortState}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={resetFilters}
-        minWidth="900px"
       />
     </CertianoShell>
   );

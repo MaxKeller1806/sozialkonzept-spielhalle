@@ -72,6 +72,9 @@ function EmployeeListTableInner({
       key: "lastName",
       header: "Name",
       sortable: true,
+      defaultWidth: 180,
+      truncate: true,
+      getCellTitle: (u) => `${u.firstName} ${u.lastName}`,
       render: (u) => (
         <>
           {u.firstName} {u.lastName}
@@ -85,6 +88,9 @@ function EmployeeListTableInner({
       key: "email",
       header: "E-Mail",
       sortable: true,
+      defaultWidth: 200,
+      truncate: true,
+      getCellTitle: (u) => u.email,
       render: (u) => u.email,
     },
     {
@@ -147,6 +153,9 @@ function EmployeeListTableInner({
     {
       key: "actions",
       header: "",
+      defaultWidth: 72,
+      resizable: false,
+      sticky: "right",
       render: (u) => (
         <ActionMenu
           ariaLabel={`Aktionen für ${u.firstName} ${u.lastName}`}
@@ -165,6 +174,7 @@ function EmployeeListTableInner({
 
   return (
     <AdminDataTable
+      storageKey="admin.employees"
       columns={columns}
       rows={rows}
       rowKey={(u) => u.id}
@@ -216,7 +226,6 @@ function EmployeeListTableInner({
       getSortState={getSortState}
       hasActiveFilters={hasActiveFilters}
       onResetFilters={resetFilters}
-      minWidth="960px"
     />
   );
 }

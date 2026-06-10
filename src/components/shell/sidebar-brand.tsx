@@ -1,5 +1,7 @@
 "use client";
 
+import { BrandLogo } from "@/components/brand-logo";
+
 export function SidebarBrand({
   logoUrl,
   companyName,
@@ -16,18 +18,22 @@ export function SidebarBrand({
   return (
     <div
       className={`shrink-0 border-b border-slate-100 ${
-        collapsed ? "flex flex-col items-center px-2 py-4" : "px-4 py-5"
+        collapsed ? "flex flex-col items-center px-2 py-3" : "px-3 py-3"
       }`}
     >
       {logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={logoUrl}
-          alt=""
-          className={`object-contain ${
-            collapsed ? "h-9 w-9" : "mb-3 h-9 w-auto max-w-[140px]"
-          }`}
-        />
+        <div
+          className={
+            collapsed
+              ? "flex h-12 w-full shrink-0 items-center justify-center"
+              : "mb-2 w-full shrink-0"
+          }
+        >
+          <BrandLogo
+            src={logoUrl}
+            variant={collapsed ? "sidebar-collapsed" : "sidebar-expanded"}
+          />
+        </div>
       ) : (
         <div
           className={`flex shrink-0 items-center justify-center rounded-xl bg-brand-light font-bold text-brand ${

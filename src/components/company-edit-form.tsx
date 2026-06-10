@@ -14,11 +14,6 @@ export type CompanyFormState = {
   email: string;
   phone: string;
   website: string;
-  logoUrl: string;
-  primaryColor: string;
-  secondaryColor: string;
-  backgroundColor: string;
-  accentColor: string;
   status: string;
   licenseStatus: string;
   licenseExpiresAt: string;
@@ -35,11 +30,6 @@ const EMPTY_FORM: CompanyFormState = {
   email: "",
   phone: "",
   website: "",
-  logoUrl: "",
-  primaryColor: "#000080",
-  secondaryColor: "#4040a0",
-  backgroundColor: "#f8fafc",
-  accentColor: "#2563eb",
   status: "active",
   licenseStatus: "unlicensed",
   licenseExpiresAt: "",
@@ -78,6 +68,7 @@ export function CompanyEditForm({
   const [loadError, setLoadError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [companyCode, setCompanyCode] = useState("");
 
   const load = useCallback(() => {
     setLoading(true);
@@ -101,6 +92,7 @@ export function CompanyEditForm({
       .then((d) => {
         if (d?.company) {
           const c = d.company;
+          setCompanyCode(c.companyCode ?? "");
           setForm({
             name: c.name,
             street: c.street ?? "",
@@ -110,11 +102,6 @@ export function CompanyEditForm({
             email: c.email ?? "",
             phone: c.phone ?? "",
             website: c.website ?? "",
-            logoUrl: c.branding.logoUrl ?? "",
-            primaryColor: c.branding.primaryColor,
-            secondaryColor: c.branding.secondaryColor,
-            backgroundColor: c.branding.backgroundColor,
-            accentColor: c.branding.accentColor,
             status: c.status,
             licenseStatus: c.licenseStatus,
             licenseExpiresAt: c.licenseExpiresAt
@@ -207,6 +194,12 @@ export function CompanyEditForm({
         </div>
       )}
       <form id={formId} onSubmit={save} className="grid gap-4 sm:grid-cols-2">
+        <label className="block text-sm">
+          <span className="font-medium text-slate-700">Firmenkürzel</span>
+          <div className="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-800">
+            {companyCode || "—"}
+          </div>
+        </label>
         <Input
           label="Firmenname"
           required
@@ -254,35 +247,6 @@ export function CompanyEditForm({
           businessTypeId={businessTypeId}
           onIndustryChange={setIndustryId}
           onBusinessTypeChange={setBusinessTypeId}
-        />
-        <Input
-          label="Logo-URL"
-          value={form.logoUrl}
-          onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
-        />
-        <Input
-          label="Primärfarbe"
-          type="color"
-          value={form.primaryColor}
-          onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
-        />
-        <Input
-          label="Sekundärfarbe"
-          type="color"
-          value={form.secondaryColor}
-          onChange={(e) => setForm({ ...form, secondaryColor: e.target.value })}
-        />
-        <Input
-          label="Hintergrund"
-          type="color"
-          value={form.backgroundColor}
-          onChange={(e) => setForm({ ...form, backgroundColor: e.target.value })}
-        />
-        <Input
-          label="Akzentfarbe"
-          type="color"
-          value={form.accentColor}
-          onChange={(e) => setForm({ ...form, accentColor: e.target.value })}
         />
         <label className="block text-sm">
           <span className="font-medium text-slate-700">Firmenstatus</span>
@@ -361,6 +325,11 @@ export function CompanyEditForm({
             )}
             {showNavLinks && (
               <>
+                <Link href={`/certiano/companies/${companyId}/branding`}>
+                  <Button type="button" variant="secondary">
+                    Firmenbranding
+                  </Button>
+                </Link>
                 <Link href={`/certiano/companies/${companyId}/users`}>
                   <Button type="button" variant="secondary">
                     Benutzer

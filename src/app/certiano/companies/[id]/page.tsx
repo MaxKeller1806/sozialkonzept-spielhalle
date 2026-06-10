@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CompanySectionNav } from "@/components/certiano/company-section-nav";
 import { CertianoShell } from "@/components/certiano-shell";
 import { CompanyDangerZone } from "@/components/company-danger-zone";
 import { CompanyEditForm } from "@/components/company-edit-form";
@@ -25,8 +27,15 @@ export default function CompanyDetailPage() {
 
   return (
     <CertianoShell companyId={companyId}>
+      <Link
+        href="/certiano"
+        className="mb-4 inline-block text-sm text-brand underline"
+      >
+        ← Firmenübersicht
+      </Link>
+      <CompanySectionNav companyId={companyId} active="data" />
       <Card>
-        <h2 className="mb-4 text-lg font-bold">Firma bearbeiten</h2>
+        <h2 className="mb-4 text-lg font-bold">Firmendaten</h2>
         {message && (
           <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">
             {message}

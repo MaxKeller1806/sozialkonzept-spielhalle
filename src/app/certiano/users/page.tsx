@@ -3,8 +3,15 @@
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CertianoShell } from "@/components/certiano-shell";
+import { SearchFilterBar } from "@/components/search-filter-bar";
+import { ResizableTableShell, ResizableTh, tableBodyCellClass } from "@/components/resizable-table-parts";
 import { Button, Card } from "@/components/ui";
 import { useSuperuserDeleteUser } from "@/hooks/use-superuser-delete-user";
+import { useTableColumnWidths } from "@/hooks/use-table-column-widths";
+import {
+  tableWidthStorageKey,
+  type TableColumnLayout,
+} from "@/lib/table-column-widths";
 
 type UserFilter = "active" | "archived" | "all";
 type RoleFilter = "all" | "admin" | "employee";
@@ -42,6 +49,22 @@ interface CompanyOption {
   name: string;
 }
 
+const SUPERUSER_USERS_COLUMNS: TableColumnLayout[] = [
+  { key: "name", defaultWidth: 180, minWidth: 120 },
+  { key: "email", defaultWidth: 220, minWidth: 160 },
+  { key: "role", defaultWidth: 110, minWidth: 90 },
+  { key: "company", defaultWidth: 200, minWidth: 140 },
+  { key: "status", defaultWidth: 110, minWidth: 90 },
+  { key: "lastLogin", defaultWidth: 160, minWidth: 120 },
+  {
+    key: "details",
+    defaultWidth: 140,
+    minWidth: 120,
+    resizable: false,
+    sticky: "right",
+  },
+];
+
 export default function CertianoUsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
@@ -49,7 +72,6 @@ export default function CertianoUsersPage() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
   const [total, setTotal] = useState(0);
   const [truncated, setTruncated] = useState(false);
   const [expandedUserId, setExpandedUserId] = useState<number | null>(null);
@@ -88,7 +110,6 @@ export default function CertianoUsersPage() {
     setRoleFilter("all");
     setCompanyFilter("all");
     setSearch("");
-    setSearchInput("");
   }
 
   const queryString = useMemo(() => {
@@ -269,6 +290,11 @@ export default function CertianoUsersPage() {
     return role;
   }
 
+  const { visibleColumns, widths, startResize } = useTableColumnWidths(
+    tableWidthStorageKey("superuser.users"),
+    SUPERUSER_USERS_COLUMNS
+  );
+
   function renderUserDetails(user: UserRow) {
     const details = detailsByUser[user.id];
 
@@ -382,88 +408,48 @@ export default function CertianoUsersPage() {
         Schulungsdetails werden erst beim Aufklappen geladen.
       </p>
 
-      <Card className="mb-4">
-        <form
-          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSearch(searchInput);
-          }}
-        >
-          <label className="block sm:col-span-2 lg:col-span-4">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
-              Suche (Name / E-Mail)
-            </span>
-            <div className="flex gap-2">
-              <input
-                type="search"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="z. B. Müller oder @firma.de"
-                className="focus-brand min-h-[44px] flex-1 rounded-xl border border-slate-300 px-4 py-2 text-base"
-              />
-              <Button type="submit" className="!w-auto shrink-0">
-                Suchen
-              </Button>
-            </div>
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Firma</span>
-            <select
-              value={companyFilter}
-              onChange={(e) => setCompanyFilter(e.target.value)}
-              className="focus-brand w-full min-h-[44px] rounded-xl border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="all">Alle Firmen</option>
-              {companies.map((c) => (
-                <option key={c.id} value={String(c.id)}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Rolle</span>
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
-              className="focus-brand w-full min-h-[44px] rounded-xl border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="all">Alle Rollen</option>
-              <option value="admin">Admin</option>
-              <option value="employee">Mitarbeiter</option>
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Status</span>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as UserFilter)}
-              className="focus-brand w-full min-h-[44px] rounded-xl border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="all">Alle</option>
-              <option value="active">Aktiv</option>
-              <option value="archived">Archiviert</option>
-            </select>
-          </label>
-
-          {hasActiveFilters && (
-            <div className="flex items-end sm:col-span-2 lg:col-span-4">
-              <Button
-                type="button"
-                variant="secondary"
-                className="!w-auto"
-                onClick={resetFilters}
-              >
-                Filter zurücksetzen
-              </Button>
-            </div>
-          )}
-        </form>
-      </Card>
+      <SearchFilterBar
+        className="mb-4"
+        search={search}
+        searchPlaceholder="z. B. Müller oder @firma.de"
+        onSearchChange={setSearch}
+        filters={[
+          {
+            key: "companyId",
+            label: "Firma",
+            value: companyFilter,
+            options: [
+              { value: "all", label: "Alle Firmen" },
+              ...companies.map((c) => ({ value: String(c.id), label: c.name })),
+            ],
+            onChange: setCompanyFilter,
+          },
+          {
+            key: "role",
+            label: "Rolle",
+            value: roleFilter,
+            options: [
+              { value: "all", label: "Alle Rollen" },
+              { value: "admin", label: "Admin" },
+              { value: "employee", label: "Mitarbeiter" },
+            ],
+            onChange: (value) => setRoleFilter(value as RoleFilter),
+          },
+          {
+            key: "status",
+            label: "Status",
+            value: filter,
+            options: [
+              { value: "all", label: "Alle" },
+              { value: "active", label: "Aktiv" },
+              { value: "archived", label: "Archiviert" },
+            ],
+            onChange: (value) => setFilter(value as UserFilter),
+          },
+        ]}
+        hasActiveFilters={hasActiveFilters}
+        onResetFilters={resetFilters}
+      />
 
       {error && (
         <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">
@@ -499,35 +485,65 @@ export default function CertianoUsersPage() {
           </p>
         </Card>
       ) : (
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full min-w-[900px] text-left text-sm">
+        <Card className="min-w-0 overflow-hidden p-0">
+          <ResizableTableShell
+            columns={visibleColumns}
+            widths={widths}
+            tableClassName="text-left text-sm"
+          >
             <thead className="border-b bg-slate-50 text-slate-600">
               <tr>
-                <th className="p-4">Name</th>
-                <th className="p-4">E-Mail</th>
-                <th className="p-4">Rolle</th>
-                <th className="p-4">Firma</th>
-                <th className="p-4">Status</th>
-                <th className="p-4">Letzter Login</th>
-                <th className="p-4">Details</th>
+                <ResizableTh col={visibleColumns[0]} onResizeStart={startResize}>
+                  Name
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[1]} onResizeStart={startResize}>
+                  E-Mail
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[2]} onResizeStart={startResize}>
+                  Rolle
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[3]} onResizeStart={startResize}>
+                  Firma
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[4]} onResizeStart={startResize}>
+                  Status
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[5]} onResizeStart={startResize}>
+                  Letzter Login
+                </ResizableTh>
+                <ResizableTh col={visibleColumns[6]} onResizeStart={startResize}>
+                  Details
+                </ResizableTh>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => {
                 const isExpanded = expandedUserId === u.id;
+                const fullName = `${u.firstName} ${u.lastName}`;
                 return (
                   <Fragment key={u.id}>
-                    <tr className="border-b">
-                      <td className="p-4 font-medium">
-                        {u.firstName} {u.lastName}
+                    <tr className="border-b hover:bg-slate-50">
+                      <td
+                        className={`${tableBodyCellClass(undefined, "p-4 font-medium")}`}
+                        title={fullName}
+                      >
+                        {fullName}
                       </td>
-                      <td className="p-4">{u.email}</td>
-                      <td className="p-4">{roleLabel(u.role)}</td>
-                      <td className="p-4">
+                      <td className={tableBodyCellClass(undefined, "p-4")} title={u.email}>
+                        {u.email}
+                      </td>
+                      <td className={tableBodyCellClass(undefined, "p-4")}>
+                        {roleLabel(u.role)}
+                      </td>
+                      <td
+                        className={tableBodyCellClass(undefined, "p-4")}
+                        title={u.companyName ?? undefined}
+                      >
                         {u.companyId && u.companyName ? (
                           <Link
                             href={`/certiano/companies/${u.companyId}/users`}
-                            className="text-brand hover:underline"
+                            className="truncate text-brand hover:underline"
+                            title={u.companyName}
                           >
                             {u.companyName}
                           </Link>
@@ -535,17 +551,19 @@ export default function CertianoUsersPage() {
                           "—"
                         )}
                       </td>
-                      <td className="p-4">{u.active ? "Aktiv" : "Archiviert"}</td>
-                      <td className="p-4">
+                      <td className={tableBodyCellClass(undefined, "p-4")}>
+                        {u.active ? "Aktiv" : "Archiviert"}
+                      </td>
+                      <td className={tableBodyCellClass(undefined, "p-4")}>
                         {u.lastLoginAt
                           ? new Date(u.lastLoginAt).toLocaleString("de-DE")
                           : "—"}
                       </td>
-                      <td className="p-4">
+                      <td className={`${tableBodyCellClass("right", "p-4")} !overflow-visible`}>
                         <Button
                           type="button"
                           variant="secondary"
-                          className="!w-auto"
+                          className="!w-auto whitespace-nowrap"
                           onClick={() => toggleDetails(u)}
                         >
                           {isExpanded ? "Details ausblenden" : "Details anzeigen"}
@@ -563,7 +581,7 @@ export default function CertianoUsersPage() {
                 );
               })}
             </tbody>
-          </table>
+          </ResizableTableShell>
         </Card>
       )}
       {deleteDialog}

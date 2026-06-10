@@ -45,7 +45,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
     if (msg.includes("unique") || msg.includes("duplicate")) {
-      return NextResponse.json({ error: "Slug bereits vergeben." }, { status: 409 });
+      return NextResponse.json({ error: "Kurzname bereits vergeben." }, { status: 409 });
     }
     return NextResponse.json({ error: "Speichern fehlgeschlagen." }, { status: 500 });
   }

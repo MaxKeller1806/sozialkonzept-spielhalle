@@ -11,6 +11,7 @@ export default function FirmaPage() {
   const router = useRouter();
   const [form, setForm] = useState({
     name: "",
+    contactPerson: "",
     street: "",
     postalCode: "",
     city: "",
@@ -43,6 +44,7 @@ export default function FirmaPage() {
         const c = d.company;
         setForm({
           name: c.name,
+          contactPerson: c.contactPerson ?? "",
           street: c.street ?? "",
           postalCode: c.postalCode ?? "",
           city: c.city ?? "",
@@ -94,6 +96,12 @@ export default function FirmaPage() {
       <Card>
         <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
           <Input label="Firmenname" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <Input
+            label="Ansprechpartner"
+            value={form.contactPerson}
+            onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
+            placeholder="z. B. Max Mustermann"
+          />
           <Input label="E-Mail" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <Input label="Straße" value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
           <Input label="PLZ" value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} />
