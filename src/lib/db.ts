@@ -80,6 +80,11 @@ export function isQueryTimeoutError(err: unknown): boolean {
   );
 }
 
+/** Verbindungs- oder Timeout-Fehler → 503 SERVICE_TEMPORARILY_UNAVAILABLE. */
+export function isServiceUnavailableDbError(err: unknown): boolean {
+  return isDbConnectionError(err) || isQueryTimeoutError(err);
+}
+
 export function isMissingDbObject(err: unknown, name: string): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return msg.includes("does not exist") && msg.includes(name);

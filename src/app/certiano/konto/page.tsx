@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { clearSessionUserCache } from "@/components/account-menu";
 import { CertianoShell } from "@/components/certiano-shell";
 import { Button, Card, ErrorMessage, Input } from "@/components/ui";
+import { fetchAuthMe } from "@/lib/auth-client";
 
 interface SuperuserProfile {
   firstName: string;
@@ -26,20 +27,26 @@ export default function CertianoKontoPage() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+  const [serviceError, setServiceError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d?.user) {
-          window.location.replace("/certiano/login");
+  const loadPage = useCallback(() => {
+    setLoading(true);
+    setServiceError(null);
+    fetchAuthMe()
+      .then((auth) => {
+        if (auth.status === "unavailable") {
+          setServiceError(auth.message);
           return null;
         }
-        if (d.user.role !== "superuser") {
-          window.location.replace(d.authState?.redirect ?? "/login");
+        if (auth.status !== "ok" || auth.user.role !== "superuser") {
+          window.location.replace(
+            auth.status === "ok"
+              ? (auth.authState?.redirect ?? "/login")
+              : "/certiano/login"
+          );
           return null;
         }
-        setMustChange(!!d.user.mustChangePassword);
+        setMustChange(!!auth.user.mustChangePassword);
         return fetch("/api/superuser/profile");
       })
       .then(async (r) => {
@@ -67,6 +74,10 @@ export default function CertianoKontoPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadPage();
+  }, [loadPage]);
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -149,6 +160,19 @@ export default function CertianoKontoPage() {
     clearSessionUserCache();
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.replace("/certiano/login");
+  }
+
+  if (serviceError) {
+    return (
+      <CertianoShell>
+        <div className="flex flex-col items-start gap-3">
+          <p className="text-sm text-slate-600">{serviceError}</p>
+          <Button type="button" onClick={loadPage}>
+            Erneut versuchen
+          </Button>
+        </div>
+      </CertianoShell>
+    );
   }
 
   if (loading || !profile) {

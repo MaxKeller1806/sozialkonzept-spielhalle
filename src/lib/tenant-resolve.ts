@@ -2,6 +2,7 @@ import {
   normalizeBranding,
   OPERATOR_COMPANY_SLUG,
 } from "./branding-theme";
+import { withDbQuery } from "./db";
 import {
   getCompanyByCompanyCode,
   getCompanyById,
@@ -105,7 +106,7 @@ export function companyToResolvedTenant(
   };
 }
 
-export async function resolveTenant(params: {
+async function resolveTenantInner(params: {
   host?: string | null;
   companyCode?: string | null;
 }): Promise<ResolvedTenant | null> {
@@ -137,6 +138,13 @@ export async function resolveTenant(params: {
   }
 
   return null;
+}
+
+export async function resolveTenant(params: {
+  host?: string | null;
+  companyCode?: string | null;
+}): Promise<ResolvedTenant | null> {
+  return withDbQuery(() => resolveTenantInner(params));
 }
 
 export async function resolveLoginCompanyId(params: {

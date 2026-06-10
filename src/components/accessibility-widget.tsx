@@ -194,7 +194,7 @@ export function AccessibilityWidget() {
             <WidgetSection title="Vorlesen">
               {!supported ? (
                 <p className="a11y-widget-hint" role="note">
-                  Vorlesen wird in diesem Browser nicht unterstützt.
+                  Die Vorlesefunktion wird von diesem Browser nicht unterstützt.
                 </p>
               ) : (
                 <>

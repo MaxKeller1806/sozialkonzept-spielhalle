@@ -45,6 +45,7 @@ export async function PATCH(request: Request) {
       ["menuTextColor", "menu_text_color"],
       ["buttonTextColor", "button_text_color"],
       ["loginBackgroundUrl", "login_background_url"],
+      ["logoUrl", "logo_url"],
     ];
     for (const [jsKey, dbKey] of fields) {
       if (body[jsKey] !== undefined) patch[dbKey] = body[jsKey] || null;

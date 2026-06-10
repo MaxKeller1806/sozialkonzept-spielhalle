@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { fetchAuthMe } from "@/lib/auth-client";
 import { countUnseenReleases, releaseNotesPath } from "@/lib/release-notes";
 import type { SessionUser, UserRole } from "@/lib/types";
 
@@ -56,26 +57,36 @@ export function clearSessionUserCache(): void {
   sessionUserFetch = null;
 }
 
-function loadSessionUser(): Promise<SessionUser | null> {
-  if (sessionUserCache !== undefined) {
+function loadSessionUser(force = false): Promise<SessionUser | null> {
+  if (!force && sessionUserCache !== undefined) {
     return Promise.resolve(sessionUserCache);
   }
-  if (!sessionUserFetch) {
-    sessionUserFetch = fetch("/api/auth/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        const user = (d?.user as SessionUser | undefined) ?? null;
-        sessionUserCache = user;
-        return user;
-      })
-      .catch(() => {
-        sessionUserCache = null;
-        return null;
-      })
-      .finally(() => {
-        sessionUserFetch = null;
-      });
+  if (!force && sessionUserFetch) {
+    return sessionUserFetch;
   }
+  sessionUserFetch = fetchAuthMe()
+    .then((result) => {
+      if (result.status === "ok") {
+        sessionUserCache = result.user;
+        return result.user;
+      }
+      if (result.status === "unavailable") {
+        sessionUserCache = undefined;
+        throw new Error(result.message);
+      }
+      sessionUserCache = result.status === "unauthorized" ? null : undefined;
+      return null;
+    })
+    .catch((err) => {
+      if (sessionUserCache === undefined) {
+        throw err;
+      }
+      sessionUserCache = null;
+      return null;
+    })
+    .finally(() => {
+      sessionUserFetch = null;
+    });
   return sessionUserFetch;
 }
 
@@ -98,15 +109,38 @@ export function AccountMenu({
   const [user, setUser] = useState<SessionUser | null>(null);
   const [open, setOpen] = useState(false);
   const [unseenCount, setUnseenCount] = useState(0);
+  const [serviceError, setServiceError] = useState<string | null>(null);
+
+  const refreshSession = useCallback((force = false) => {
+    setServiceError(null);
+    loadSessionUser(force)
+      .then((u) => {
+        if (u) {
+          setUser(u);
+          setUnseenCount(countUnseenReleases(u.id, u.role));
+        }
+      })
+      .catch((err: Error) => {
+        setServiceError(err.message || "Verbindung vorübergehend nicht verfügbar.");
+      });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    loadSessionUser().then((u) => {
-      if (!cancelled && u) {
-        setUser(u);
-        setUnseenCount(countUnseenReleases(u.id, u.role));
-      }
-    });
+    loadSessionUser()
+      .then((u) => {
+        if (!cancelled && u) {
+          setUser(u);
+          setUnseenCount(countUnseenReleases(u.id, u.role));
+        }
+      })
+      .catch((err: Error) => {
+        if (!cancelled) {
+          setServiceError(
+            err.message || "Verbindung vorübergehend nicht verfügbar."
+          );
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -148,6 +182,31 @@ export function AccountMenu({
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.replace(logoutRedirect(user.role));
   }, [user]);
+
+  if (serviceError) {
+    const isDark = variant === "dark";
+    return (
+      <div className={`inline-flex items-center gap-2 ${className}`}>
+        <span
+          className={`text-xs ${isDark ? "text-amber-300" : "text-amber-700"}`}
+          title={serviceError}
+        >
+          Verbindung unterbrochen
+        </span>
+        <button
+          type="button"
+          onClick={() => refreshSession(true)}
+          className={`rounded-lg border px-2 py-1 text-xs font-medium ${
+            isDark
+              ? "border-slate-600 text-slate-200 hover:bg-slate-700"
+              : "border-slate-200 text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          Erneut
+        </button>
+      </div>
+    );
+  }
 
   if (!user) return null;
 

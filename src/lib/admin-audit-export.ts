@@ -234,7 +234,6 @@ async function renderCertificatePdfBuffer(cert: Certificate): Promise<Buffer> {
   return generateCertificatePdf(user, cert, course, {
     companyName: company?.name,
     branding: company?.branding,
-    documentSignature: company?.documentSignature,
     instructionCode: courseMeta?.instructionCode ?? null,
     instructionTitle: courseMeta?.instructionTitle ?? null,
     templateConfig,

@@ -1,8 +1,118 @@
 ================================================================================
 CERTIANO CAMPUS – Änderungen und Releases
 Projekt: sozialkonzept-spielhalle
-Stand: 10.06.2026 (V2.5.0)
+Stand: 11.06.2026 (V2.6.2)
 ================================================================================
+
+
+================================================================================
+RELEASE V2.6.2 – Patch (Bugfix: Vorlesefunktion Schulungsansicht)
+Commit: a132306 | 11.06.2026
+================================================================================
+
+BUGFIX: VORLESEFUNKTION IM MITARBEITERPORTAL
+--------------------------------------------
+- SpeechProvider: pathname-Wechsel stoppt nur noch laufende Sprachausgabe; Lektionstext
+  wird nicht mehr geleert (Race mit LessonSpeechRegister: Kind-useEffect vor Parent,
+  dadurch blieb hasLesson dauerhaft false und „Vorlesen starten“ deaktiviert)
+- speakLesson liest Lektionstext aus Ref für zuverlässigen Zugriff nach Navigation
+- Hinweistext bei fehlender Browser-Unterstützung angepasst
+
+Geänderte Dateien:
+  · src/components/speech-provider.tsx
+  · src/components/accessibility-widget.tsx
+
+
+================================================================================
+RELEASE V2.6.1 – Patch (Infrastruktur: DB-Verbindungsstabilität)
+Commit: a132306 | 11.06.2026
+================================================================================
+
+BUGFIX: SPORADISCHE SUPABASE CONNECTION_ENDED FEHLER
+----------------------------------------------------
+- GET /api/auth/me: DB-Abfragen über withDbQuery (Retry + Timeout); bei
+  Verbindungs-/Timeout-Fehlern 503 SERVICE_TEMPORARILY_UNAVAILABLE statt 500
+- Client (account-menu, admin-/employee-shell, Release-Notes-Seiten): bei 503
+  keine Session-Löschung, kein Redirect zu /login; kurze Meldung + „Erneut“
+- withDbRetry / isServiceUnavailableDbError in db.ts; resolveTenant und
+  fetchOperatorBranding mit Retry; Login-Seiten mit Branding-Fallback
+- Ursache: globaler postgres-Client in warmen Vercel-Instanzen hält ggf. tote
+  Pooler-Verbindungen (6543); resetSql + ein Retry stellt Verbindung wieder her
+
+Geänderte/neue Dateien:
+  · src/lib/db.ts – isServiceUnavailableDbError
+  · src/lib/auth-client.ts – fetchAuthMe, 503-Erkennung (neu)
+  · src/app/api/auth/me/route.ts – 503 bei DB-Ausfall
+  · src/components/account-menu.tsx, admin-shell.tsx, employee-shell.tsx
+  · src/app/dashboard/release-notes/page.tsx, konto/release-notes/page.tsx,
+    certiano/release-notes/page.tsx
+  · src/lib/operator-branding.ts, src/lib/tenant-resolve.ts
+  · src/app/login/page.tsx
+
+
+================================================================================
+RELEASE V2.6.0 – Alpha (UI: Mandanten-Login)
+Commit: a132306 | 11.06.2026
+================================================================================
+
+REDESIGN: TENANT-LOGIN (/login)
+--------------------------------
+- Zweispaltiges Layout (50/50 Desktop): Branding links, Anmeldung rechts
+- Linke Spalte: Certiano-Operator-Logo (server-seitig), Produktname mit
+  Gradient, Slogan, Beschreibung (APP_LOGIN_DESCRIPTION), drei Benefits mit
+  Lucide-Icons (Schulungen, Zertifikate, Nachweise)
+- Rechte Spalte: Portal-Label (portal=admin|employee oder kombiniert),
+  „Bereitgestellt für“ mit Firmenlogo/-name, Willkommenstext, Formular mit
+  Icon-Inputs, Passwort-Sichtbarkeit, Anmelden-Button mit Pfeil, Copyright
+- Responsive: Mobile stapelt Branding über Login ohne Informationsverlust
+- Login-Logik und Tenant-Auflösung unverändert; Entwicklerportal (/certiano/login)
+  bleibt unverändert
+
+Geänderte/neue Dateien:
+  · src/app/login/page.tsx – Operator-Branding + portal searchParam
+  · src/app/login/login-form.tsx – Redesign
+  · src/components/login/tenant-login-layout.tsx – Layout-Komponenten
+  · src/lib/branding.ts – APP_LOGIN_DESCRIPTION
+
+FIRMENLOGO-UPLOAD (WIEDER AKTIV)
+--------------------------------
+- Firmenlogo-Upload in „Meine Firma“ (Betreiberportal) und Certiano-Firmenbranding
+  wieder freigeschaltet (seit V2.5.0 vorübergehend deaktiviert)
+- Erlaubte Formate: PNG, JPG/JPEG, SVG · max. 2 MB (WebP entfernt)
+- Neuer Admin-Endpunkt POST /api/admin/branding/logo – Upload nur für die eigene
+  Firma (companyId aus Session, kein clientseitiges companyId)
+- Firmenlogo erscheint auf dem Mandanten-Login unter „Bereitgestellt für“
+  (Logo oder Firmenname als Fallback)
+
+Geänderte/neue Dateien:
+  · src/app/api/admin/branding/logo/route.ts – Admin-Logo-Upload (neu)
+  · src/app/api/admin/company/route.ts – logoUrl in PATCH
+  · src/app/dashboard/firma/page.tsx – LogoUploadField
+  · src/components/certiano/company-branding-form.tsx – Upload reaktiviert
+  · src/components/certiano/branding-editor-shared.tsx – Formate/Hilfetext
+  · src/lib/branding-upload.ts – ALLOWED_MIME ohne WebP
+
+================================================================================
+RELEASE V2.5.1 – Patch (Bugfix auf V2.5.0)
+Commit: a132306 | 11.06.2026
+================================================================================
+
+BUGFIX: VERANTWORTLICHE PERSON IN ZERTIFIKATEN/NACHWEISEN
+----------------------------------------------------------
+- Signaturblock in PDF-Vorlagen nutzte weiterhin alte Firmenfelder
+  (cert_signature_person / documentSignature) statt Verantwortlichkeiten
+- Signaturblock und Platzhalter {{responsible_person}}, {{responsibility_name}},
+  {{responsible_email}} beziehen Daten jetzt einheitlich aus
+  getCourseResponsibilityContext() (Verantwortlichkeiten je Kurs-Hauptthema)
+- Betrifft: Zertifikat-PDF, Nachweis-PDF, Audit-Export, Firmen-Datenexport,
+  Vorlagen-Vorschau
+
+Geänderte Dateien:
+  · src/lib/pdf.ts – Signaturblock aus Verantwortlichkeiten
+  · src/app/api/certificates/[id]/pdf/route.ts
+  · src/lib/admin-audit-export.ts
+  · src/lib/company-data-export.ts
+  · src/lib/document-template-preview.ts
 
 
 ================================================================================
@@ -576,12 +686,17 @@ DATENBANK-MIGRATIONEN (Übersicht)
 
 
 ================================================================================
-WICHTIGE ROUTEN (Stand V2.3.1)
+WICHTIGE ROUTEN (Stand V2.6.2)
 ================================================================================
 
 Öffentlich:
-  /login                          – Mandanten-Login (Firmenkennung + E-Mail + PW)
+  /login                          – Mandanten-Login (zweispaltig, ?portal=admin|employee)
   /certiano/login                 – Superuser-Login
+
+Release Notes (eingeloggt):
+  /certiano/release-notes         – Superuser
+  /dashboard/release-notes        – Betreiberportal
+  /konto/release-notes            – Mitarbeiterportal
 
 Certiano-Admin:
   /certiano                       – Firmenübersicht
@@ -589,17 +704,20 @@ Certiano-Admin:
   /certiano/exportprotokolle/[id] – Exportdetails (Snapshot, Downloads)
   /certiano/companies/[id]/data-export – Firmen-Datenexport erstellen
   /certiano/einstellungen/branding – Certiano-Branding (Plattform)
-  /certiano/companies/[id]/branding – Firmenbranding
+  /certiano/companies/[id]/branding – Firmenbranding (Logo-Upload)
   /certiano/companies/[id]        – Firmendetails
 
-Firmen-Admin (Audit-Export – getrennt vom Datenexport):
+Firmen-Admin:
+  /dashboard/firma                – Meine Firma (Logo-Upload)
   /dashboard/audit-export         – Schulungsnachweise für Behörden/Audits
 
 API (Auswahl):
   POST /api/auth/login            – Login (portal: tenant | certiano)
+  GET  /api/auth/me               – Session (503 bei temporärem DB-Ausfall)
   GET  /api/public/tenant?firma=  – Tenant-Auflösung per company_code
   GET  /api/public/operator-branding – Certiano-Branding
-  POST /api/superuser/branding/logo – Logo-Upload (Supabase Storage)
+  POST /api/superuser/branding/logo – Logo-Upload Superuser (Supabase Storage)
+  POST /api/admin/branding/logo   – Logo-Upload Betreiber (eigene Firma)
   POST /api/superuser/companies/[id]/data-export – Firmen-Datenexport (ZIP)
   GET  /api/superuser/data-exports – Alle Exportprotokolle
   GET  /api/superuser/data-exports/[id]/download – ZIP erneut laden

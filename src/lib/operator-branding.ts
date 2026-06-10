@@ -4,7 +4,7 @@ import {
   normalizeBranding,
   OPERATOR_COMPANY_SLUG,
 } from "./branding-theme";
-import { getSql } from "./db";
+import { getSql, postgresErrorFields, withDbQuery } from "./db";
 
 export interface OperatorBrandingPayload {
   name: string;
@@ -19,62 +19,83 @@ export function invalidateOperatorBrandingCache(): void {
   cache = null;
 }
 
+function operatorBrandingFallback(): OperatorBrandingPayload {
+  return {
+    name: APP_NAME,
+    operatorName: OPERATOR_NAME,
+    branding: DEFAULT_BRANDING,
+  };
+}
+
 export async function fetchOperatorBranding(): Promise<OperatorBrandingPayload> {
   if (cache && cache.expiresAt > Date.now()) {
     return cache.value;
   }
 
-  const sql = getSql();
-  const rows = await sql`
-    SELECT
-      name,
-      primary_color,
-      secondary_color,
-      background_color,
-      accent_color,
-      text_color,
-      text_secondary_color,
-      menu_text_color,
-      button_text_color,
-      logo_url,
-      login_background_url
-    FROM companies
-    WHERE slug = ${OPERATOR_COMPANY_SLUG}
-    LIMIT 1
-  `;
+  try {
+    const value = await withDbQuery(async () => {
+      const sql = getSql();
+      const rows = await sql`
+        SELECT
+          name,
+          primary_color,
+          secondary_color,
+          background_color,
+          accent_color,
+          text_color,
+          text_secondary_color,
+          menu_text_color,
+          button_text_color,
+          logo_url,
+          login_background_url
+        FROM companies
+        WHERE slug = ${OPERATOR_COMPANY_SLUG}
+        LIMIT 1
+      `;
 
-  if (rows.length === 0) {
-    const fallback: OperatorBrandingPayload = {
-      name: APP_NAME,
-      operatorName: OPERATOR_NAME,
-      branding: DEFAULT_BRANDING,
-    };
+      if (rows.length === 0) {
+        return operatorBrandingFallback();
+      }
+
+      const row = rows[0];
+      return {
+        name: String(row.name ?? APP_NAME),
+        operatorName: OPERATOR_NAME,
+        branding: normalizeBranding({
+          primaryColor:
+            row.primary_color != null ? String(row.primary_color) : undefined,
+          secondaryColor:
+            row.secondary_color != null ? String(row.secondary_color) : undefined,
+          backgroundColor:
+            row.background_color != null ? String(row.background_color) : undefined,
+          accentColor:
+            row.accent_color != null ? String(row.accent_color) : undefined,
+          textColor: row.text_color != null ? String(row.text_color) : undefined,
+          textSecondaryColor:
+            row.text_secondary_color != null
+              ? String(row.text_secondary_color)
+              : undefined,
+          menuTextColor:
+            row.menu_text_color != null ? String(row.menu_text_color) : undefined,
+          buttonTextColor:
+            row.button_text_color != null ? String(row.button_text_color) : undefined,
+          logoUrl: row.logo_url != null ? String(row.logo_url) : null,
+          loginBackgroundUrl:
+            row.login_background_url != null
+              ? String(row.login_background_url)
+              : null,
+        }),
+      };
+    });
+    cache = { value, expiresAt: Date.now() + CACHE_MS };
+    return value;
+  } catch (err) {
+    console.error(
+      "[operator-branding] DB-Fehler, Standard-Branding:",
+      postgresErrorFields(err)
+    );
+    const fallback = operatorBrandingFallback();
     cache = { value: fallback, expiresAt: Date.now() + CACHE_MS };
     return fallback;
   }
-
-  const row = rows[0];
-  const value: OperatorBrandingPayload = {
-    name: String(row.name ?? APP_NAME),
-    operatorName: OPERATOR_NAME,
-    branding: normalizeBranding({
-      primaryColor: row.primary_color != null ? String(row.primary_color) : undefined,
-      secondaryColor: row.secondary_color != null ? String(row.secondary_color) : undefined,
-      backgroundColor:
-        row.background_color != null ? String(row.background_color) : undefined,
-      accentColor: row.accent_color != null ? String(row.accent_color) : undefined,
-      textColor: row.text_color != null ? String(row.text_color) : undefined,
-      textSecondaryColor:
-        row.text_secondary_color != null ? String(row.text_secondary_color) : undefined,
-      menuTextColor:
-        row.menu_text_color != null ? String(row.menu_text_color) : undefined,
-      buttonTextColor:
-        row.button_text_color != null ? String(row.button_text_color) : undefined,
-      logoUrl: row.logo_url != null ? String(row.logo_url) : null,
-      loginBackgroundUrl:
-        row.login_background_url != null ? String(row.login_background_url) : null,
-    }),
-  };
-  cache = { value, expiresAt: Date.now() + CACHE_MS };
-  return value;
 }

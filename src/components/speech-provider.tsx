@@ -49,9 +49,9 @@ export function SpeechProvider({ children }: { children: React.ReactNode }) {
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);
   const [rate, setRateState] = useState<SpeechRate>("normal");
-  const [lessonKey, setLessonKey] = useState<string | null>(null);
   const [lessonText, setLessonText] = useState<string | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const lessonTextRef = useRef<string | null>(null);
   const prevLessonKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -72,11 +72,11 @@ export function SpeechProvider({ children }: { children: React.ReactNode }) {
     setPaused(false);
   }, []);
 
+  // Stop speech on route change only. Lesson text is registered/cleared by
+  // LessonSpeechRegister (child useEffect runs before this parent effect; clearing
+  // here would wipe registration and leave hasLesson false on lesson pages).
   useEffect(() => {
     stop();
-    setLessonKey(null);
-    setLessonText(null);
-    prevLessonKeyRef.current = null;
   }, [pathname, stop]);
 
   const registerLesson = useCallback(
@@ -85,7 +85,7 @@ export function SpeechProvider({ children }: { children: React.ReactNode }) {
         stop();
       }
       prevLessonKeyRef.current = key;
-      setLessonKey(key);
+      lessonTextRef.current = text;
       setLessonText(text);
     },
     [stop]
@@ -93,7 +93,7 @@ export function SpeechProvider({ children }: { children: React.ReactNode }) {
 
   const clearLesson = useCallback(() => {
     prevLessonKeyRef.current = null;
-    setLessonKey(null);
+    lessonTextRef.current = null;
     setLessonText(null);
   }, []);
 
@@ -133,8 +133,9 @@ export function SpeechProvider({ children }: { children: React.ReactNode }) {
   );
 
   const speakLesson = useCallback(() => {
-    if (lessonText) speak(lessonText);
-  }, [lessonText, speak]);
+    const text = lessonTextRef.current;
+    if (text) speak(text);
+  }, [speak]);
 
   const pause = useCallback(() => {
     if (!speaking || paused) return;

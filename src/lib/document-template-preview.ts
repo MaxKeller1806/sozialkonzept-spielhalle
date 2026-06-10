@@ -98,11 +98,6 @@ export async function generateGlobalDocumentTemplatePreviewPdf(
       logoUrl: null,
       loginBackgroundUrl: null,
     }),
-    documentSignature: {
-      responsiblePerson: "Beispiel Person",
-      position: "Beispiel Funktion",
-      customText: null,
-    },
     instructionCode: "N7",
     instructionTitle: "Verhalten bei einem Überfall",
     templateConfig: revision.config,

@@ -152,7 +152,7 @@ export function LogoUploadField({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          accept="image/png,image/jpeg,image/svg+xml"
           className="sr-only"
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -169,7 +169,7 @@ export function LogoUploadField({
         >
           {uploading ? "Wird hochgeladen…" : "Logo hochladen"}
         </Button>
-        <p className="mt-2 text-xs text-slate-500">PNG, JPG, WebP oder SVG · max. 2 MB</p>
+        <p className="mt-2 text-xs text-slate-500">PNG, JPG oder SVG · max. 2 MB</p>
       </div>
     </div>
   );

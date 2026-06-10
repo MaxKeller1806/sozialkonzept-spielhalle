@@ -6,6 +6,129 @@ import type { ReleaseNote } from "./types";
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "V2.6.2",
+    date: "11.06.2026",
+    summary: "Vorlesefunktion in der Schulungsansicht wieder nutzbar.",
+    sections: [
+      {
+        title: "Bugfix: Vorlesefunktion",
+        category: "bugfixes",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "„Vorlesen starten“ in der Lektionsansicht war dauerhaft deaktiviert – Lektionstext wird nach Navigation nicht mehr fälschlich geleert.",
+            visibility: ["superuser", "admin", "employee"],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    version: "V2.6.1",
+    date: "11.06.2026",
+    summary: "Stabilere Datenbankverbindung – kein Ausloggen bei temporären Pooler-Fehlern.",
+    sections: [
+      {
+        title: "Infrastruktur: DB-Verbindungsstabilität",
+        category: "bugfixes",
+        visibility: ["superuser"],
+        items: [
+          {
+            text: "/api/auth/me gibt bei CONNECTION_ENDED o. ä. 503 statt 500; Retry mit frischer Verbindung.",
+            visibility: ["superuser"],
+          },
+          {
+            text: "Login-Seiten mit Branding-Fallback bei DB-Ausfall.",
+            visibility: ["superuser"],
+          },
+        ],
+      },
+      {
+        title: "Verbesserung für alle Nutzer",
+        category: "ui",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Bei temporären Verbindungsproblemen keine automatische Weiterleitung zum Login – Meldung und „Erneut versuchen“.",
+            visibility: ["superuser", "admin", "employee"],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    version: "V2.6.0",
+    date: "11.06.2026",
+    summary:
+      "Neues Mandanten-Login-Layout und wieder aktiver Firmenlogo-Upload.",
+    sections: [
+      {
+        title: "Mandanten-Login (Redesign)",
+        category: "ui",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Zweispaltiges Login: Certiano-Branding links, Anmeldung rechts mit Portal-Label (Betreiber-/Mitarbeiterportal via ?portal=).",
+            visibility: ["superuser", "admin", "employee"],
+          },
+          {
+            text: "„Bereitgestellt für“ mit Firmenlogo oder Firmenname auf dem Mandanten-Login.",
+            visibility: ["superuser", "admin", "employee"],
+          },
+        ],
+      },
+      {
+        title: "Firmenlogo-Upload",
+        category: "features",
+        visibility: ["superuser", "admin"],
+        items: [
+          {
+            text: "Firmenlogo-Upload wieder aktiv in „Meine Firma“ und Certiano-Firmenbranding (PNG, JPG oder SVG · max. 2 MB).",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Betreiber können ihr Logo unter Meine Firma hochladen; Certiano-Superuser weiterhin unter Firmenbranding.",
+            visibility: ["superuser", "admin"],
+          },
+        ],
+      },
+      {
+        title: "Technische Umsetzung",
+        category: "technical",
+        visibility: ["superuser"],
+        items: [
+          {
+            text: "Neuer Endpunkt POST /api/admin/branding/logo – Upload nur für die eigene Firma (Session companyId).",
+            visibility: ["superuser"],
+          },
+          {
+            text: "src/components/login/tenant-login-layout.tsx – Layout-Komponenten für Mandanten-Login.",
+            visibility: ["superuser"],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    version: "V2.5.1",
+    date: "11.06.2026",
+    summary:
+      "Signaturblock in Zertifikaten bezieht Verantwortliche aus Verantwortlichkeiten je Kurs.",
+    sections: [
+      {
+        title: "Bugfix: Verantwortliche in Zertifikaten",
+        category: "bugfixes",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Signaturblock und Platzhalter {{responsible_person}}, {{responsibility_name}}, {{responsible_email}} nutzen einheitlich getCourseResponsibilityContext().",
+            visibility: ["superuser", "admin", "employee"],
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "V2.5.0",
     date: "10.06.2026",
     commit: "df78400",

@@ -7,13 +7,7 @@ import {
   type GenericResponsibilityContext,
   type ResponsibilityPlaceholderMap,
 } from "./responsibility-placeholders";
-import type {
-  Certificate,
-  CompanyBranding,
-  CompanyDocumentSignature,
-  CourseData,
-  User,
-} from "./types";
+import type { Certificate, CompanyBranding, CourseData, User } from "./types";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("de-DE", {
@@ -72,7 +66,6 @@ export async function generateCertificatePdf(
   opts?: {
     companyName?: string;
     branding?: CompanyBranding;
-    documentSignature?: CompanyDocumentSignature;
     instructionCode?: string | null;
     instructionTitle?: string | null;
     templateConfig?: DocumentTemplateConfig;
@@ -188,25 +181,18 @@ function renderSignatureBlock(
   templateConfig: DocumentTemplateConfig,
   opts: {
     companyName?: string;
-    documentSignature?: CompanyDocumentSignature;
+    genericResponsibility?: GenericResponsibilityContext | null;
   }
 ) {
   const personLabel =
     templateConfig.signature.personLabel.trim() || "Verantwortliche Person";
   const positionLabel =
     templateConfig.signature.positionLabel.trim() || "Position / Funktion";
-  const customText = opts.documentSignature?.customText?.trim() ?? "";
-  const person = opts.documentSignature?.responsiblePerson?.trim() ?? "";
-  const position = opts.documentSignature?.position?.trim() ?? "";
+  const person = opts.genericResponsibility?.responsiblePerson?.trim() ?? "";
+  const position = opts.genericResponsibility?.responsibilityName?.trim() ?? "";
   const companyName = opts.companyName?.trim() ?? "";
 
   let rendered = false;
-
-  if (customText) {
-    doc.fontSize(10).font("Helvetica").fillColor("#333").text(customText);
-    doc.moveDown(0.5);
-    rendered = true;
-  }
 
   if (person) {
     doc.fontSize(9).font("Helvetica-Bold").fillColor("#666").text(personLabel);
@@ -237,7 +223,6 @@ function generateCertificatePdfFromTemplate(
   opts: {
     companyName?: string;
     branding?: CompanyBranding;
-    documentSignature?: CompanyDocumentSignature;
     instructionCode?: string | null;
     instructionTitle?: string | null;
     responsibilityPlaceholders?: ResponsibilityPlaceholderMap;
@@ -354,7 +339,7 @@ function generateCertificatePdfFromTemplate(
       doc.moveDown(1);
       renderSignatureBlock(doc, templateConfig, {
         companyName: opts.companyName,
-        documentSignature: opts.documentSignature,
+        genericResponsibility: opts.genericResponsibility,
       });
     }
 

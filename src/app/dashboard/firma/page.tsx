@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { LogoUploadField } from "@/components/certiano/branding-editor-shared";
 import { PageHeader } from "@/components/page-header";
 import { invalidateTenantBrandingCache } from "@/components/tenant-branding-loader";
 import { Button, Card, Input } from "@/components/ui";
@@ -9,6 +10,7 @@ import { applyBrandingCssVars } from "@/lib/branding-theme";
 
 export default function FirmaPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     name: "",
     contactPerson: "",
@@ -19,12 +21,15 @@ export default function FirmaPage() {
     email: "",
     phone: "",
     website: "",
+    logoUrl: "",
     primaryColor: "#000080",
     secondaryColor: "#4040a0",
     backgroundColor: "#f8fafc",
     accentColor: "#2563eb",
   });
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const load = useCallback(() => {
     fetch("/api/admin/company")
@@ -48,6 +53,7 @@ export default function FirmaPage() {
           email: c.email ?? "",
           phone: c.phone ?? "",
           website: c.website ?? "",
+          logoUrl: c.branding.logoUrl ?? "",
           primaryColor: c.branding.primaryColor,
           secondaryColor: c.branding.secondaryColor,
           backgroundColor: c.branding.backgroundColor,
@@ -60,8 +66,38 @@ export default function FirmaPage() {
     load();
   }, [load]);
 
+  async function handleLogoUpload(file: File) {
+    setUploadingLogo(true);
+    setError("");
+    setMessage("");
+    try {
+      const body = new FormData();
+      body.append("file", file);
+
+      const res = await fetch("/api/admin/branding/logo", {
+        method: "POST",
+        body,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Logo konnte nicht hochgeladen werden.");
+        return;
+      }
+      if (data.logoUrl) {
+        setForm((prev) => ({ ...prev, logoUrl: data.logoUrl }));
+        invalidateTenantBrandingCache();
+        setMessage("Logo hochgeladen und gespeichert.");
+      }
+    } catch {
+      setError("Logo konnte nicht hochgeladen werden. Bitte erneut versuchen.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
     const res = await fetch("/api/admin/company", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -75,7 +111,8 @@ export default function FirmaPage() {
       invalidateTenantBrandingCache();
       setMessage("Firma gespeichert.");
     } else {
-      setMessage(data.error ?? "Speichern fehlgeschlagen.");
+      setMessage("");
+      setError(data.error ?? "Speichern fehlgeschlagen.");
     }
   }
 
@@ -84,6 +121,9 @@ export default function FirmaPage() {
       <PageHeader title="Meine Firma" />
       {message && (
         <p className="mb-4 rounded-lg bg-brand-light px-4 py-2 text-sm text-brand">{message}</p>
+      )}
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
       )}
       <Card>
         <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
@@ -102,13 +142,14 @@ export default function FirmaPage() {
           <Input label="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <Input label="Website" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
           <div className="sm:col-span-2">
-            <span className="mb-1.5 block text-sm font-medium text-slate-700">Firmenlogo</span>
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm text-slate-600">
-                Die Unterstützung für individuelle Firmenlogos wird in einer zukünftigen Version
-                verfügbar sein.
-              </p>
-            </div>
+            <LogoUploadField
+              label="Firmenlogo"
+              logoUrl={form.logoUrl}
+              uploading={uploadingLogo}
+              onUpload={handleLogoUpload}
+              onRemove={() => setForm((prev) => ({ ...prev, logoUrl: "" }))}
+              fileInputRef={fileInputRef}
+            />
           </div>
           <Input label="Primärfarbe" type="color" value={form.primaryColor} onChange={(e) => setForm({ ...form, primaryColor: e.target.value })} />
           <Input label="Sekundärfarbe" type="color" value={form.secondaryColor} onChange={(e) => setForm({ ...form, secondaryColor: e.target.value })} />

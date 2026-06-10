@@ -9,14 +9,12 @@ export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 const ALLOWED_MIME = new Set([
   "image/png",
   "image/jpeg",
-  "image/webp",
   "image/svg+xml",
 ]);
 
 const EXT_BY_MIME: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
-  "image/webp": "webp",
   "image/svg+xml": "svg",
 };
 

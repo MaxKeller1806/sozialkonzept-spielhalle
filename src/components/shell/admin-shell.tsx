@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ADMIN_SIDEBAR_ITEMS } from "@/components/admin-nav";
 import { AppShell } from "@/components/shell/app-shell";
 import { useOperatorBrandingLogo } from "@/components/certiano-branding-loader";
@@ -9,7 +9,8 @@ import {
   useTenantBranding,
 } from "@/components/tenant-branding-loader";
 import { PORTAL_NAME_ADMIN } from "@/lib/branding";
-import { LoadingStatus } from "@/components/ui";
+import { fetchAuthMe } from "@/lib/auth-client";
+import { Button, LoadingStatus } from "@/components/ui";
 
 const ADMIN_ALLOWED_REDIRECT_PREFIXES = [
   "/dashboard",
@@ -21,29 +22,47 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
   const tenant = useTenantBranding();
   const operatorLogoUrl = useOperatorBrandingLogo();
   const [ready, setReady] = useState(false);
+  const [serviceError, setServiceError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((auth) => {
-        if (!auth.user) {
-          window.location.replace("/login");
-          return;
-        }
-        const redirect = auth.authState?.redirect as string | undefined;
-        if (
-          redirect &&
-          !ADMIN_ALLOWED_REDIRECT_PREFIXES.some((p) => redirect.startsWith(p))
-        ) {
-          window.location.replace(redirect);
-          return;
-        }
-        setReady(true);
-      })
-      .catch(() => window.location.replace("/login"));
+  const checkAuth = useCallback(() => {
+    setServiceError(null);
+    fetchAuthMe().then((result) => {
+      if (result.status === "unavailable") {
+        setServiceError(result.message);
+        return;
+      }
+      if (result.status !== "ok") {
+        window.location.replace("/login");
+        return;
+      }
+      const redirect = result.authState?.redirect;
+      if (
+        redirect &&
+        !ADMIN_ALLOWED_REDIRECT_PREFIXES.some((p) => redirect.startsWith(p))
+      ) {
+        window.location.replace(redirect);
+        return;
+      }
+      setReady(true);
+    });
   }, []);
 
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
   const companyName = tenant?.companyName || "Administration";
+
+  if (serviceError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+        <p className="max-w-md text-sm text-slate-600">{serviceError}</p>
+        <Button type="button" onClick={checkAuth}>
+          Erneut versuchen
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <AppShell
