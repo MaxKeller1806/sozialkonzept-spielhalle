@@ -7,18 +7,13 @@ import {
   TenantBrandingLoader,
   useTenantBranding,
 } from "@/components/tenant-branding-loader";
+import { PORTAL_NAME_ADMIN } from "@/lib/branding";
 import { LoadingStatus } from "@/components/ui";
 
 const ADMIN_ALLOWED_REDIRECT_PREFIXES = [
   "/dashboard",
   "/passwort-aendern",
   "/datenschutz",
-];
-
-const ADMIN_QUICK_LINKS = [
-  { href: "/dashboard/konto", label: "Mein Konto" },
-  { href: "/dashboard/firma", label: "Meine Firma" },
-  { href: "/dashboard/uebersicht", label: "Dashboard" },
 ];
 
 function AdminShellInner({ children }: { children: React.ReactNode }) {
@@ -55,10 +50,8 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
       brand={{
         logoUrl: tenant?.branding.logoUrl,
         companyName,
-        productName: "Certiano Campus",
-        areaLabel: "Admin-Bereich",
+        portalName: PORTAL_NAME_ADMIN,
       }}
-      quickLinks={ADMIN_QUICK_LINKS}
       navAriaLabel="Administration"
       ready={ready}
       loadingFallback={<LoadingStatus />}

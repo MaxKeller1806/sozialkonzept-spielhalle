@@ -1,8 +1,8 @@
 import {
-  IconBook,
-  IconCertificate,
+  IconAccount,
+  IconCertificates,
   IconDashboard,
-  IconUser,
+  IconSeminars,
 } from "@/components/shell/nav-icons";
 import type { SidebarNavItem } from "@/components/shell/sidebar-nav";
 
@@ -16,7 +16,7 @@ export const EMPLOYEE_SIDEBAR_ITEMS: SidebarNavItem[] = [
   {
     href: "/schulung",
     label: "Meine Schulungen",
-    icon: <IconBook />,
+    icon: <IconSeminars />,
     match: (p) =>
       p === "/schulung" ||
       p.startsWith("/schulung/modul") ||
@@ -27,13 +27,13 @@ export const EMPLOYEE_SIDEBAR_ITEMS: SidebarNavItem[] = [
   {
     href: "/schulung/nachweise",
     label: "Meine Nachweise",
-    icon: <IconCertificate />,
+    icon: <IconCertificates />,
     match: (p) => p.startsWith("/schulung/nachweise"),
   },
   {
     href: "/konto",
     label: "Mein Konto",
-    icon: <IconUser />,
+    icon: <IconAccount />,
     match: (p) => p.startsWith("/konto"),
   },
 ];

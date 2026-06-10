@@ -18,6 +18,7 @@ import {
 } from "@/components/certiano/branding-editor-shared";
 import { invalidateTenantBrandingCache } from "@/components/tenant-branding-loader";
 import { Button, Input } from "@/components/ui";
+import { PORTAL_NAME_ADMIN } from "@/lib/branding";
 import {
   BRANDING_COLOR_PRESETS,
   defaultBrandingFormState,
@@ -447,6 +448,7 @@ export function CompanyBrandingForm({ companyId }: CompanyBrandingFormProps) {
           branding={previewBranding}
           mode={previewMode}
           areaLabel="Schulungsbereich"
+          portalName={PORTAL_NAME_ADMIN}
           previewDescription="So wirkt das Firmenbranding im Kundenbereich."
         />
       </aside>

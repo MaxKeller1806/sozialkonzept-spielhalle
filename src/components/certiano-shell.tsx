@@ -6,13 +6,7 @@ import {
   CertianoBrandingLoader,
   useCertianoBranding,
 } from "@/components/certiano-branding-loader";
-import { APP_NAME } from "@/lib/branding";
-
-const CERTIANO_QUICK_LINKS = [
-  { href: "/certiano/konto", label: "Mein Konto" },
-  { href: "/certiano/uebersicht", label: "Dashboard" },
-  { href: "/certiano", label: "Firmen" },
-];
+import { APP_NAME, PORTAL_NAME_SUPERUSER } from "@/lib/branding";
 
 function CertianoShellInner({
   children,
@@ -33,19 +27,13 @@ function CertianoShellInner({
       brand={{
         logoUrl: branding.logoUrl,
         companyName: name || APP_NAME,
-        productName: "Certiano Campus",
-        areaLabel: "Certiano",
+        portalName: PORTAL_NAME_SUPERUSER,
       }}
-      quickLinks={CERTIANO_QUICK_LINKS}
       navAriaLabel="Certiano"
       contentClassName={
         contentClassName ??
         "app-content mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-8"
       }
-      topbar={{
-        showSearch: true,
-        searchPlaceholder: "Firma oder Benutzer suchen…",
-      }}
     >
       {children}
     </AppShell>

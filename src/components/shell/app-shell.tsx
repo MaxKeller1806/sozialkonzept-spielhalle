@@ -5,14 +5,13 @@ import { usePathname } from "next/navigation";
 import { LoadingStatus, PageMain } from "@/components/ui";
 import { AppTopbar } from "@/components/shell/app-topbar";
 import { SidebarBrand } from "@/components/shell/sidebar-brand";
-import { SidebarFooter, type SidebarQuickLink } from "@/components/shell/sidebar-footer";
+import { SidebarFooter } from "@/components/shell/sidebar-footer";
 import { SidebarNav, type SidebarNavItem } from "@/components/shell/sidebar-nav";
 
 export type AppShellBrand = {
   logoUrl?: string | null;
   companyName: string;
-  productName?: string;
-  areaLabel: string;
+  portalName: string;
 };
 
 export type AppShellTopbarOptions = {
@@ -26,7 +25,6 @@ export type AppShellProps = {
   storageKey: string;
   navItems: SidebarNavItem[];
   brand: AppShellBrand;
-  quickLinks: SidebarQuickLink[];
   breadcrumb?: string;
   navAriaLabel: string;
   navVariant?: "light" | "dark";
@@ -43,7 +41,6 @@ function SidebarPanel({
   navItems,
   navAriaLabel,
   navVariant,
-  quickLinks,
   onToggleCollapse,
 }: {
   collapsed: boolean;
@@ -52,7 +49,6 @@ function SidebarPanel({
   navItems: SidebarNavItem[];
   navAriaLabel: string;
   navVariant?: "light" | "dark";
-  quickLinks: SidebarQuickLink[];
   onToggleCollapse: () => void;
 }) {
   return (
@@ -60,8 +56,6 @@ function SidebarPanel({
       <SidebarBrand
         logoUrl={brand.logoUrl}
         companyName={brand.companyName}
-        productName={brand.productName}
-        areaLabel={brand.areaLabel}
         collapsed={collapsed}
       />
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
@@ -76,7 +70,6 @@ function SidebarPanel({
       <SidebarFooter
         collapsed={collapsed}
         onToggleCollapse={onToggleCollapse}
-        quickLinks={quickLinks}
       />
     </>
   );
@@ -87,7 +80,6 @@ export function AppShell({
   storageKey,
   navItems,
   brand,
-  quickLinks,
   breadcrumb,
   navAriaLabel,
   navVariant = "light",
@@ -117,10 +109,7 @@ export function AppShell({
     });
   }, [storageKey]);
 
-  const resolvedBreadcrumb =
-    breadcrumb ??
-    navItems.find((item) => item.match(pathname))?.label ??
-    brand.areaLabel;
+  const resolvedBreadcrumb = breadcrumb ?? brand.portalName;
 
   if (!ready) {
     return loadingFallback;
@@ -139,7 +128,6 @@ export function AppShell({
           navItems={navItems}
           navAriaLabel={navAriaLabel}
           navVariant={navVariant}
-          quickLinks={quickLinks}
           onToggleCollapse={toggleCollapse}
         />
       </aside>
@@ -160,7 +148,6 @@ export function AppShell({
               navItems={navItems}
               navAriaLabel={navAriaLabel}
               navVariant={navVariant}
-              quickLinks={quickLinks}
               onToggleCollapse={toggleCollapse}
             />
           </aside>

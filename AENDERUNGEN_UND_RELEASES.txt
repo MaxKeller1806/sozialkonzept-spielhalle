@@ -1,8 +1,211 @@
 ================================================================================
 CERTIANO CAMPUS – Änderungen und Releases
 Projekt: sozialkonzept-spielhalle
-Stand: 10.06.2026
+Stand: 10.06.2026 (V2.3.1)
 ================================================================================
+
+
+================================================================================
+RELEASE V2.3.1 – Alpha
+Commit: 157acd3 | 10.06.2026
+================================================================================
+
+UI-BEREINIGUNG
+---------------
+Redundante Bedienelemente entfernt, Oberfläche übersichtlicher:
+
+Firmenübersicht:
+  · Drei-Punkte-Menü pro Firmenzeile entfernt (Funktionen weiterhin über
+    Aktionsleiste: Benutzer, Seminare, Branding, Datenexport, Audit-Export,
+    Lizenzen, Standorte, Mehr)
+
+Header:
+  · Globale Suchleiste im Certiano-Bereich entfernt (ohne Funktion)
+  · Firmensuche in der Firmenübersicht bleibt bestehen
+
+Sidebar:
+  · Menüpunkt „Abmelden“ entfernt (weiterhin im Benutzer-Menü oben rechts)
+  · Superuser-Karte unten (Name, E-Mail, Dropdown) entfernt
+  · Erhalten: Navigation, Mein Konto, Menü einklappen
+
+EINHEITLICHE NAVIGATIONS-ICONS (Lucide)
+-----------------------------------------
+Zentrale Icon-Zuordnung in src/components/shell/nav-icons.tsx für Certiano,
+Admin und Mitarbeiter (Sidebar, Mobile-Navigation, Aktionsleisten):
+
+  · Dashboard ............... LayoutDashboard
+  · Firmen / Standorte ...... Building2
+  · Benutzer / Mitarbeiter .. Users
+  · Branchen ................ Factory
+  · Verantwortlichkeiten .... ShieldCheck
+  · Hauptthemen ............. FolderTree
+  · Seminare / Schulungen ... GraduationCap
+  · Zertifikate & Nachweise . BadgeCheck
+  · Export / Audit-Export ... Archive
+  · Einstellungen ........... Settings
+  · Mein Konto .............. UserCircle
+
+Neue Abhängigkeit: lucide-react
+
+SIDEBAR-BRANDING
+----------------
+Unter dem Logo einheitlich drei Zeilen (alle Rollen, Desktop + Mobile):
+
+  Zeile 1: Certiano Campus (Produktname)
+  Zeile 2: Lernen. Nachweisen. Verwalten. (Slogan)
+  Zeile 3: Compliance-Plattform (Produktbeschreibung)
+
+Texte zentral in src/lib/branding.ts (APP_NAME, APP_SLOGAN, APP_DESCRIPTION).
+Tenant-Logo unverändert über logoUrl; kein doppelter Produkt-/Bereichstext mehr.
+
+HEADER-STRUKTUR
+---------------
+Klare Informationshierarchie – keine doppelten Seitentitel mehr:
+
+  · Oberer Header zeigt Portalebene:
+    – Superuser: Entwicklerportal
+    – Admin: Betreiberportal
+    – Mitarbeiter: Mitarbeiterportal
+  · Seitenüberschrift bleibt im Inhaltsbereich (PageHeader, ggf. mit Beschreibung)
+  · Slogan nur in Sidebar-Branding (nicht im Seiten-Header)
+
+Portalnamen zentral in src/lib/branding.ts (PORTAL_NAME_*).
+
+Geänderte Dateien (Auswahl):
+  · src/lib/branding.ts – Slogan, Beschreibung, Portalnamen
+  · src/components/shell/nav-icons.tsx – Lucide-Icon-Mapping
+  · src/components/shell/sidebar-brand.tsx – 3-Zeilen-Branding
+  · src/components/shell/sidebar-footer.tsx – nur Menü einklappen
+  · src/components/shell/app-shell.tsx – portalName statt areaLabel/Nav-Fallback
+  · src/components/certiano-shell.tsx, admin-shell.tsx, employee-shell.tsx
+  · src/components/certiano-nav.tsx, admin-nav.tsx, employee-nav.tsx
+  · src/components/table-action-icons.tsx – Re-Export Nav-Icons
+  · src/app/certiano/page.tsx – Aktionsleiste ohne Drei-Punkte-Menü
+
+
+================================================================================
+RELEASE V2.3.0 – Alpha
+Commit: 0d067bb | 10.06.2026, 22:12 Uhr
+================================================================================
+
+FIRMEN-DATENEXPORT (neuer Baustein)
+-----------------------------------
+Getrennt vom Audit-Export (Admin-Dashboard, Schulungsnachweise für Behörden).
+
+Ziel: DSGVO-Auskunft, Vertragsende, Datenmigration, Datenherausgabe, Archivierung.
+
+Navigation:
+  · Certiano → Firmen → Mehr → Datenexport
+  · Certiano → Firmen → Taskbar „Datenexport“
+  · Firma → Tab „Datenexport“ (/certiano/companies/[id]/data-export)
+  · Certiano → Exportprotokolle (/certiano/exportprotokolle)
+
+Berechtigung: Nur Superuser (requireSuperuser)
+
+Exportgrund (Pflichtfeld):
+  · DSGVO-AUSKUNFT
+  · VERTRAGSENDE
+  · DATENUEBERNAHME
+  · INTERNE_PRUEFUNG
+  · SONSTIGES (+ Freitext 12–500 Zeichen, Pflicht)
+
+ZIP-Paket (Beispiel: firma_F0004_export_2026-06-10.zip):
+  · export_protokoll.pdf
+  · 01_firma.pdf
+  · 02_mitarbeiter.xlsx
+  · 03_schulungen.xlsx
+  · 04_standorte.xlsx
+  · 05_zertifikate/ (PDFs)
+  · 06_nachweise/nachweise-uebersicht.pdf
+  · 07_datenschutz.pdf
+  · branding/logo.* (falls vorhanden)
+  · raw_data/ (JSON-Rohdaten, siehe unten)
+
+EXPORTPROTOKOLL & REVISIONSSICHERHEIT
+-------------------------------------
+Tabelle: company_data_exports
+
+Felder:
+  · id, company_id, exported_by_user_id
+  · export_reason, custom_reason
+  · export_snapshot_json (Datensatz-Mengen, bleibt auch ohne ZIP erhalten)
+  · file_url (archiviertes ZIP, Supabase Storage)
+  · protocol_file_url (archiviertes export_protokoll.pdf)
+  · created_at
+
+Snapshot-Beispiel:
+  {
+    "employees": 28,
+    "locations": 3,
+    "trainings": 24,
+    "certificates": 114,
+    "privacy_acceptances": 5,
+    "generated_at": "2026-06-10T22:15:00Z"
+  }
+
+export_protokoll.pdf enthält:
+  · Firmenname, Firmenkennung, Export-ID, Datum/Uhrzeit
+  · Ausführender Benutzer, Exportgrund, Freitext (bei Sonstiges)
+  · Datensatz-Mengen, Exportbestandteile (Checkbox-Liste inkl. Rohdaten JSON)
+
+Historie:
+  · /certiano/exportprotokolle – Tabelle aller Exporte
+  · /certiano/exportprotokolle/[id] – Detailansicht mit Snapshot + Downloads
+
+ROHDATENEXPORT (raw_data/) – DSGVO / Datenportabilität
+-------------------------------------------------------
+Maschinenlesbare JSON-Dateien zusätzlich zu PDF/XLSX:
+
+  raw_data/company.json
+  raw_data/employees.json
+  raw_data/locations.json
+  raw_data/trainings.json
+  raw_data/certificates.json
+  raw_data/privacy_acceptances.json
+  raw_data/branding.json
+
+Inhalt employees.json u. a.:
+  · Stammdaten, Rolle, Status, Geburtsdatum, Eintritts-/Austrittsdatum
+  · Mitarbeiterkategorie, Verantwortlichkeiten, Standortzuordnungen
+  · Erstellungsdatum, letzter Login
+
+Inhalt trainings.json:
+  · Kurszuweisungen (user_course_assignments)
+  · Trainingsversuche inkl. Fortschritt, Ergebnisse, Antworten
+
+MANDANTENSICHERHEIT
+-------------------
+Vor ZIP-Erstellung: validateCompanyRawExportData()
+  · Nur Daten der exportierten Firma (company_id)
+  · Keine Superuser-Daten, keine anderen Mandanten
+  · Bei Verletzung: Export abgebrochen, Fehler geloggt, keine Datei, kein DB-Eintrag
+
+Nicht exportiert:
+  · Passwort-Hashes, Session-Daten, Tokens, API-Schlüssel
+  · verification_token (Zertifikate)
+  · Certiano-interne Admin-Daten anderer Firmen
+
+NEUE ABHÄNGIGKEIT
+-----------------
+  · xlsx (SheetJS) – Excel-Export für Mitarbeiter/Schulungen/Standorte
+
+Neue/geänderte Dateien:
+  · src/lib/company-data-export.ts – ZIP-Erstellung, Protokoll-PDF, Storage
+  · src/lib/company-data-export-raw.ts – Rohdaten laden, Validierung, JSON
+  · src/lib/company-data-export-reasons.ts – Exportgründe, Validierung Sonstiges
+  · src/lib/spreadsheet-export.ts – XLSX-Helfer
+  · src/app/api/superuser/companies/[id]/data-export/route.ts
+  · src/app/api/superuser/data-exports/… – Historie, Download, Protokoll
+  · src/app/certiano/companies/[id]/data-export/page.tsx
+  · src/app/certiano/exportprotokolle/page.tsx
+  · src/app/certiano/exportprotokolle/[id]/page.tsx
+  · src/components/certiano-nav.tsx – Menüpunkt Exportprotokolle
+  · src/components/certiano/company-section-nav.tsx – Tab Datenexport
+
+Migrationen:
+  · 20260622120000_company_data_exports.sql
+  · 20260622130000_company_data_export_audit.sql
+    (custom_reason, export_snapshot_json, protocol_file_url)
 
 
 ================================================================================
@@ -271,6 +474,8 @@ ba88081 – Login-Timeout durch Auto-Seed behoben
 DATENBANK-MIGRATIONEN (Übersicht)
 ================================================================================
 
+20260622120000_company_data_exports.sql     – Exportprotokoll-Tabelle
+20260622130000_company_data_export_audit.sql – Snapshot, Freitext, Protokoll-URL
 20260610140000_company_code.sql          – Firmenkürzel F0001, F0002, …
 20260610180000_certiano_assets_storage.sql – Supabase Storage Bucket
 20260621120000_company_contact_person.sql  – Ansprechpartner
@@ -283,7 +488,7 @@ DATENBANK-MIGRATIONEN (Übersicht)
 
 
 ================================================================================
-WICHTIGE ROUTEN (Stand V2.2.1)
+WICHTIGE ROUTEN (Stand V2.3.1)
 ================================================================================
 
 Öffentlich:
@@ -292,15 +497,26 @@ WICHTIGE ROUTEN (Stand V2.2.1)
 
 Certiano-Admin:
   /certiano                       – Firmenübersicht
+  /certiano/exportprotokolle      – Historie aller Firmen-Datenexporte
+  /certiano/exportprotokolle/[id] – Exportdetails (Snapshot, Downloads)
+  /certiano/companies/[id]/data-export – Firmen-Datenexport erstellen
   /certiano/einstellungen/branding – Certiano-Branding (Plattform)
   /certiano/companies/[id]/branding – Firmenbranding
   /certiano/companies/[id]        – Firmendetails
+
+Firmen-Admin (Audit-Export – getrennt vom Datenexport):
+  /dashboard/audit-export         – Schulungsnachweise für Behörden/Audits
 
 API (Auswahl):
   POST /api/auth/login            – Login (portal: tenant | certiano)
   GET  /api/public/tenant?firma=  – Tenant-Auflösung per company_code
   GET  /api/public/operator-branding – Certiano-Branding
   POST /api/superuser/branding/logo – Logo-Upload (Supabase Storage)
+  POST /api/superuser/companies/[id]/data-export – Firmen-Datenexport (ZIP)
+  GET  /api/superuser/data-exports – Alle Exportprotokolle
+  GET  /api/superuser/data-exports/[id]/download – ZIP erneut laden
+  GET  /api/superuser/data-exports/[id]/protocol – export_protokoll.pdf
+  POST /api/admin/audit-export/download – Audit-Export (nur Firmen-Admin)
 
 
 ================================================================================

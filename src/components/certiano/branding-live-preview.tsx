@@ -1,6 +1,7 @@
 "use client";
 
 import { BrandLogo } from "@/components/brand-logo";
+import { PORTAL_NAME_SUPERUSER } from "@/lib/branding";
 import type { CSSProperties } from "react";
 import { brandingToCssVars } from "@/lib/branding-theme";
 import type { CompanyBranding } from "@/lib/types";
@@ -12,6 +13,7 @@ type BrandingLivePreviewProps = {
   branding: CompanyBranding;
   mode: BrandingPreviewMode;
   areaLabel?: string;
+  portalName?: string;
   previewDescription?: string;
 };
 
@@ -49,6 +51,7 @@ export function BrandingLivePreview({
   branding,
   mode,
   areaLabel = "Certiano",
+  portalName = PORTAL_NAME_SUPERUSER,
   previewDescription = "So wirkt Ihr Branding in der Plattform.",
 }: BrandingLivePreviewProps) {
   const cssVars = brandingToCssVars(branding) as CSSProperties;
@@ -108,16 +111,17 @@ export function BrandingLivePreview({
 
         <div className="min-w-0 flex-1">
           <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-[var(--brand-text-secondary,#64748b)]">
-                Certiano Campus
-              </p>
-              <h3 className="text-sm font-semibold text-[var(--brand-text,#0f172a)]">Dashboard</h3>
-            </div>
+            <p className="text-sm font-medium text-[var(--brand-text,#0f172a)]">{portalName}</p>
             <div className="h-8 w-24 rounded-lg bg-[color-mix(in_srgb,var(--brand-text-secondary,#64748b)_15%,white)]" aria-hidden />
           </header>
 
           <div className="space-y-3 p-4">
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--brand-text,#0f172a)]">Dashboard</h3>
+              <p className="mt-0.5 text-xs text-[var(--brand-text-secondary,#64748b)]">
+                {previewDescription}
+              </p>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                 <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--brand-text-secondary,#64748b)]">

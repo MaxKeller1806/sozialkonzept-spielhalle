@@ -7,7 +7,7 @@ import {
   TenantBrandingLoader,
   useTenantBranding,
 } from "@/components/tenant-branding-loader";
-import { APP_NAME } from "@/lib/branding";
+import { APP_NAME, PORTAL_NAME_EMPLOYEE } from "@/lib/branding";
 import { LoadingStatus } from "@/components/ui";
 
 const EMPLOYEE_ALLOWED_REDIRECT_PREFIXES = [
@@ -15,12 +15,6 @@ const EMPLOYEE_ALLOWED_REDIRECT_PREFIXES = [
   "/konto",
   "/passwort-aendern",
   "/datenschutz",
-];
-
-const EMPLOYEE_QUICK_LINKS = [
-  { href: "/konto", label: "Mein Konto" },
-  { href: "/schulung/uebersicht", label: "Dashboard" },
-  { href: "/schulung", label: "Meine Schulungen" },
 ];
 
 function EmployeeShellInner({ children }: { children: React.ReactNode }) {
@@ -57,10 +51,8 @@ function EmployeeShellInner({ children }: { children: React.ReactNode }) {
       brand={{
         logoUrl: tenant?.branding.logoUrl,
         companyName: tenant?.companyName || APP_NAME,
-        productName: "Certiano Campus",
-        areaLabel: "Mitarbeiter-Bereich",
+        portalName: PORTAL_NAME_EMPLOYEE,
       }}
-      quickLinks={EMPLOYEE_QUICK_LINKS}
       navAriaLabel="Mitarbeiterbereich"
       ready={ready}
       loadingFallback={<LoadingStatus />}

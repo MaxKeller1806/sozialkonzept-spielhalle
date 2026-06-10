@@ -1,14 +1,14 @@
 import {
-  IconBadge,
-  IconBook,
+  IconAccount,
   IconBuilding,
-  IconChart,
   IconDashboard,
-  IconDownload,
-  IconMessage,
-  IconShield,
-  IconTag,
-  IconUser,
+  IconEmployeeCategories,
+  IconExport,
+  IconFeedback,
+  IconPrivacy,
+  IconResponsibilities,
+  IconSeminars,
+  IconTrainingStatus,
   IconUsers,
 } from "@/components/shell/nav-icons";
 import type { SidebarNavItem } from "@/components/shell/sidebar-nav";
@@ -42,44 +42,44 @@ export const ADMIN_SIDEBAR_ITEMS: SidebarNavItem[] = [
   {
     href: "/dashboard/mitarbeiterkategorien",
     label: "Mitarbeiterkategorien",
-    icon: <IconTag />,
+    icon: <IconEmployeeCategories />,
     match: (p) => p.startsWith("/dashboard/mitarbeiterkategorien"),
   },
   {
     href: "/dashboard/verantwortlichkeiten",
     label: "Verantwortlichkeiten",
-    icon: <IconBadge />,
+    icon: <IconResponsibilities />,
     match: (p) => p.startsWith("/dashboard/verantwortlichkeiten"),
   },
   {
     href: "/dashboard/seminare",
     label: "Seminare",
-    icon: <IconBook />,
+    icon: <IconSeminars />,
     match: (p) =>
       p.startsWith("/dashboard/seminare") || p.startsWith("/dashboard/inhalte"),
   },
   {
     href: "/dashboard/schulungsstatus",
     label: "Schulungsstatus",
-    icon: <IconChart />,
+    icon: <IconTrainingStatus />,
     match: (p) => p.startsWith("/dashboard/schulungsstatus"),
   },
   {
     href: "/dashboard/feedback",
     label: "Rückmeldungen",
-    icon: <IconMessage />,
+    icon: <IconFeedback />,
     match: (p) => p.startsWith("/dashboard/feedback"),
   },
   {
     href: "/dashboard/datenschutz",
     label: "Datenschutz",
-    icon: <IconShield />,
+    icon: <IconPrivacy />,
     match: (p) => p.startsWith("/dashboard/datenschutz"),
   },
   {
     href: "/dashboard/audit-export",
     label: "Audit-Export",
-    icon: <IconDownload />,
+    icon: <IconExport />,
     match: (p) => p.startsWith("/dashboard/audit-export"),
   },
   {
@@ -98,7 +98,7 @@ export const ADMIN_SIDEBAR_ITEMS: SidebarNavItem[] = [
   {
     href: "/dashboard/konto",
     label: "Mein Konto",
-    icon: <IconUser />,
+    icon: <IconAccount />,
     match: (p) => p.startsWith("/dashboard/konto"),
   },
 ];

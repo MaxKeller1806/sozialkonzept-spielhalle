@@ -17,7 +17,7 @@ import {
 } from "@/components/certiano/branding-editor-shared";
 import { notifyCertianoBrandingUpdated } from "@/components/certiano-shell";
 import { Button, Input } from "@/components/ui";
-import { APP_NAME } from "@/lib/branding";
+import { APP_NAME, PORTAL_NAME_SUPERUSER } from "@/lib/branding";
 import {
   BRANDING_COLOR_PRESETS,
   defaultBrandingFormState,
@@ -443,6 +443,7 @@ export function CertianoBrandingForm() {
           branding={previewBranding}
           mode={previewMode}
           areaLabel="Certiano"
+          portalName={PORTAL_NAME_SUPERUSER}
           previewDescription="So wirkt das Certiano-Branding in der Plattform."
         />
       </aside>

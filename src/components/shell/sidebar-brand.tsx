@@ -1,18 +1,15 @@
 "use client";
 
 import { BrandLogo } from "@/components/brand-logo";
+import { APP_DESCRIPTION, APP_NAME, APP_SLOGAN } from "@/lib/branding";
 
 export function SidebarBrand({
   logoUrl,
   companyName,
-  productName = "Certiano Campus",
-  areaLabel,
   collapsed = false,
 }: {
   logoUrl?: string | null;
   companyName: string;
-  productName?: string;
-  areaLabel: string;
   collapsed?: boolean;
 }) {
   return (
@@ -48,12 +45,12 @@ export function SidebarBrand({
       {!collapsed && (
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold leading-snug text-slate-900">
-            {companyName}
+            {APP_NAME}
           </p>
-          <p className="mt-0.5 truncate text-xs font-medium text-slate-500">
-            {productName}
+          <p className="mt-0.5 truncate text-[11px] font-medium leading-snug text-slate-600">
+            {APP_SLOGAN}
           </p>
-          <p className="mt-1 truncate text-xs text-slate-400">{areaLabel}</p>
+          <p className="mt-1 truncate text-xs text-slate-400">{APP_DESCRIPTION}</p>
         </div>
       )}
     </div>

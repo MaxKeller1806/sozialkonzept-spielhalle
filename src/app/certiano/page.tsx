@@ -14,18 +14,17 @@ import { AdminModal } from "@/components/admin-modal";
 import { CertianoShell } from "@/components/certiano-shell";
 import { CompanyDangerZone } from "@/components/company-danger-zone";
 import { CompanyEditForm } from "@/components/company-edit-form";
-import { ActionMenu } from "@/components/action-menu";
 import { EntityTableCell } from "@/components/entity-table-cell";
 import { IndustryBusinessTypeSelect } from "@/components/industry-business-type-select";
 import { PageHeader } from "@/components/page-header";
 import { StatusDot, TableLegendBar } from "@/components/status-dot";
 import {
-  IconBookOpen,
+  IconBranding,
   IconBuilding,
-  IconDownload,
+  IconExport,
   IconKey,
   IconMapPin,
-  IconPalette,
+  IconSeminars,
   IconUsers,
 } from "@/components/table-action-icons";
 import { TableActionBar, type TableActionBarItem } from "@/components/table-action-bar";
@@ -264,25 +263,25 @@ function CertianoCompaniesContent() {
       {
         key: "courses",
         label: "Seminare",
-        icon: <IconBookOpen />,
+        icon: <IconSeminars />,
         href: `/certiano/companies/${company.id}/courses`,
       },
       {
         key: "branding",
         label: "Firmenbranding",
-        icon: <IconPalette />,
+        icon: <IconBranding />,
         href: `/certiano/companies/${company.id}/branding`,
       },
       {
         key: "data-export",
         label: "Datenexport",
-        icon: <IconDownload />,
+        icon: <IconExport />,
         href: `/certiano/companies/${company.id}/data-export`,
       },
       {
         key: "audit",
         label: "Audit-Export",
-        icon: <IconDownload />,
+        icon: <IconExport />,
         onClick: () =>
           setMessage(
             "Der Audit-Export für Behörden und Zertifizierungen ist im Admin-Dashboard der Firma unter „Audit-Export“ verfügbar. Für DSGVO und Datenportabilität nutzen Sie „Datenexport“."
@@ -471,54 +470,8 @@ function CertianoCompaniesContent() {
         maxWidth: 120,
         render: (c) => new Date(c.createdAt).toLocaleDateString("de-DE"),
       },
-      {
-        key: "rowMenu",
-        header: "",
-        defaultWidth: 40,
-        minWidth: 36,
-        maxWidth: 48,
-        resizable: false,
-        sticky: "right",
-        hideFromPicker: true,
-        compactHeader: true,
-        className: "px-1 text-right",
-        render: (c) => (
-          <ActionMenu
-            ariaLabel={`Menü für ${c.name}`}
-            triggerVariant="icon"
-            sections={[
-              {
-                items: [
-                  {
-                    label: "Verantwortlichkeiten",
-                    href: "/certiano/verantwortlichkeiten",
-                  },
-                  {
-                    label: "Passwort zurücksetzen",
-                    href: `/certiano/companies/${c.id}/users`,
-                  },
-                  {
-                    label: "Zugangsdaten anzeigen",
-                    href: `/certiano/companies/${c.id}/users`,
-                  },
-                ],
-              },
-              {
-                danger: true,
-                items: [
-                  {
-                    label: "Firma löschen",
-                    destructive: true,
-                    onClick: () => openEditCompany(c),
-                  },
-                ],
-              },
-            ]}
-          />
-        ),
-      },
     ],
-    [openEditCompany]
+    []
   );
 
   return (

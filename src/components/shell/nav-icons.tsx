@@ -1,140 +1,147 @@
-/** Einfache Line-Icons für Sidebar-Navigation (keine externe Abhängigkeit). */
+/**
+ * Zentrale Navigation-Icons (Lucide) – einheitlich für Certiano, Admin und Mitarbeiter.
+ */
 
-export function IconDashboard() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
-    </svg>
-  );
+import type { LucideIcon } from "lucide-react";
+import {
+  Archive,
+  BadgeCheck,
+  BarChart3,
+  Building2,
+  Factory,
+  FolderTree,
+  GraduationCap,
+  LayoutDashboard,
+  MessageSquare,
+  Palette,
+  Settings,
+  Shield,
+  ShieldCheck,
+  Tags,
+  UserCircle,
+  Users,
+} from "lucide-react";
+import type { ReactNode } from "react";
+
+type NavIconProps = {
+  className?: string;
+  size?: number;
+};
+
+function createNavIcon(Icon: LucideIcon, defaultSize = 18) {
+  return function NavIcon({ className, size }: NavIconProps = {}) {
+    return <Icon size={size ?? defaultSize} className={className} aria-hidden />;
+  };
 }
 
-export function IconUsers() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
+/** Dashboard */
+export const IconDashboard = createNavIcon(LayoutDashboard);
 
-export function IconBuilding() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-3" />
-      <path d="M9 9v0M9 12v0M9 15v0M9 18v0" />
-    </svg>
-  );
-}
+/** Firmen / Standorte / Meine Firma */
+export const IconBuilding = createNavIcon(Building2);
 
-export function IconBook() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-    </svg>
-  );
-}
+/** Benutzer / Mitarbeiter */
+export const IconUsers = createNavIcon(Users);
 
-export function IconChart() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M18 20V10M12 20V4M6 20v-6" />
-    </svg>
-  );
-}
+/** Branchen */
+export const IconIndustries = createNavIcon(Factory);
 
-export function IconMessage() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
+/** Verantwortlichkeiten */
+export const IconResponsibilities = createNavIcon(ShieldCheck);
 
-export function IconShield() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  );
-}
+/** Hauptthemen */
+export const IconCourseTopics = createNavIcon(FolderTree);
 
-export function IconUser() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
+/** Seminarverwaltung / Seminare / Schulungen */
+export const IconSeminars = createNavIcon(GraduationCap);
 
-export function IconTag() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-      <line x1="7" y1="7" x2="7.01" y2="7" />
-    </svg>
-  );
-}
+/** Zertifikate & Nachweise */
+export const IconCertificates = createNavIcon(BadgeCheck);
 
-export function IconCertificate() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="8" r="6" />
-      <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
-    </svg>
-  );
-}
+/** Exportprotokolle / Datenexport / Audit-Export */
+export const IconExport = createNavIcon(Archive);
 
-export function IconDownload() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" y1="15" x2="12" y2="3" />
-    </svg>
-  );
-}
+/** Plattform-Einstellungen / Einstellungen */
+export const IconSettings = createNavIcon(Settings);
 
-export function IconPalette() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="13.5" cy="6.5" r="2.5" />
-      <circle cx="17.5" cy="10.5" r="2.5" />
-      <circle cx="8.5" cy="7.5" r="2.5" />
-      <circle cx="6.5" cy="12.5" r="2.5" />
-      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
-    </svg>
-  );
-}
+/** Mein Konto / Profil */
+export const IconAccount = createNavIcon(UserCircle);
 
-export function IconGraduation() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-      <path d="M6 12v5c3 3 9 3 12 0v-5" />
-    </svg>
-  );
-}
+/** Admin: Mitarbeiterkategorien */
+export const IconEmployeeCategories = createNavIcon(Tags);
 
-export function IconSettings() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-    </svg>
-  );
-}
+/** Admin: Schulungsstatus */
+export const IconTrainingStatus = createNavIcon(BarChart3);
 
-export function IconBadge() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 2l2.4 4.8 5.4.8-3.9 3.8.9 5.3L12 14.8 7.2 16.7l.9-5.3L4.2 7.6l5.4-.8L12 2z" />
-      <circle cx="12" cy="12" r="9" />
-    </svg>
-  );
+/** Admin: Rückmeldungen */
+export const IconFeedback = createNavIcon(MessageSquare);
+
+/** Admin: Datenschutz */
+export const IconPrivacy = createNavIcon(Shield);
+
+/** Firmenbranding */
+export const IconBranding = createNavIcon(Palette);
+
+/** @deprecated Nutze IconSeminars */
+export const IconBook = IconSeminars;
+
+/** @deprecated Nutze IconCertificates */
+export const IconCertificate = IconCertificates;
+
+/** @deprecated Nutze IconExport */
+export const IconDownload = IconExport;
+
+/** @deprecated Nutze IconAccount */
+export const IconUser = IconAccount;
+
+/** @deprecated Nutze IconResponsibilities */
+export const IconBadge = IconResponsibilities;
+
+/** @deprecated Nutze IconTrainingStatus */
+export const IconChart = IconTrainingStatus;
+
+/** @deprecated Nutze IconFeedback */
+export const IconMessage = IconFeedback;
+
+/** @deprecated Nutze IconPrivacy */
+export const IconShield = IconPrivacy;
+
+/** @deprecated Nutze IconEmployeeCategories */
+export const IconTag = IconEmployeeCategories;
+
+/** @deprecated Nutze IconBranding */
+export const IconPalette = IconBranding;
+
+/** @deprecated Nutze IconSeminars */
+export const IconGraduation = IconSeminars;
+
+/** Schlüssel → Lucide-Icon für Navigation */
+export const NAV_ICON_MAP = {
+  dashboard: LayoutDashboard,
+  companies: Building2,
+  users: Users,
+  industries: Factory,
+  responsibilities: ShieldCheck,
+  courseTopics: FolderTree,
+  seminars: GraduationCap,
+  certificates: BadgeCheck,
+  export: Archive,
+  settings: Settings,
+  account: UserCircle,
+} as const;
+
+export type NavIconArea = keyof typeof NAV_ICON_MAP;
+
+/** Icon-Komponente anhand des Nav-Bereichs rendern */
+export function NavIconByArea({
+  area,
+  className,
+  size = 18,
+}: {
+  area: NavIconArea;
+  className?: string;
+  size?: number;
+}): ReactNode {
+  const Icon = NAV_ICON_MAP[area];
+  return <Icon size={size} className={className} aria-hidden />;
 }

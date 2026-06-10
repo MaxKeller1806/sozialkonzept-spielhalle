@@ -1,12 +1,14 @@
 import {
-  IconBadge,
-  IconBook,
+  IconAccount,
   IconBuilding,
-  IconCertificate,
+  IconCertificates,
+  IconCourseTopics,
   IconDashboard,
-  IconDownload,
+  IconExport,
+  IconIndustries,
+  IconResponsibilities,
+  IconSeminars,
   IconSettings,
-  IconUser,
   IconUsers,
 } from "@/components/shell/nav-icons";
 import type { SidebarNavItem } from "@/components/shell/sidebar-nav";
@@ -38,37 +40,37 @@ export function getCertianoSidebarItems(companyId?: number): SidebarNavItem[] {
     {
       href: "/certiano/industries",
       label: "Branchen",
-      icon: <IconBook />,
+      icon: <IconIndustries />,
       match: (p) => p.startsWith("/certiano/industries"),
     },
     {
       href: "/certiano/verantwortlichkeiten",
       label: "Verantwortlichkeiten",
-      icon: <IconBadge />,
+      icon: <IconResponsibilities />,
       match: (p) => p.startsWith("/certiano/verantwortlichkeiten"),
     },
     {
       href: "/certiano/hauptthemen",
       label: "Hauptthemen",
-      icon: <IconBook />,
+      icon: <IconCourseTopics />,
       match: (p) => p.startsWith("/certiano/hauptthemen"),
     },
     {
       href: "/certiano/master-courses",
       label: "Seminarverwaltung",
-      icon: <IconBook />,
+      icon: <IconSeminars />,
       match: (p) => p.startsWith("/certiano/master-courses"),
     },
     {
       href: "/certiano/zertifikate",
       label: "Zertifikate & Nachweise",
-      icon: <IconCertificate />,
+      icon: <IconCertificates />,
       match: (p) => p.startsWith("/certiano/zertifikate"),
     },
     {
       href: "/certiano/exportprotokolle",
       label: "Exportprotokolle",
-      icon: <IconDownload />,
+      icon: <IconExport />,
       match: (p) => p.startsWith("/certiano/exportprotokolle"),
     },
     {
@@ -81,7 +83,7 @@ export function getCertianoSidebarItems(companyId?: number): SidebarNavItem[] {
     {
       href: "/certiano/konto",
       label: "Mein Konto",
-      icon: <IconUser />,
+      icon: <IconAccount />,
       match: (p) => p === "/certiano/konto",
     },
   ];
