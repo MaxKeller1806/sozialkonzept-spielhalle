@@ -1,8 +1,56 @@
 ================================================================================
 CERTIANO CAMPUS – Änderungen und Releases
 Projekt: sozialkonzept-spielhalle
-Stand: 10.06.2026 (V2.3.1)
+Stand: 10.06.2026 (V2.4.0)
 ================================================================================
+
+
+================================================================================
+RELEASE V2.4.0 – Alpha
+Commit: (pending) | 10.06.2026
+================================================================================
+
+ROLLENBASIERTE RELEASE NOTES
+------------------------------
+Neuer Menüpunkt „Release Notes“ im Benutzermenü (oben rechts) für alle Rollen,
+zwischen „Mein Konto“ und den übrigen Einträgen.
+
+Sichtbarkeit je Rolle:
+  · Superuser (Entwicklerportal): vollständige Versionshistorie inkl. technischer
+    Änderungen, Migrationen, API- und Infrastrukturdetails
+  · Admin (Betreiberportal): neue Funktionen, Schulungs-/Zertifikatsänderungen,
+    Firmenfunktionen, relevante UI-Verbesserungen (ohne DB/API/Infrastruktur)
+  · Mitarbeiter (Mitarbeiterportal): Schulungen, Zertifikate, Nachweise, UI
+
+Routen:
+  · /certiano/release-notes (Superuser)
+  · /dashboard/release-notes (Admin)
+  · /konto/release-notes (Mitarbeiter)
+
+Benachrichtigung (MVP):
+  · Badge im Benutzermenü bei neuen Releases seit letztem Besuch
+  · last_seen_release_version pro Benutzer in localStorage
+  · TODO: DB-Feld last_seen_release_version für geräteübergreifende Sync
+
+Datenmodell:
+  · src/lib/release-notes/ – strukturierte Einträge mit visibility-Tags
+    (superuser | admin | employee, auch als Array)
+  · getReleaseNotesForRole(role) filtert beim Rendern
+  · Quelle: AENDERUNGEN_UND_RELEASES.txt (V2.3.x, V2.2.1 u. a. migriert)
+
+UI:
+  · Gemeinsame ReleaseNotesPage mit PageHeader und Card-Layout
+  · Releases neueste zuerst
+  · Icon: ScrollText (IconReleaseNotes in nav-icons.tsx)
+
+Neue/geänderte Dateien:
+  · src/lib/release-notes/ – types, data, filter, seen, paths, version
+  · src/components/release-notes-page.tsx
+  · src/components/account-menu.tsx – Menüpunkt + Badge
+  · src/components/shell/nav-icons.tsx – IconReleaseNotes
+  · src/app/certiano/release-notes/page.tsx
+  · src/app/dashboard/release-notes/page.tsx
+  · src/app/konto/release-notes/page.tsx
 
 
 ================================================================================

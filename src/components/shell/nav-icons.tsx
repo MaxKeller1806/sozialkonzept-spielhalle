@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   Palette,
+  ScrollText,
   Settings,
   Shield,
   ShieldCheck,
@@ -66,6 +67,9 @@ export const IconSettings = createNavIcon(Settings);
 
 /** Mein Konto / Profil */
 export const IconAccount = createNavIcon(UserCircle);
+
+/** Release Notes / Versionshinweise */
+export const IconReleaseNotes = createNavIcon(ScrollText);
 
 /** Admin: Mitarbeiterkategorien */
 export const IconEmployeeCategories = createNavIcon(Tags);
@@ -128,6 +132,7 @@ export const NAV_ICON_MAP = {
   export: Archive,
   settings: Settings,
   account: UserCircle,
+  releaseNotes: ScrollText,
 } as const;
 
 export type NavIconArea = keyof typeof NAV_ICON_MAP;

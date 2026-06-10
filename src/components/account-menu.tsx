@@ -2,23 +2,34 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { countUnseenReleases, releaseNotesPath } from "@/lib/release-notes";
 import type { SessionUser, UserRole } from "@/lib/types";
 
 type MenuItem =
-  | { type: "link"; href: string; label: string }
+  | { type: "link"; href: string; label: string; badge?: number }
   | { type: "logout"; label: string };
 
-function menuItems(role: UserRole): MenuItem[] {
+function menuItems(role: UserRole, userId: number): MenuItem[] {
+  const unseenCount = countUnseenReleases(userId, role);
+  const releaseNotes: MenuItem = {
+    type: "link",
+    href: releaseNotesPath(role),
+    label: "Release Notes",
+    badge: unseenCount > 0 ? unseenCount : undefined,
+  };
+
   switch (role) {
     case "superuser":
       return [
         { type: "link", href: "/certiano/konto", label: "Mein Konto" },
+        releaseNotes,
         { type: "link", href: "/certiano", label: "Certiano-Bereich" },
         { type: "logout", label: "Abmelden" },
       ];
     case "admin":
       return [
         { type: "link", href: "/dashboard/konto", label: "Mein Konto" },
+        releaseNotes,
         { type: "link", href: "/dashboard/firma", label: "Meine Firma" },
         { type: "link", href: "/dashboard/uebersicht", label: "Dashboard" },
         { type: "logout", label: "Abmelden" },
@@ -26,6 +37,7 @@ function menuItems(role: UserRole): MenuItem[] {
     case "employee":
       return [
         { type: "link", href: "/konto", label: "Mein Konto" },
+        releaseNotes,
         { type: "link", href: "/schulung", label: "Meine Schulungen" },
         { type: "logout", label: "Abmelden" },
       ];
@@ -85,16 +97,26 @@ export function AccountMenu({
   const rootRef = useRef<HTMLDivElement>(null);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [open, setOpen] = useState(false);
+  const [unseenCount, setUnseenCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     loadSessionUser().then((u) => {
-      if (!cancelled && u) setUser(u);
+      if (!cancelled && u) {
+        setUser(u);
+        setUnseenCount(countUnseenReleases(u.id, u.role));
+      }
     });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (open && user) {
+      setUnseenCount(countUnseenReleases(user.id, user.role));
+    }
+  }, [open, user]);
 
   useEffect(() => {
     if (!open) return;
@@ -129,7 +151,7 @@ export function AccountMenu({
 
   if (!user) return null;
 
-  const items = menuItems(user.role);
+  const items = menuItems(user.role, user.id);
   const isDark = variant === "dark";
 
   const buttonClass = isDark
@@ -147,7 +169,7 @@ export function AccountMenu({
   const dividerClass = isDark ? "border-slate-600" : "border-slate-100";
 
   return (
-    <div ref={rootRef} className={`relative ${className}`}>
+    <div ref={rootRef} className={`relative inline-flex ${className}`}>
       <button
         type="button"
         id={`${menuId}-trigger`}
@@ -168,6 +190,15 @@ export function AccountMenu({
         <span className="hidden max-w-[8rem] truncate sm:inline">
           {user.firstName || user.email.split("@")[0]}
         </span>
+        {unseenCount > 0 ? (
+          <span
+            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white"
+            title={`${unseenCount} neue Release${unseenCount === 1 ? "" : "s"}`}
+            aria-label={`${unseenCount} neue Releases verfügbar`}
+          >
+            {unseenCount}
+          </span>
+        ) : null}
         <svg
           className={`h-4 w-4 shrink-0 transition ${open ? "rotate-180" : ""}`}
           viewBox="0 0 20 20"
@@ -202,10 +233,20 @@ export function AccountMenu({
                   <Link
                     href={item.href}
                     role="menuitem"
-                    className={`block px-4 py-3 text-sm ${itemClass}`}
-                    onClick={() => setOpen(false)}
+                    className={`flex items-center justify-between gap-2 px-4 py-3 text-sm ${itemClass}`}
+                    onClick={() => {
+                      setOpen(false);
+                      if (item.label === "Release Notes") {
+                        setUnseenCount(0);
+                      }
+                    }}
                   >
-                    {item.label}
+                    <span>{item.label}</span>
+                    {item.badge ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                        {item.badge} neu
+                      </span>
+                    ) : null}
                   </Link>
                 ) : (
                   <button
