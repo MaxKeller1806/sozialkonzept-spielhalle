@@ -2,6 +2,7 @@ import {
   IconAccount,
   IconBuilding,
   IconCertificates,
+  IconCompliance,
   IconCourseTopics,
   IconDashboard,
   IconExport,
@@ -72,6 +73,12 @@ export function getCertianoSidebarItems(companyId?: number): SidebarNavItem[] {
       label: "Exportprotokolle",
       icon: <IconExport />,
       match: (p) => p.startsWith("/certiano/exportprotokolle"),
+    },
+    {
+      href: "/certiano/compliance-nachweise",
+      label: "Compliance & Nachweise",
+      icon: <IconCompliance />,
+      match: (p) => p.startsWith("/certiano/compliance-nachweise"),
     },
     {
       href: "/certiano/einstellungen",

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input } from "@/components/ui";
+import { CourseTitleDisplay } from "@/components/course-title-display";
 import type {
   CourseAssignmentOption,
   CourseAssignmentOptions,
@@ -90,17 +91,8 @@ function courseLabel(course: CourseAssignmentOption): string {
 }
 
 function renderCourseTitle(course: CourseAssignmentOption) {
-  const { code, displayTitle } = formatCourseCodeTitle(course.code, course.title);
-  if (!code) {
-    return <span>{displayTitle}</span>;
-  }
   return (
-    <span className="inline-flex flex-wrap items-center gap-2">
-      <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-semibold text-slate-700">
-        {code}
-      </span>
-      <span>{displayTitle}</span>
-    </span>
+    <CourseTitleDisplay code={course.code} title={course.title} />
   );
 }
 

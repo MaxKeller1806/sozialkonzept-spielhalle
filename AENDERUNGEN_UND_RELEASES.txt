@@ -1,13 +1,49 @@
 ================================================================================
 CERTIANO CAMPUS – Änderungen und Releases
 Projekt: sozialkonzept-spielhalle
-Stand: 11.06.2026 (V2.7.1)
+Stand: 11.06.2026 (V2.7.2)
 ================================================================================
+
+
+================================================================================
+RELEASE V2.7.2 – Patch (Passwort-Zurücksetzen, Vorschau, Korrekturen)
+Commit: (pending) | 11.06.2026
+================================================================================
+
+PASSWORT VERGESSEN (MITARBEITER & ADMIN)
+-----------------------------------------
+- Login: Dialog „Passwort vergessen?“ mit Firmenkennung, E-Mail, Checkbox
+- Öffentliche API POST /api/auth/password-reset-request (keine E-Mail-Enumeration)
+- Admin: Banner + Seite /dashboard/passwort-anfragen (Erzeugen / Verwerfen)
+- Migration: password_reset_requests
+- Erfolgs-UX: Meldung + Schließen (Auto-Schließen nach 2,5 s)
+
+ADMIN: SEMINAR-VORSCHAU
+-----------------------
+- /dashboard/seminare/[courseId]/vorschau (Lektionen, Prüfung read-only)
+- Link „Vorschau“ in der Seminarliste
+
+KORREKTUREN
+-----------
+- BAV-Kennung in Kurslisten: formatCourseCodeTitle / CourseTitleDisplay
+- Admin-Header: Passwort-Anfragen-Zähler nach Aktion aktualisiert
+
+ZUKÜNFTIGE FUNKTIONEN – COMPLIANCE (SUPERUSER)
+----------------------------------------------
+- Menüpunkt „Compliance & Nachweise“ (Platzhalterseite)
+
+Wichtige neue/geänderte Dateien:
+  · supabase/migrations/20260623120000_password_reset_requests.sql
+  · src/lib/password-reset-requests.ts, src/app/login/login-form.tsx
+  · src/app/dashboard/passwort-anfragen/, src/components/password-reset-requests-banner.tsx
+  · src/app/dashboard/seminare/[courseId]/vorschau/
+  · src/lib/course-display.ts, src/components/course-title-display.tsx
+  · src/app/certiano/compliance-nachweise/page.tsx
 
 
 ================================================================================
 RELEASE V2.7.1 – Patch (Login: Trennkante, Farbwelt, Gebäudebild)
-Commit: (pending) | 11.06.2026
+Commit: 4641d2b | 11.06.2026
 ================================================================================
 
 LOGIN: TRENNKANTE UND FARBWELT

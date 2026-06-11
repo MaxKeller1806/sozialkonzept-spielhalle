@@ -10,6 +10,7 @@ import {
 } from "@/components/tenant-branding-loader";
 import { PORTAL_NAME_ADMIN } from "@/lib/branding";
 import { fetchAuthMe } from "@/lib/auth-client";
+import { PasswordResetRequestsBanner } from "@/components/password-reset-requests-banner";
 import { Button, LoadingStatus } from "@/components/ui";
 
 const ADMIN_ALLOWED_REDIRECT_PREFIXES = [
@@ -76,6 +77,7 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
       navAriaLabel="Administration"
       ready={ready}
       loadingFallback={<LoadingStatus />}
+      banner={<PasswordResetRequestsBanner />}
     >
       {children}
     </AppShell>

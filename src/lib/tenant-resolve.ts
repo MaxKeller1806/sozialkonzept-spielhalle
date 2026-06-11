@@ -17,6 +17,7 @@ export interface ResolvedTenant {
   companyId: number;
   slug: string;
   companyName: string;
+  companyCode: string;
   branding: CompanyBranding;
   source: TenantResolutionSource;
 }
@@ -101,6 +102,7 @@ export function companyToResolvedTenant(
     companyId: company.id,
     slug: company.slug,
     companyName: company.name,
+    companyCode: company.companyCode,
     branding: normalizeBranding(company.branding),
     source,
   };

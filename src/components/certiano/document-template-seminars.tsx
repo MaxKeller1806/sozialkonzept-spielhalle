@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, ErrorMessage, Input, Select } from "@/components/ui";
+import { CourseTitleDisplay } from "@/components/course-title-display";
 import {
   groupCoursesForEmployeeView,
   type CourseHierarchyItem,
@@ -91,13 +92,12 @@ function AssignmentRow({ item }: { item: EnrichedAssignmentItem }) {
   return (
     <div className="rounded-lg border border-slate-100 bg-white px-3 py-3">
       <div className="flex flex-wrap items-start gap-2">
-        {item.instructionCode ? (
-          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-            {item.instructionCode}
-          </span>
-        ) : null}
         <p className="min-w-0 flex-1 text-sm font-medium text-slate-900">
-          {item.title}
+          <CourseTitleDisplay
+            code={item.instructionCode}
+            title={item.title}
+            badgeClassName="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700"
+          />
         </p>
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
           {levelLabel}

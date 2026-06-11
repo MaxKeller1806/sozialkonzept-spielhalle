@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
+import { CourseTitleDisplay } from "@/components/course-title-display";
 import { ButtonLink, Card, ProgressBar, StatusDot } from "@/components/ui";
 import {
   groupCoursesByTopic,
@@ -56,13 +57,14 @@ function TopicGroupSection({
 }
 
 function CourseCard({ course }: { course: CourseListItem }) {
-  const displayTitle = course.fullTitle ?? course.title;
   const inProgress = course.inProgress ?? false;
   const durationLabel = formatEstimatedDuration(course.estimatedDurationMinutes);
   return (
     <Card className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p className="font-semibold">{displayTitle}</p>
+        <p className="font-semibold">
+          <CourseTitleDisplay code={course.code} title={course.title} />
+        </p>
         <p className="mt-1 flex items-center gap-2 text-sm text-slate-600">
           {course.certificate && <StatusDot status={course.certificate.status} />}
           {course.seminarStatusLabel ??

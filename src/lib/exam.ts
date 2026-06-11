@@ -40,7 +40,7 @@ export function buildExamReview(
     question: q.question,
     isCorrect: isAnswerCorrect(q, answers[q.id]),
     userAnswerLabel: formatUserAnswer(q, answers[q.id]),
-    correctAnswerLabel: formatCorrectAnswer(q),
+    correctAnswerLabel: formatExamCorrectAnswerLabel(q),
   }));
 }
 
@@ -70,7 +70,7 @@ function formatUserAnswer(question: ExamQuestion, userAnswer: AnswerValue): stri
   return "—";
 }
 
-function formatCorrectAnswer(question: ExamQuestion): string {
+export function formatExamCorrectAnswerLabel(question: ExamQuestion): string {
   if (question.type === "boolean") {
     return question.correct === true ? "Richtig" : "Falsch";
   }

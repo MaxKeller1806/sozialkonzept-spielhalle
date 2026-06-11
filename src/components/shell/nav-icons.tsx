@@ -8,6 +8,7 @@ import {
   BadgeCheck,
   BarChart3,
   Building2,
+  ClipboardList,
   Factory,
   FolderTree,
   GraduationCap,
@@ -61,6 +62,9 @@ export const IconCertificates = createNavIcon(BadgeCheck);
 
 /** Exportprotokolle / Datenexport / Audit-Export */
 export const IconExport = createNavIcon(Archive);
+
+/** Compliance & Nachweise (Platzhalter) */
+export const IconCompliance = createNavIcon(ClipboardList);
 
 /** Plattform-Einstellungen / Einstellungen */
 export const IconSettings = createNavIcon(Settings);

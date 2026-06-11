@@ -6,6 +6,70 @@ import type { ReleaseNote } from "./types";
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "V2.7.2",
+    date: "11.06.2026",
+    summary:
+      "Passwort-Zurücksetzen per Admin, Seminar-Vorschau, Korrekturen bei Kurslisten und Login-Dialog.",
+    sections: [
+      {
+        title: "Passwort vergessen (Mitarbeiter & Admin)",
+        category: "features",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Mitarbeiter können auf der Login-Seite eine Passwort-Zurücksetzen-Anfrage stellen (Firmenkennung, E-Mail, Bestätigung).",
+            visibility: ["superuser", "admin", "employee"],
+          },
+          {
+            text: "Admins sehen offene Anfragen als Hinweis im Header und unter „Passwort-Zurücksetzen-Anfragen“; Einmalpasswort erzeugen oder Anfrage verwerfen.",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Nach erfolgreicher Anfrage: klare Erfolgsmeldung und Schließen-Button (Dialog schließt sich nach kurzer Zeit automatisch).",
+            visibility: ["superuser", "admin", "employee"],
+          },
+        ],
+      },
+      {
+        title: "Admin: Seminar-Vorschau",
+        category: "features",
+        visibility: ["superuser", "admin"],
+        items: [
+          {
+            text: "Link „Vorschau“ in der Seminarliste – Lektionen und Prüfung read-only, ohne Speicherung von Fortschritt.",
+            visibility: ["superuser", "admin"],
+          },
+        ],
+      },
+      {
+        title: "Korrekturen",
+        category: "fixes",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "BAV-Kennung wird in Kurslisten nicht mehr doppelt angezeigt (Badge + bereinigter Titel).",
+            visibility: ["superuser", "admin", "employee"],
+          },
+          {
+            text: "Passwort-Anfragen-Hinweis im Admin-Header aktualisiert sich nach Verwerfen oder Passwort-Erzeugung.",
+            visibility: ["superuser", "admin"],
+          },
+        ],
+      },
+      {
+        title: "Zukünftige Funktionen – Compliance",
+        category: "features",
+        visibility: ["superuser"],
+        items: [
+          {
+            text: "Menüpunkt „Compliance & Nachweise“ im Entwicklerportal (Platzhalterseite).",
+            visibility: ["superuser"],
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "V2.7.1",
     date: "11.06.2026",
     summary:

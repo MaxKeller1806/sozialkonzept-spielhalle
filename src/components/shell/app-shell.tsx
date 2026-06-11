@@ -24,6 +24,8 @@ export type AppShellProps = {
   contentClassName?: string;
   ready?: boolean;
   loadingFallback?: React.ReactNode;
+  /** Optional banner below topbar (e.g. admin notifications) */
+  banner?: React.ReactNode;
 };
 
 function SidebarPanel({
@@ -77,6 +79,7 @@ export function AppShell({
   contentClassName = "app-content mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-8",
   ready = true,
   loadingFallback = <LoadingStatus />,
+  banner,
 }: AppShellProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -148,6 +151,7 @@ export function AppShell({
           portalName={brand.portalName}
           onOpenMobileNav={() => setMobileNavOpen(true)}
         />
+        {banner}
         <PageMain className={contentClassName}>{children}</PageMain>
       </div>
     </div>

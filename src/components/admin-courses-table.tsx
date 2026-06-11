@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Input } from "@/components/ui";
+import { CourseTitleDisplay } from "@/components/course-title-display";
 import { formatEstimatedDuration } from "@/lib/course-duration";
 import {
   groupCoursesByTopic,
@@ -69,6 +70,12 @@ function CourseRowActions({
         className="text-brand hover:underline"
       >
         Inhalte
+      </Link>
+      <Link
+        href={`/dashboard/seminare/${encodeURIComponent(course.id)}/vorschau`}
+        className="text-brand hover:underline"
+      >
+        Vorschau
       </Link>
       <Link
         href={`/dashboard/seminare/${encodeURIComponent(course.id)}`}
@@ -139,8 +146,10 @@ function TopicSection({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-medium text-slate-900">
-                    {course.instructionCode ? `${course.instructionCode} ` : ""}
-                    {course.title}
+                    <CourseTitleDisplay
+                      code={course.instructionCode}
+                      title={course.title}
+                    />
                     {!course.active && (
                       <span className="ml-2 text-xs text-amber-700">(archiviert)</span>
                     )}

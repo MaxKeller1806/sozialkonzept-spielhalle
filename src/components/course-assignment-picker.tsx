@@ -7,6 +7,7 @@ import {
   formatEstimatedDuration,
   sumEstimatedDurationMinutes,
 } from "@/lib/course-duration";
+import { formatCourseLabel } from "@/lib/course-display";
 import {
   groupCoursesForEmployeeView,
   type CourseHierarchyItem,
@@ -24,7 +25,8 @@ type Props = {
 function courseLabel(course: AssignableCourse): string {
   const title = course.fullTitle ?? course.title;
   const duration = formatEstimatedDuration(course.estimatedDurationMinutes);
-  return duration ? `${title} · ${duration}` : title;
+  const label = formatCourseLabel(course.code, title);
+  return duration ? `${label} · ${duration}` : label;
 }
 
 function matchesSearch(course: AssignableCourse, query: string): boolean {

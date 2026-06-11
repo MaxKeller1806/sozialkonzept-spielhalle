@@ -15,6 +15,8 @@ type AdminCredentialsDialogProps = {
   onClose: () => void;
   /** z. B. nach Firmenanlage */
   successMessage?: string;
+  title?: string;
+  introText?: string;
 };
 
 export function AdminCredentialsDialog({
@@ -22,6 +24,8 @@ export function AdminCredentialsDialog({
   credentials,
   onClose,
   successMessage,
+  title = "Admin-Zugang erstellt",
+  introText = "Admin-Zugang erstellt:",
 }: AdminCredentialsDialogProps) {
   const [copyHint, setCopyHint] = useState("");
 
@@ -66,7 +70,7 @@ export function AdminCredentialsDialog({
     <AdminModal
       open={open}
       onClose={onClose}
-      title="Admin-Zugang erstellt"
+      title={title}
       maxWidthClass="max-w-md"
       footer={
         <div className="flex flex-wrap gap-3">
@@ -87,9 +91,7 @@ export function AdminCredentialsDialog({
           {successMessage}
         </p>
       )}
-      <p className="mb-4 text-sm text-slate-700">
-        Admin-Zugang erstellt:
-      </p>
+      <p className="mb-4 text-sm text-slate-700">{introText}</p>
       <dl className="space-y-3 text-sm">
         <div>
           <dt className="font-medium text-slate-600">E-Mail</dt>

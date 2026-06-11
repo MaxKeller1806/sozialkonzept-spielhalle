@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SearchFilterBar } from "@/components/search-filter-bar";
+import { CourseTitleDisplay } from "@/components/course-title-display";
 import { ResizableTableShell, ResizableTh, tableBodyCellClass } from "@/components/resizable-table-parts";
 import { Button } from "@/components/ui";
 import { useTableColumnWidths } from "@/hooks/use-table-column-widths";
@@ -523,10 +524,12 @@ function CourseRow({ course }: { course: EmployeeCourseTrainingRow }) {
   return (
     <tr className="border-b last:border-0">
       <td className="p-3">
-        <span className="font-medium">{course.courseTitle}</span>
-        {course.instructionCode && (
-          <span className="ml-2 text-xs text-slate-500">{course.instructionCode}</span>
-        )}
+        <CourseTitleDisplay
+          code={course.instructionCode}
+          title={course.courseTitle}
+          className="font-medium"
+          badgeClassName="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-600"
+        />
         <br />
         <span className="text-xs text-slate-500">{course.validityLabel}</span>
       </td>
