@@ -43,7 +43,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       },
       {
         title: "Korrekturen",
-        category: "fixes",
+        category: "bugfixes",
         visibility: ["superuser", "admin", "employee"],
         items: [
           {
