@@ -6,6 +6,82 @@ import type { ReleaseNote } from "./types";
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "V2.7.1",
+    date: "11.06.2026",
+    summary:
+      "Login-Trennkante als Kreisbogen, Certiano-Farben am Anmeldebutton und neues Gebäudebild.",
+    sections: [
+      {
+        title: "Login: Trennkante und Farbwelt",
+        category: "ui",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Geschwungene Trennkante zwischen Branding- und Loginbereich als echter Kreisbogen (clip-path, feste 80 px Auslenkung) – konsistent auf allen Bildschirmgrößen.",
+            visibility: ["superuser", "admin", "employee"],
+          },
+          {
+            text: "Neues Campus-Gebäudebild im Branding-Hintergrund; Anmeldebutton und Links in Certiano-Navy statt generischem Markenblau.",
+            visibility: ["superuser", "admin", "employee"],
+          },
+          {
+            text: "Sprachauswahl oben rechts vorerst ausgeblendet (Mehrsprachigkeit folgt).",
+            visibility: ["superuser", "admin", "employee"],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    version: "V2.7.0",
+    date: "11.06.2026",
+    summary:
+      "Login nach Referenzdesign, globale Vorlesefunktion, schnellere Schulungsübersicht und UI-Feinschliff.",
+    sections: [
+      {
+        title: "Mandanten-Login (Referenzdesign)",
+        category: "ui",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Zweispaltiges Layout 60/40: Branding links mit Gebäudehintergrund, Firmenlogo-Karte, Nutzenpunkten; Login rechts mit Willkommen, Firmenkennung (z. B. F0001) und Passwort-vergessen-Link.",
+            visibility: ["superuser", "admin", "employee"],
+          },
+        ],
+      },
+      {
+        title: "Barrierefreiheit",
+        category: "features",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Vorlesefunktion kann Seiteninhalt über data-readable-content vorlesen, wenn keine Lektion aktiv ist.",
+            visibility: ["superuser", "admin", "employee"],
+          },
+        ],
+      },
+      {
+        title: "Performance & Navigation",
+        category: "technical",
+        visibility: ["superuser", "admin"],
+        items: [
+          {
+            text: "GET /api/training: Batch-Abfragen für Zertifikate und Versuche statt N+1-Schleife.",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Admin-Navigation: Mitarbeiter-Bereich einklappbar; Account-Menü und Topbar bereinigt.",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Certiano-Branding-Loader nutzt nur noch /api/public/operator-branding (kein 403).",
+            visibility: ["superuser"],
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "V2.6.2",
     date: "11.06.2026",
     summary: "Vorlesefunktion in der Schulungsansicht wieder nutzbar.",

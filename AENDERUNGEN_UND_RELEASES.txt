@@ -1,8 +1,60 @@
 ================================================================================
 CERTIANO CAMPUS – Änderungen und Releases
 Projekt: sozialkonzept-spielhalle
-Stand: 11.06.2026 (V2.6.2)
+Stand: 11.06.2026 (V2.7.1)
 ================================================================================
+
+
+================================================================================
+RELEASE V2.7.1 – Patch (Login: Trennkante, Farbwelt, Gebäudebild)
+Commit: (pending) | 11.06.2026
+================================================================================
+
+LOGIN: TRENNKANTE UND FARBWELT
+-------------------------------
+- Geschwungene Trennkante als echter Kreisbogen (clip-path + SVG-Arc), feste
+  80 px Auslenkung in der Mitte – keine Kreisfläche, konsistent auf allen
+  Auflösungen (ResizeObserver)
+- Neues Campus-Gebäudebild (login-campus-building-night.jpg)
+- Anmeldebutton und „Passwort vergessen?“ in Certiano-Navy (#002855)
+- Sprachauswahl oben rechts vorerst ausgeblendet (Mehrsprachigkeit geplant)
+
+Geänderte Dateien:
+  · src/components/login/login-curve-divider.tsx – useLoginBrandingCurve
+  · src/components/login/tenant-login-layout.tsx
+  · src/components/login/login-building-backdrop.tsx
+  · src/app/login/login-form.tsx
+  · public/images/login-campus-building-night.jpg
+
+
+================================================================================
+RELEASE V2.7.0 – Minor (Login Referenzdesign, Vorlesefunktion, Performance)
+Commit: b783fde | 11.06.2026
+================================================================================
+
+MANDANTEN-LOGIN (REFERENZDESIGN)
+---------------------------------
+- Layout 60/40: Branding links, Login rechts
+- Firmenlogo-Karte im Brandingbereich (Betreiber-/Mitarbeiterportal)
+- Nutzenpunkte, Gebäudehintergrund, Willkommen-Formular
+
+GLOBALE VORLESEFUNKTION
+-----------------------
+- readable-page-text.ts: Seiteninhalt aus main/data-readable-content
+- SpeechProvider liest Lektion oder Seite
+
+PERFORMANCE & UI
+----------------
+- /api/training: Batch-Queries (getLatestCertificatesByCourseIds,
+  getActiveAttemptsByCourseIds)
+- Admin-Nav: einklappbarer Mitarbeiter-Bereich
+- Account-Menü und Topbar bereinigt; Branding-Loader ohne 403
+
+Geänderte Dateien (Auszug):
+  · src/components/login/*, src/app/login/login-form.tsx
+  · src/lib/readable-page-text.ts, src/lib/certificate.ts, src/lib/training.ts
+  · src/components/shell/sidebar-nav.tsx, admin-nav.tsx, app-topbar.tsx
+  · public/images/login-campus-building.jpg
 
 
 ================================================================================

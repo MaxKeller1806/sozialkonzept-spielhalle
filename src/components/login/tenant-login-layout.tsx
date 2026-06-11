@@ -2,7 +2,7 @@
 
 import { BrandLogo } from "@/components/brand-logo";
 import { LoginBuildingBackdrop } from "@/components/login/login-building-backdrop";
-import { LoginCurveDivider } from "@/components/login/login-curve-divider";
+import { LOGIN_COLORS, useLoginBrandingCurve } from "@/components/login/login-curve-divider";
 import {
   IconCertificates,
   IconExport,
@@ -15,11 +15,9 @@ import {
   PORTAL_NAME_ADMIN,
   PORTAL_NAME_EMPLOYEE,
 } from "@/lib/branding";
-import { ChevronDown, Globe } from "lucide-react";
 import type { ReactNode } from "react";
 
-const LOGIN_GRADIENT =
-  "linear-gradient(180deg, #001428 0%, #002855 45%, #003d73 100%)";
+const LOGIN_GRADIENT = `linear-gradient(180deg, ${LOGIN_COLORS.navyDeep} 0%, ${LOGIN_COLORS.navy} 45%, ${LOGIN_COLORS.navyMid} 100%)`;
 
 const BENEFITS = [
   {
@@ -55,7 +53,7 @@ export function TenantLoginLayout({
   loginColumn: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen min-h-dvh flex-col lg:flex-row">
+    <div className="relative flex min-h-screen min-h-dvh flex-col bg-white lg:flex-row">
       {brandingColumn}
       {loginColumn}
     </div>
@@ -75,6 +73,7 @@ export function TenantLoginBrandingColumn({
 }) {
   const portalLabel = resolvePortalLabel(portal);
   const showCompanyCard = Boolean(companyLogoUrl || companyName);
+  const brandingCurveRef = useLoginBrandingCurve();
   const campusIndex = APP_NAME.indexOf("Campus");
   const nameBefore =
     campusIndex >= 0 ? APP_NAME.slice(0, campusIndex).trimEnd() : APP_NAME;
@@ -82,16 +81,16 @@ export function TenantLoginBrandingColumn({
 
   return (
     <section
-      className="relative flex min-h-[440px] flex-col overflow-hidden lg:min-h-screen lg:w-[58%] lg:max-w-[58%] lg:shrink-0"
+      ref={brandingCurveRef}
+      className="relative z-10 flex min-h-[440px] flex-col overflow-hidden lg:min-h-screen lg:w-[60%] lg:max-w-[60%] lg:shrink-0"
       style={{ background: LOGIN_GRADIENT }}
       aria-label="Certiano Campus"
     >
       <LoginBuildingBackdrop className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[62%] sm:h-[68%]" />
       <div
-        className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-[#001428]/92 via-[#002855]/78 to-[#003d73]/62"
+        className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-[#001428]/80 via-[#002855]/55 to-[#003d73]/40"
         aria-hidden="true"
       />
-      <LoginCurveDivider />
 
       <div className="relative z-10 flex flex-1 flex-col px-6 py-8 sm:px-10 sm:py-10 lg:px-12 lg:py-12">
         <header className="mb-10 flex items-start justify-between gap-6 lg:mb-14">
@@ -173,28 +172,14 @@ export function TenantLoginBrandingColumn({
   );
 }
 
-function LoginLanguageSelector() {
-  return (
-    <div className="flex items-center gap-1.5 text-sm text-slate-600">
-      <Globe size={16} className="text-slate-400" aria-hidden="true" />
-      <span>Deutsch</span>
-      <ChevronDown size={16} className="text-slate-400" aria-hidden="true" />
-    </div>
-  );
-}
-
 export function TenantLoginFormColumn({ children }: { children: ReactNode }) {
   const year = new Date().getFullYear();
 
   return (
     <section
-      className="relative flex flex-1 flex-col bg-white px-6 py-10 sm:px-10 sm:py-12 lg:px-14 lg:py-12 xl:px-16"
+      className="relative flex flex-1 flex-col bg-white px-6 py-10 sm:px-10 sm:py-12 lg:w-[40%] lg:max-w-[40%] lg:px-14 lg:py-12 xl:px-16"
       aria-label="Anmeldung"
     >
-      <div className="flex justify-end">
-        <LoginLanguageSelector />
-      </div>
-
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
         {children}
       </div>

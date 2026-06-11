@@ -14,6 +14,7 @@ import {
   TenantLoginFormColumn,
   TenantLoginLayout,
 } from "@/components/login/tenant-login-layout";
+import { LOGIN_COLORS } from "@/components/login/login-curve-divider";
 import { BrandingProvider } from "@/components/branding-provider";
 import { ErrorMessage } from "@/components/ui";
 import { DEFAULT_BRANDING } from "@/lib/branding-theme";
@@ -203,7 +204,8 @@ export function LoginForm({
                 <p className="text-right">
                   <a
                     href="#"
-                    className="text-sm font-medium text-[#2563eb] transition hover:text-[#1d4ed8] hover:underline"
+                    className="text-sm font-medium transition hover:underline"
+                    style={{ color: LOGIN_COLORS.navyMid }}
                     onClick={(e) => e.preventDefault()}
                   >
                     Passwort vergessen?
@@ -215,7 +217,7 @@ export function LoginForm({
                   type="submit"
                   disabled={loading}
                   aria-busy={loading}
-                  className="bg-brand mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#002855] px-5 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-[#004985] active:bg-[#001428] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {!loading && <LogIn size={18} aria-hidden="true" />}
                   {loading ? "Wird angemeldet…" : "Anmelden"}
