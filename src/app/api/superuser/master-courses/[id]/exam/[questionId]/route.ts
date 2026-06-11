@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "@/lib/auth";
 import { validateExamQuestion } from "@/lib/course-validation";
+import { parseExamQuestionBody } from "@/lib/exam-question-body";
 import {
   deleteExamQuestion,
   getExamQuestion,
   getMasterCourseData,
   saveExamQuestion,
 } from "@/lib/master-course-db";
-import type { ExamQuestion } from "@/lib/types";
+import { setPoolQuestionActive } from "@/lib/question-pool-db";
 
 export async function GET(
   _request: Request,
@@ -43,28 +44,49 @@ export async function PUT(
       return NextResponse.json({ error: "Kurs nicht gefunden." }, { status: 404 });
     }
 
-    const question: ExamQuestion = {
-      id: Number(questionId),
-      moduleId: Number(body.moduleId),
-      question: String(body.question ?? "").trim(),
-      type: body.type,
-      answers: body.type === "boolean" ? undefined : body.answers,
-      correct: body.correct,
-    };
-
+    const parsed = parseExamQuestionBody({ ...body, id: Number(questionId) });
     const error = validateExamQuestion(
-      question,
+      parsed,
       course.modules.map((m) => m.id)
     );
     if (error) {
       return NextResponse.json({ error }, { status: 400 });
     }
 
-    if (!(await getExamQuestion(id, question.id))) {
+    if (!(await getExamQuestion(id, parsed.id))) {
       return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
     }
 
-    await saveExamQuestion(id, question);
+    const question = await saveExamQuestion(id, parsed);
+    return NextResponse.json({ question });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
+      return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
+    }
+    return NextResponse.json({ error: "Fehler." }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string; questionId: string }> }
+) {
+  try {
+    await requireSuperuser();
+    const { id, questionId } = await params;
+    const body = await request.json();
+
+    if (body.active === undefined) {
+      return NextResponse.json({ error: "Keine Änderung angegeben." }, { status: 400 });
+    }
+
+    if (!(await getExamQuestion(id, Number(questionId)))) {
+      return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
+    }
+
+    await setPoolQuestionActive(Number(questionId), Boolean(body.active));
+    const question = await getExamQuestion(id, Number(questionId));
     return NextResponse.json({ question });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";

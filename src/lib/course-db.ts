@@ -18,7 +18,7 @@ function normalize(course: CourseData): CourseData {
   );
   const durationMinutes = migrated.modules.reduce((s, m) => s + (m.duration || 0), 0);
   const examPerTest = migrated.examQuestionsPerTest ?? 15;
-  const poolSize = migrated.exam.length;
+  const poolSize = migrated.examPoolSize ?? migrated.exam.length;
   const minCorrectAnswers = Math.ceil(
     (examPerTest * (migrated.passingScore ?? 80)) / 100
   );
@@ -352,6 +352,7 @@ export async function saveCourseData(
   course: CourseData
 ): Promise<CourseData> {
   const normalized = normalize(course);
+  const toPersist = { ...normalized, exam: [] };
   await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
@@ -360,7 +361,7 @@ export async function saveCourseData(
       version = ${normalized.version},
       passing_score = ${normalized.passingScore},
       validity_months = ${normalized.certificateValidityMonths},
-      content_json = ${JSON.stringify(normalized)}::jsonb,
+      content_json = ${JSON.stringify(toPersist)}::jsonb,
       updated_at = NOW()
     WHERE id = ${normalized.courseId} AND company_id = ${companyId}
     RETURNING id
@@ -628,8 +629,18 @@ export async function getExamQuestion(
   courseId: string,
   id: number
 ): Promise<ExamQuestion | undefined> {
-  const course = await getCourseData(companyId, courseId);
-  return course?.exam.find((q) => q.id === id);
+  const { getPoolQuestionById } = await import("./question-pool-db");
+  const { poolItemToExamQuestion } = await import("./question-pool");
+  const item = await getPoolQuestionById(id);
+  if (!item) {
+    const course = await getCourseData(companyId, courseId);
+    return course?.exam.find((q) => q.id === id);
+  }
+  if (item.sourceType === "master") return poolItemToExamQuestion(item);
+  if (item.companyId === companyId && item.courseId === courseId) {
+    return poolItemToExamQuestion(item);
+  }
+  return undefined;
 }
 
 export async function saveExamQuestion(
@@ -637,16 +648,8 @@ export async function saveExamQuestion(
   courseId: string,
   question: ExamQuestion
 ): Promise<ExamQuestion> {
-  const course = await getCourseData(companyId, courseId);
-  if (!course) throw new Error("COURSE_NOT_FOUND");
-  const idx = course.exam.findIndex((q) => q.id === question.id);
-  if (idx >= 0) course.exam[idx] = question;
-  else {
-    course.exam.push(question);
-    course.exam.sort((a, b) => a.id - b.id);
-  }
-  await saveCourseData(companyId, course);
-  return question;
+  const { saveExamQuestionToPool } = await import("./question-pool-db");
+  return saveExamQuestionToPool(question, courseId, companyId, "company");
 }
 
 export async function deleteExamQuestion(
@@ -654,6 +657,12 @@ export async function deleteExamQuestion(
   courseId: string,
   id: number
 ): Promise<boolean> {
+  const { getPoolQuestionById, deletePoolQuestion } = await import("./question-pool-db");
+  const item = await getPoolQuestionById(id);
+  if (item?.sourceType === "master") return false;
+  if (item && item.companyId === companyId && item.courseId === courseId) {
+    return deletePoolQuestion(id);
+  }
   const course = await getCourseData(companyId, courseId);
   if (!course) return false;
   const before = course.exam.length;
@@ -667,8 +676,11 @@ export async function nextExamId(
   companyId: number,
   courseId: string
 ): Promise<number> {
-  const course = await getCourseData(companyId, courseId);
-  const ids = course?.exam.map((q) => q.id) ?? [];
+  const { listCompanyPoolQuestions } = await import("./question-pool-db");
+  const items = await listCompanyPoolQuestions(companyId, courseId, {
+    includeInactive: true,
+  });
+  const ids = items.map((q) => q.id);
   return ids.length ? Math.max(...ids) + 1 : 1;
 }
 

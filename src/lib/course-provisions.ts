@@ -492,6 +492,9 @@ export async function syncMasterToCompanyCourse(
   const slug = courseId.replace(`${companyId}-`, "");
   const cloned = masterContentAsCourseData(master, companyId, slug);
   await saveCourseData(companyId, cloned);
+
+  const { syncMasterQuestionPoolToCompanies } = await import("./question-pool-db");
+  await syncMasterQuestionPoolToCompanies(masterCourseId);
 }
 
 export async function assignMasterToAllCompanies(

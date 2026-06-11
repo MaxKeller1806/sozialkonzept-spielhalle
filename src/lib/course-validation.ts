@@ -1,4 +1,4 @@
-import type { CourseModule, ExamQuestion, Lesson } from "./types";
+import type { CourseModule, ExamQuestion, Lesson, PoolQuestionType } from "./types";
 
 export function validateModule(
   module: Partial<CourseModule>
@@ -28,19 +28,23 @@ export function validateLesson(lesson: Partial<Lesson>): string | null {
 }
 
 export function validateExamQuestion(
-  question: Partial<ExamQuestion>,
+  question: Partial<ExamQuestion & { poolQuestionType?: PoolQuestionType }>,
   moduleIds?: number[]
 ): string | null {
-  if (!question.moduleId || question.moduleId < 1) {
-    return "Bitte ein Modul zuordnen.";
-  }
-  if (moduleIds && !moduleIds.includes(question.moduleId)) {
+  if (
+    question.moduleId != null &&
+    question.moduleId > 0 &&
+    moduleIds &&
+    !moduleIds.includes(question.moduleId)
+  ) {
     return "Ungültiges Modul.";
   }
   if (!question.question?.trim()) return "Fragentext ist erforderlich.";
-  if (!question.type) return "Fragetyp ist erforderlich.";
 
-  if (question.type === "boolean") {
+  const poolType = question.poolQuestionType ?? question.type;
+  if (!poolType) return "Fragetyp ist erforderlich.";
+
+  if (poolType === "boolean") {
     if (typeof question.correct !== "boolean") {
       return "Bitte Richtig oder Falsch als korrekte Antwort wählen.";
     }
@@ -50,14 +54,14 @@ export function validateExamQuestion(
   const answers = question.answers ?? [];
   if (answers.length < 2) return "Mindestens zwei Antwortmöglichkeiten erforderlich.";
 
-  if (question.type === "single") {
+  if (poolType === "single" || poolType === "situation") {
     const correct = question.correct as number;
     if (typeof correct !== "number" || correct < 0 || correct >= answers.length) {
       return "Bitte eine gültige richtige Antwort auswählen.";
     }
   }
 
-  if (question.type === "multiple") {
+  if (poolType === "multiple") {
     const correct = question.correct as number[];
     if (!Array.isArray(correct) || correct.length === 0) {
       return "Mindestens eine richtige Antwort markieren.";

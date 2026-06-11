@@ -39,41 +39,49 @@ export async function GET(request: Request) {
       );
     }
 
+    const activePool = course.exam.filter((q) => q.active !== false);
+    if (activePool.length === 0) {
+      return NextResponse.json(
+        { error: "Kein Fragenpool für dieses Seminar verfügbar." },
+        { status: 400 }
+      );
+    }
+
     let ids = getExamQuestionIds(attempt);
-    const perTest = course.examQuestionsPerTest ?? 15;
+    const perTest = Math.min(course.examQuestionsPerTest ?? 15, activePool.length);
 
     if (ids.length !== perTest) {
-      const selected = selectExamQuestions(course.exam, perTest);
+      const selected = selectExamQuestions(activePool, perTest);
       ids = selected.map((q) => q.id);
       await setExamQuestionIds(attempt.id, ids);
     }
 
-    const selectedQuestions = questionsByIds(course.exam, ids);
+    const selectedQuestions = questionsByIds(activePool, ids);
 
-    const sections = course.modules
-      .map((mod) => ({
-        moduleId: mod.id,
-        moduleTitle: mod.title,
-        questions: selectedQuestions
-          .filter((q) => q.moduleId === mod.id)
-          .map(({ id, question, type, answers }) => ({
-            id,
-            question,
-            type,
-            answers,
-          })),
-      }))
-      .filter((s) => s.questions.length > 0);
+    const clientQuestions = selectedQuestions.map(({ id, question, type, answers }) => ({
+      id,
+      question,
+      type,
+      answers,
+    }));
 
-    const questions = sections.flatMap((s) => s.questions);
+    const sections = [
+      {
+        moduleId: 0,
+        moduleTitle: "Abschlusstest",
+        questions: clientQuestions,
+      },
+    ];
+
+    const minCorrect = Math.ceil((perTest * course.passingScore) / 100);
 
     return NextResponse.json({
-      questions,
+      questions: clientQuestions,
       sections,
-      total: questions.length,
-      poolSize: course.exam.length,
+      total: clientQuestions.length,
+      poolSize: activePool.length,
       passingScore: course.passingScore,
-      minCorrect: course.minCorrectAnswers,
+      minCorrect,
       courseId,
     });
   } catch (e) {

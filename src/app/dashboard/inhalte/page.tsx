@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui";
 import { isMasterCourseId } from "@/lib/course-editor-id";
@@ -15,8 +15,17 @@ interface CourseOverview {
   passingScore: number;
   minCorrectAnswers: number;
   examQuestionsPerTest?: number;
+  examPoolSize?: number;
   modules: { id: number; title: string; duration: number; lessons: { id: number; title: string }[] }[];
-  exam: { id: number; moduleId: number; question: string; type: string }[];
+  exam: {
+    id: number;
+    moduleId: number;
+    question: string;
+    type: string;
+    sourceType?: string;
+    active?: boolean;
+    poolQuestionType?: string;
+  }[];
 }
 
 interface ContentStates {
@@ -138,21 +147,7 @@ function InhalteEditor({ courseId }: { courseId: string }) {
     load();
   }, [load]);
 
-  const examByModule = useMemo(() => {
-    if (!course) return [];
-    return course.modules.map((mod) => ({
-      module: mod,
-      questions: course.exam
-        .filter((q) => q.moduleId === mod.id)
-        .sort((a, b) => a.id - b.id),
-    }));
-  }, [course]);
-
-  const unassigned = useMemo(() => {
-    if (!course) return [];
-    const moduleIds = new Set(course.modules.map((m) => m.id));
-    return course.exam.filter((q) => !moduleIds.has(q.moduleId));
-  }, [course]);
+  const poolSize = course?.examPoolSize ?? course?.exam.filter((q) => q.active !== false).length ?? 0;
 
   const hasContent =
     course &&
@@ -182,6 +177,7 @@ function InhalteEditor({ courseId }: { courseId: string }) {
   }
 
   const perTest = course?.examQuestionsPerTest ?? course?.totalQuestions ?? 15;
+  const poolSizeDisplay = poolSize;
   const minCorrect = Math.ceil(
     (perTest * Number(passingScoreInput || course?.passingScore || 80)) / 100
   );
@@ -284,7 +280,8 @@ function InhalteEditor({ courseId }: { courseId: string }) {
               )}
               <p className="mt-2 text-sm text-slate-600">
                 Legen Sie fest, ab welchem Prozentsatz der Test bestanden gilt. Pro
-                Durchlauf werden {perTest} Fragen aus dem Pool gestellt.
+                Durchlauf werden {perTest} Fragen zufällig aus dem Fragenpool ({poolSizeDisplay}{" "}
+                Fragen) gestellt.
               </p>
               <form
                 onSubmit={savePassingScore}
@@ -398,8 +395,10 @@ function InhalteEditor({ courseId }: { courseId: string }) {
             <Card>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-bold">Abschlusstest – Fragen</h2>
-                  <p className="text-sm text-slate-500">Nach Modulen gruppiert</p>
+                  <h2 className="text-lg font-bold">Fragenpool – Prüfungsfragen</h2>
+                  <p className="text-sm text-slate-500">
+                    {poolSizeDisplay} Fragen im Pool · {perTest} zufällige Fragen pro Test
+                  </p>
                 </div>
                 {permissions.canEditTests && (
                   <Link href={`/dashboard/inhalte/frage/neu${courseQuery}`}>
@@ -408,81 +407,69 @@ function InhalteEditor({ courseId }: { courseId: string }) {
                 )}
               </div>
 
-              <div className="space-y-8">
-                {examByModule.map(({ module: mod, questions }) => (
-                  <section key={mod.id}>
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-brand-light pb-2">
-                      <h3 className="font-semibold text-brand">
-                        Modul {mod.id}: {mod.title}
-                        {contentStates?.modules[String(mod.id)] === false && (
-                          <DeactivatedBadge />
-                        )}
-                      </h3>
-                      {permissions.canEditTests && (
-                        <Link href={`/dashboard/inhalte/frage/neu?module=${mod.id}${courseId ? `&courseId=${encodeURIComponent(courseId)}` : ""}`}>
-                          <span className="text-sm font-medium text-brand hover:underline">
-                            + Frage zu diesem Modul
-                          </span>
-                        </Link>
-                      )}
-                    </div>
-                    {questions.length === 0 ? (
-                      <p className="text-sm text-slate-500 italic">
-                        Noch keine Fragen für dieses Modul.
-                      </p>
-                    ) : (
-                      <ul className="divide-y divide-slate-100">
-                        {questions.map((q) => {
-                          const questionActive =
-                            contentStates?.questions[String(q.id)] !== false;
-                          return (
-                            <li
-                              key={q.id}
-                              className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs font-medium uppercase text-slate-400">
-                                  Frage {q.id} · {q.type}
-                                  {!questionActive && <DeactivatedBadge />}
-                                </p>
-                                <p className="font-medium">{q.question}</p>
-                              </div>
-                              {permissions.canEditTests ? (
-                                <Link
-                                  href={`/dashboard/inhalte/frage/${q.id}${courseQuery}`}
-                                  className="shrink-0"
-                                >
-                                  <Button variant="secondary">Bearbeiten</Button>
-                                </Link>
-                              ) : null}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </section>
-                ))}
+              {permissions.fromMaster && (
+                <p className="mb-4 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  Master-Fragen (Certiano) sind schreibgeschützt. Sie können eigene
+                  betriebliche Fragen ergänzen.
+                </p>
+              )}
 
-                {unassigned.length > 0 && (
-                  <section>
-                    <h3 className="mb-3 font-semibold text-amber-800">
-                      Ohne Modulzuordnung
-                    </h3>
-                    <ul className="divide-y divide-slate-100">
-                      {unassigned.map((q) => (
-                        <li key={q.id} className="py-3">
-                          <Link
-                            href={`/dashboard/inhalte/frage/${q.id}${courseQuery}`}
-                            className="text-brand underline"
-                          >
-                            {q.question}
-                          </Link>
+              {course.exam.length === 0 ? (
+                <p className="text-sm text-slate-500 italic">
+                  Noch keine Fragen im Fragenpool.
+                </p>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {course.exam
+                    .slice()
+                    .sort((a, b) => a.id - b.id)
+                    .map((q) => {
+                      const questionActive =
+                        contentStates?.questions[String(q.id)] !== false && q.active !== false;
+                      const isMasterQuestion = q.sourceType === "master";
+                      const typeLabel = q.poolQuestionType ?? q.type;
+                      return (
+                        <li
+                          key={q.id}
+                          className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium uppercase text-slate-400">
+                              Frage {q.id} · {typeLabel}
+                              {isMasterQuestion && (
+                                <span className="ml-2 normal-case text-brand">Master</span>
+                              )}
+                              {q.sourceType === "company" && permissions.fromMaster && (
+                                <span className="ml-2 normal-case text-emerald-700">
+                                  Betrieblich
+                                </span>
+                              )}
+                              {!questionActive && <DeactivatedBadge />}
+                            </p>
+                            <p className="font-medium">{q.question}</p>
+                          </div>
+                          {permissions.canEditTests && !isMasterQuestion ? (
+                            <Link
+                              href={`/dashboard/inhalte/frage/${q.id}${courseQuery}`}
+                              className="shrink-0"
+                            >
+                              <Button variant="secondary">Bearbeiten</Button>
+                            </Link>
+                          ) : isMasterQuestion && permissions.canEditTests && isMaster ? (
+                            <Link
+                              href={`/dashboard/inhalte/frage/${q.id}${courseQuery}`}
+                              className="shrink-0"
+                            >
+                              <Button variant="secondary">Bearbeiten</Button>
+                            </Link>
+                          ) : isMasterQuestion ? (
+                            <span className="text-sm text-slate-400">Nur Ansicht</span>
+                          ) : null}
                         </li>
-                      ))}
-                    </ul>
-                  </section>
-                )}
-              </div>
+                      );
+                    })}
+                </ul>
+              )}
             </Card>
           </>
         )}

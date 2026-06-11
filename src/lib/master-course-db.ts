@@ -28,7 +28,7 @@ function normalize(course: CourseData): CourseData {
   );
   const durationMinutes = migrated.modules.reduce((s, m) => s + (m.duration || 0), 0);
   const examPerTest = migrated.examQuestionsPerTest ?? 15;
-  const poolSize = migrated.exam.length;
+  const poolSize = migrated.examPoolSize ?? migrated.exam.length;
   const minCorrectAnswers = Math.ceil(
     (examPerTest * (migrated.passingScore ?? 80)) / 100
   );
@@ -497,6 +497,7 @@ export async function createMasterCourse(input: {
 
 export async function saveMasterCourseData(course: CourseData): Promise<CourseData> {
   const normalized = normalize(course);
+  const toPersist = { ...normalized, exam: [] };
   const sql = getSql();
   const rows = await sql`
     UPDATE master_courses SET
@@ -504,7 +505,7 @@ export async function saveMasterCourseData(course: CourseData): Promise<CourseDa
       version = ${normalized.version},
       passing_score = ${normalized.passingScore},
       validity_months = ${normalized.certificateValidityMonths},
-      content_json = ${JSON.stringify(normalized)}::jsonb,
+      content_json = ${JSON.stringify(toPersist)}::jsonb,
       updated_at = NOW()
     WHERE id = ${normalized.courseId}
     RETURNING id
@@ -787,23 +788,27 @@ export async function deleteLesson(
 }
 
 export async function getExamQuestion(id: string, qid: number): Promise<ExamQuestion | undefined> {
+  const { getPoolQuestionById } = await import("./question-pool-db");
+  const { poolItemToExamQuestion } = await import("./question-pool");
+  const item = await getPoolQuestionById(qid);
+  if (item && item.courseId === id && item.sourceType === "master") {
+    return poolItemToExamQuestion(item);
+  }
   const course = await load(id);
   return course.exam.find((q) => q.id === qid);
 }
 
 export async function saveExamQuestion(id: string, question: ExamQuestion): Promise<ExamQuestion> {
-  const course = await load(id);
-  const idx = course.exam.findIndex((q) => q.id === question.id);
-  if (idx >= 0) course.exam[idx] = question;
-  else {
-    course.exam.push(question);
-    course.exam.sort((a, b) => a.id - b.id);
-  }
-  await saveMasterCourseData(course);
-  return question;
+  const { saveExamQuestionToPool } = await import("./question-pool-db");
+  return saveExamQuestionToPool(question, id, null, "master");
 }
 
 export async function deleteExamQuestion(id: string, qid: number): Promise<boolean> {
+  const { getPoolQuestionById, deletePoolQuestion } = await import("./question-pool-db");
+  const item = await getPoolQuestionById(qid);
+  if (item && item.courseId === id && item.sourceType === "master") {
+    return deletePoolQuestion(qid);
+  }
   const course = await load(id);
   const before = course.exam.length;
   course.exam = course.exam.filter((q) => q.id !== qid);
@@ -813,8 +818,9 @@ export async function deleteExamQuestion(id: string, qid: number): Promise<boole
 }
 
 export async function nextExamId(id: string): Promise<number> {
-  const course = await load(id);
-  const ids = course.exam.map((q) => q.id);
+  const { listMasterPoolQuestions } = await import("./question-pool-db");
+  const items = await listMasterPoolQuestions(id, { includeInactive: true });
+  const ids = items.map((q) => q.id);
   return ids.length ? Math.max(...ids) + 1 : 1;
 }
 

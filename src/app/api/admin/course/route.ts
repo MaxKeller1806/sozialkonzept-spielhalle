@@ -16,6 +16,7 @@ import {
 } from "@/lib/course-provisions";
 import { coursePermissionErrorResponse } from "@/lib/course-permissions-api";
 import { getMasterCourseData } from "@/lib/master-course-db";
+import { enrichCourseWithQuestionPool } from "@/lib/question-pool-db";
 
 export async function GET(request: Request) {
   try {
@@ -26,9 +27,10 @@ export async function GET(request: Request) {
       if (!course) {
         return NextResponse.json({ error: "Seminar nicht gefunden." }, { status: 404 });
       }
+      const enriched = await enrichCourseWithQuestionPool(course, null, null);
       return NextResponse.json({
         courseId: ctx.masterId,
-        course,
+        course: enriched,
         permissions: MASTER_EDITOR_PERMISSIONS,
         contentStates: { modules: {}, lessons: {}, questions: {} },
       });

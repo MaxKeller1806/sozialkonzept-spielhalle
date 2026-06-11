@@ -6,6 +6,67 @@ import type { ReleaseNote } from "./types";
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "V2.8.0",
+    date: "11.06.2026",
+    summary:
+      "Fragenpool-System für Prüfungen, getrennte Verständnisfragen und fachliche Überarbeitung N7 Überfall.",
+    sections: [
+      {
+        title: "Fragenpool-System",
+        category: "features",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Prüfungsfragen liegen in einer eigenen Tabelle (question_pool) – getrennt von Lerninhalten und Verständnisfragen im Seminar.",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Abschlusstest: zufällige Auswahl aus dem Pool pro Durchlauf (Auswendiglernen erschwert).",
+            visibility: ["superuser", "admin", "employee"],
+          },
+          {
+            text: "Fragetypen: Single Choice, Multiple Choice, Wahr/Falsch, Situationsfragen – mit Erklärung, Schwierigkeit und Deaktivieren.",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Master-Fragen (Certiano) sind für Betreiber schreibgeschützt; eigene betriebliche Fragen können ergänzt werden.",
+            visibility: ["superuser", "admin"],
+          },
+        ],
+      },
+      {
+        title: "N7 Verhalten bei einem Überfall (Version 2.0)",
+        category: "features",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Fachliche Überarbeitung nach BAV-Sicherheitskonzept: kompakter (ca. 5–7 Min.), u. a. Psychische Belastung, Täterbeobachtung, Schritte nach dem Überfall.",
+            visibility: ["superuser", "admin", "employee"],
+          },
+          {
+            text: "4 Verständnisfragen im Seminar (Lernkontrolle) – getrennt vom Prüfungs-Fragenpool mit 16 Fragen.",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Abschlusstest N7: 5 zufällige Fragen aus dem Pool, Bestehen ab 80 % (4 von 5 richtig).",
+            visibility: ["superuser", "admin", "employee"],
+          },
+        ],
+      },
+      {
+        title: "Datenbank",
+        category: "features",
+        visibility: ["superuser"],
+        items: [
+          {
+            text: "Migrationen: question_pool (20260624120000), N7-Metadaten Version 2.0 (20260625120000). Nach Deploy: npm run db:migrate && npm run seed:safety.",
+            visibility: ["superuser"],
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "V2.7.2",
     date: "11.06.2026",
     summary:

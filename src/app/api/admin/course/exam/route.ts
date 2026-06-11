@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { validateExamQuestion } from "@/lib/course-validation";
+import { parseExamQuestionBody } from "@/lib/exam-question-body";
 import {
   getCourseData as getCompanyCourseData,
-  nextExamId as nextCompanyExamId,
   saveExamQuestion as saveCompanyExamQuestion,
 } from "@/lib/course-db";
 import { courseIdFromRequest } from "@/lib/course-context";
@@ -11,37 +11,28 @@ import { assertCourseEditable } from "@/lib/course-provisions";
 import { coursePermissionErrorResponse } from "@/lib/course-permissions-api";
 import {
   getMasterCourseData,
-  nextExamId as nextMasterExamId,
   saveExamQuestion as saveMasterExamQuestion,
 } from "@/lib/master-course-db";
-import type { ExamQuestion } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
     const ctx = await resolveCourseEditor(courseIdFromRequest(request));
     const body = await request.json();
+    const parsed = parseExamQuestionBody(body);
 
     if (isMasterEditor(ctx)) {
       const course = await getMasterCourseData(ctx.masterId);
       if (!course) {
         return NextResponse.json({ error: "Kurs nicht gefunden." }, { status: 404 });
       }
-      const question: ExamQuestion = {
-        id: body.id ?? (await nextMasterExamId(ctx.masterId)),
-        moduleId: Number(body.moduleId),
-        question: String(body.question ?? "").trim(),
-        type: body.type,
-        answers: body.answers,
-        correct: body.correct,
-      };
       const error = validateExamQuestion(
-        question,
+        parsed,
         course.modules.map((m) => m.id)
       );
       if (error) {
         return NextResponse.json({ error }, { status: 400 });
       }
-      await saveMasterExamQuestion(ctx.masterId, question);
+      const question = await saveMasterExamQuestion(ctx.masterId, parsed);
       return NextResponse.json({ question }, { status: 201 });
     }
 
@@ -50,22 +41,14 @@ export async function POST(request: Request) {
     if (!course) {
       return NextResponse.json({ error: "Kurs nicht gefunden." }, { status: 404 });
     }
-    const question: ExamQuestion = {
-      id: body.id ?? (await nextCompanyExamId(ctx.companyId, ctx.courseId)),
-      moduleId: Number(body.moduleId),
-      question: String(body.question ?? "").trim(),
-      type: body.type,
-      answers: body.answers,
-      correct: body.correct,
-    };
     const error = validateExamQuestion(
-      question,
+      parsed,
       course.modules.map((m) => m.id)
     );
     if (error) {
       return NextResponse.json({ error }, { status: 400 });
     }
-    await saveCompanyExamQuestion(ctx.companyId, ctx.courseId, question);
+    const question = await saveCompanyExamQuestion(ctx.companyId, ctx.courseId, parsed);
     return NextResponse.json({ question }, { status: 201 });
   } catch (e) {
     const perm = coursePermissionErrorResponse(e);

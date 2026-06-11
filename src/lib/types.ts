@@ -233,6 +233,35 @@ export interface ExamQuestion {
   type: "single" | "multiple" | "boolean";
   answers?: string[];
   correct: number | number[] | boolean;
+  explanation?: string;
+  sourceType?: QuestionSourceType;
+  poolQuestionType?: PoolQuestionType;
+  difficulty?: string;
+  active?: boolean;
+}
+
+export type QuestionSourceType = "master" | "company";
+
+export type PoolQuestionType = "single" | "multiple" | "boolean" | "situation";
+
+export interface QuestionPoolItem {
+  id: number;
+  courseId: string;
+  companyId: number | null;
+  sourceType: QuestionSourceType;
+  question: string;
+  questionType: PoolQuestionType;
+  answerA: string | null;
+  answerB: string | null;
+  answerC: string | null;
+  answerD: string | null;
+  correctAnswer: string;
+  explanation: string | null;
+  difficulty: "easy" | "medium" | "hard" | null;
+  moduleId: number | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CourseData {
@@ -248,6 +277,8 @@ export interface CourseData {
   certificateValidityMonths: number;
   certificateTitle: string;
   examQuestionsPerTest?: number;
+  /** Gesamtgröße des Prüfungs-Fragenpools (aktive Fragen). */
+  examPoolSize?: number;
   modules: CourseModule[];
   exam: ExamQuestion[];
 }

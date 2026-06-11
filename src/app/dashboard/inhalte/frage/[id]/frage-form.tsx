@@ -5,8 +5,9 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card, Input, Select, Textarea } from "@/components/ui";
+import { isMasterCourseId } from "@/lib/course-editor-id";
 
-type QuestionType = "single" | "multiple" | "boolean";
+type QuestionType = "single" | "multiple" | "boolean" | "situation";
 
 interface ModuleOption {
   id: number;
@@ -30,6 +31,11 @@ export default function FrageForm() {
   const [correctSingle, setCorrectSingle] = useState(0);
   const [correctMultiple, setCorrectMultiple] = useState<number[]>([]);
   const [correctBoolean, setCorrectBoolean] = useState(true);
+  const [explanation, setExplanation] = useState("");
+  const [difficulty, setDifficulty] = useState("");
+  const [readOnly, setReadOnly] = useState(false);
+  const [active, setActive] = useState(true);
+  const [sourceType, setSourceType] = useState<string | null>(null);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -61,7 +67,12 @@ export default function FrageForm() {
         const q = d.question;
         setModuleId(q.moduleId);
         setQuestion(q.question);
-        setType(q.type);
+        setType(q.poolQuestionType ?? q.type);
+        setExplanation(q.explanation ?? "");
+        setDifficulty(q.difficulty ?? "");
+        setActive(q.active !== false);
+        setSourceType(q.sourceType ?? null);
+        setReadOnly(q.sourceType === "master" && !isMasterCourseId(courseId ?? ""));
         if (q.type === "boolean") {
           setCorrectBoolean(q.correct);
         } else {
@@ -98,15 +109,38 @@ export default function FrageForm() {
   }
 
   function buildPayload() {
-    const base = { moduleId, question, type };
+    const base = {
+      moduleId,
+      question,
+      type,
+      explanation: explanation.trim() || null,
+      difficulty: difficulty || null,
+      active,
+    };
     if (type === "boolean") {
       return { ...base, correct: correctBoolean };
     }
     const trimmed = answers.map((a) => a.trim()).filter(Boolean);
-    if (type === "single") {
+    if (type === "single" || type === "situation") {
       return { ...base, answers: trimmed, correct: correctSingle };
     }
     return { ...base, answers: trimmed, correct: correctMultiple };
+  }
+
+  async function toggleActive() {
+    if (isNew) return;
+    const res = await fetch(`/api/admin/course/exam/${idParam}${courseQuery}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: !active }),
+    });
+    if (res.ok) {
+      setActive(!active);
+      setMessage(active ? "Frage deaktiviert." : "Frage reaktiviert.");
+    } else {
+      const data = await res.json();
+      setError(data.error ?? "Statusänderung fehlgeschlagen.");
+    }
   }
 
   async function save() {
@@ -153,7 +187,7 @@ export default function FrageForm() {
     setType(newType);
     if (newType === "boolean") return;
     if (answers.length < 2) setAnswers(["", ""]);
-    if (newType === "single") {
+    if (newType === "single" || newType === "situation") {
       setCorrectSingle(0);
       setCorrectMultiple([]);
     } else {
@@ -168,6 +202,18 @@ export default function FrageForm() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <PageHeader title={isNew ? "Neue Frage" : `Frage ${idParam} bearbeiten`} />
+      {readOnly && (
+        <Card className="mb-4 border-amber-200 bg-amber-50">
+          <p className="text-sm text-amber-900">
+            Diese Master-Frage kann nur durch Certiano bearbeitet werden.
+          </p>
+        </Card>
+      )}
+      {!active && (
+        <Card className="mb-4 border-slate-200 bg-slate-50">
+          <p className="text-sm text-slate-700">Diese Frage ist deaktiviert.</p>
+        </Card>
+      )}
       <div className="mb-4 text-sm">
         <Link
           href={`/dashboard/inhalte/modul/${moduleId}${courseQuery}`}
@@ -186,10 +232,12 @@ export default function FrageForm() {
         <Card>
           <div className="space-y-4">
             <Select
-              label="Zugehöriges Modul"
+              label="Zugehöriges Modul (optional)"
               value={moduleId}
               onChange={(e) => setModuleId(Number(e.target.value))}
+              disabled={readOnly}
             >
+              <option value={0}>Kein Modul</option>
               {modules.map((m) => (
                 <option key={m.id} value={m.id}>
                   Modul {m.id}: {m.title}
@@ -201,15 +249,36 @@ export default function FrageForm() {
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               rows={3}
+              disabled={readOnly}
             />
             <Select
               label="Fragetyp"
               value={type}
               onChange={(e) => onTypeChange(e.target.value as QuestionType)}
+              disabled={readOnly}
             >
               <option value="single">Single Choice (eine Antwort)</option>
               <option value="multiple">Multiple Choice (mehrere Antworten)</option>
               <option value="boolean">Wahr / Falsch</option>
+              <option value="situation">Situationsfrage (Praxisbezogen)</option>
+            </Select>
+            <Textarea
+              label="Erklärung (optional)"
+              value={explanation}
+              onChange={(e) => setExplanation(e.target.value)}
+              rows={2}
+              disabled={readOnly}
+            />
+            <Select
+              label="Schwierigkeit (optional)"
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+              disabled={readOnly}
+            >
+              <option value="">—</option>
+              <option value="easy">Leicht</option>
+              <option value="medium">Mittel</option>
+              <option value="hard">Schwer</option>
             </Select>
 
             {type === "boolean" && (
@@ -238,7 +307,7 @@ export default function FrageForm() {
               </div>
             )}
 
-            {(type === "single" || type === "multiple") && (
+            {(type === "single" || type === "multiple" || type === "situation") && (
               <div>
                 <p className="mb-2 text-sm font-medium text-slate-700">
                   Antwortmöglichkeiten
@@ -252,7 +321,7 @@ export default function FrageForm() {
                 <ul className="space-y-3">
                   {answers.map((ans, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      {type === "single" ? (
+                      {type === "single" || type === "situation" ? (
                         <input
                           type="radio"
                           name="correctSingle"
@@ -260,6 +329,7 @@ export default function FrageForm() {
                           checked={correctSingle === i}
                           onChange={() => setCorrectSingle(i)}
                           title="Richtige Antwort"
+                          disabled={readOnly}
                         />
                       ) : (
                         <input
@@ -317,10 +387,17 @@ export default function FrageForm() {
           )}
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button onClick={save} disabled={saving} className="flex-1">
-              {saving ? "Speichern…" : "Speichern"}
-            </Button>
-            {!isNew && (
+            {!readOnly && (
+              <Button onClick={save} disabled={saving} className="flex-1">
+                {saving ? "Speichern…" : "Speichern"}
+              </Button>
+            )}
+            {!isNew && !readOnly && sourceType !== "master" && (
+              <Button variant="secondary" onClick={toggleActive} className="flex-1">
+                {active ? "Deaktivieren" : "Reaktivieren"}
+              </Button>
+            )}
+            {!isNew && !readOnly && sourceType !== "master" && (
               <Button variant="danger" onClick={remove} className="flex-1">
                 Löschen
               </Button>

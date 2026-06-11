@@ -67,7 +67,8 @@ export async function POST(request: Request) {
     }
 
     const examIds = getExamQuestionIds(attempt);
-    const perTest = course.examQuestionsPerTest ?? 15;
+    const activePool = course.exam.filter((q) => q.active !== false);
+    const perTest = Math.min(course.examQuestionsPerTest ?? 15, activePool.length);
     if (examIds.length !== perTest) {
       return NextResponse.json(
         { error: "Prüfung ungültig. Bitte Test erneut starten." },
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const examQuestions = questionsByIds(course.exam, examIds);
+    const examQuestions = questionsByIds(activePool, examIds);
     const result = scoreExam(examQuestions, parsedAnswers, course.passingScore);
     const incorrectReview = getIncorrectReview(
       buildExamReview(examQuestions, parsedAnswers)

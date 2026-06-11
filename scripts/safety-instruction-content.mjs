@@ -3,7 +3,61 @@
  * Wird von scripts/seed-safety-content.mjs importiert.
  */
 
-/** @typedef {{ question: string, answers?: string[], correct?: number, examType?: string, examCorrect?: number|boolean, explanation: string }} QuizDef */
+/** @typedef {{ question: string, answers?: string[], correct?: number, examType?: string, poolType?: string, examCorrect?: number|boolean, explanation?: string, difficulty?: string }} QuizDef */
+
+function quizToBlock(q) {
+  const isBoolean =
+    q.examType === "boolean" ||
+    q.poolType === "boolean" ||
+    (!q.answers?.length && q.examCorrect !== undefined);
+  if (isBoolean) {
+    const statementTrue = q.examCorrect === true;
+    return {
+      type: "quiz",
+      question: q.question,
+      answers: ["Richtig", "Falsch"],
+      correct: statementTrue ? 0 : 1,
+      explanation: q.explanation,
+    };
+  }
+  return {
+    type: "quiz",
+    question: q.question,
+    answers: q.answers,
+    correct: q.correct ?? 0,
+    explanation: q.explanation,
+  };
+}
+
+/** Konvertiert Prüfungsfragen-Definitionen für question_pool (DB). */
+export function examPoolQuestionToDbFields(q) {
+  const poolType =
+    q.poolType ??
+    q.examType ??
+    (q.answers?.length ? "single" : "boolean");
+
+  const answers = q.answers ?? [];
+  let correctAnswer;
+  if (poolType === "boolean") {
+    correctAnswer = String(q.examCorrect === true);
+  } else if (poolType === "multiple") {
+    correctAnswer = JSON.stringify(q.examCorrect ?? q.correct ?? []);
+  } else {
+    correctAnswer = JSON.stringify(q.examCorrect ?? q.correct ?? 0);
+  }
+
+  return {
+    question: q.question,
+    question_type: poolType === "situation" ? "situation" : poolType,
+    answer_a: answers[0] ?? (poolType === "boolean" ? "Richtig" : null),
+    answer_b: answers[1] ?? (poolType === "boolean" ? "Falsch" : null),
+    answer_c: answers[2] ?? null,
+    answer_d: answers[3] ?? null,
+    correct_answer: correctAnswer,
+    explanation: q.explanation ?? null,
+    difficulty: q.difficulty ?? null,
+  };
+}
 
 /**
  * @param {{
@@ -11,6 +65,7 @@
  *   code: string;
  *   fullTitle: string;
  *   validityMonths: number;
+ *   version?: string;
  *   intro: string;
  *   goals: string;
  *   basics: string[];
@@ -18,34 +73,18 @@
  *   mistakes: string;
  *   example: { title: string; body: string; solution: string };
  *   merksatz: string;
- *   quizzes: QuizDef[];
+ *   quizzes?: QuizDef[];
+ *   understandingQuizzes?: QuizDef[];
+ *   examPool?: QuizDef[];
+ *   examQuestionsPerTest?: number;
  *   customBlocks?: Array<Record<string, unknown>>;
  *   durationMinutes?: number;
+ *   recommendedMinutes?: string;
  * }} def
  */
 export function buildSafetyInstructionCourse(def) {
-  const quizBlocks = def.quizzes.map((q) => {
-    const isBoolean =
-      q.examType === "boolean" ||
-      (!q.answers?.length && q.examCorrect !== undefined);
-    if (isBoolean) {
-      const statementTrue = q.examCorrect === true;
-      return {
-        type: "quiz",
-        question: q.question,
-        answers: ["Richtig", "Falsch"],
-        correct: statementTrue ? 0 : 1,
-        explanation: q.explanation,
-      };
-    }
-    return {
-      type: "quiz",
-      question: q.question,
-      answers: q.answers,
-      correct: q.correct ?? 0,
-      explanation: q.explanation,
-    };
-  });
+  const understanding = def.understandingQuizzes ?? def.quizzes ?? [];
+  const quizBlocks = understanding.map(quizToBlock);
 
   const defaultBlocks = [
     { type: "text", body: def.intro },
@@ -69,48 +108,54 @@ export function buildSafetyInstructionCourse(def) {
     ...quizBlocks,
   ];
 
-  const exam = def.quizzes.map((q, index) => {
-    const examType = q.examType ?? (q.answers ? "single" : "boolean");
-    const base = {
-      id: index + 1,
-      moduleId: 1,
-      question: q.question,
-      type: examType,
-    };
-    if (examType === "boolean") {
-      return {
-        ...base,
-        correct: q.examCorrect === true,
-      };
-    }
-    return {
-      ...base,
-      answers: q.answers,
-      correct: q.examCorrect ?? q.correct ?? 0,
-    };
-  });
+  const perTest = def.examQuestionsPerTest ?? (def.examPool ? 5 : understanding.length);
+  const minCorrect = Math.max(1, Math.ceil(perTest * 0.8));
 
-  const examCount = exam.length;
-  const minCorrect = Math.max(1, Math.ceil(examCount * 0.8));
+  const legacyExam =
+    def.examPool != null
+      ? []
+      : understanding.map((q, index) => {
+          const examType = q.examType ?? (q.answers ? "single" : "boolean");
+          const base = {
+            id: index + 1,
+            moduleId: 1,
+            question: q.question,
+            type: examType,
+          };
+          if (examType === "boolean") {
+            return { ...base, correct: q.examCorrect === true };
+          }
+          return {
+            ...base,
+            answers: q.answers,
+            correct: q.examCorrect ?? q.correct ?? 0,
+          };
+        });
+
+  const duration = def.durationMinutes ?? 8;
+  const recommended =
+    def.recommendedMinutes ??
+    (duration <= 7 ? "ca. 5–7 Min." : duration > 10 ? "ca. 12–15 Min." : "ca. 8–10 Min.");
 
   return {
     courseId: def.masterId,
     courseName: def.fullTitle,
-    version: "1.0",
-    durationMinutes: def.durationMinutes ?? 8,
+    version: def.version ?? "1.0",
+    durationMinutes: duration,
     maxDurationMinutes: 30,
-    recommendedMinutes: def.durationMinutes && def.durationMinutes > 10 ? "ca. 12–15 Min." : "ca. 8–10 Min.",
+    recommendedMinutes: recommended,
     passingScore: 80,
     minCorrectAnswers: minCorrect,
-    totalQuestions: examCount,
+    totalQuestions: perTest,
     certificateValidityMonths: def.validityMonths,
     certificateTitle: `Nachweis ${def.fullTitle}`,
-    examQuestionsPerTest: examCount,
+    examQuestionsPerTest: perTest,
+    examPoolSize: def.examPool?.length ?? legacyExam.length,
     modules: [
       {
         id: 1,
         title: def.fullTitle,
-        duration: def.durationMinutes ?? 8,
+        duration,
         lessons: [
           {
             id: 1,
@@ -121,7 +166,7 @@ export function buildSafetyInstructionCourse(def) {
         ],
       },
     ],
-    exam,
+    exam: legacyExam,
   };
 }
 
@@ -130,42 +175,221 @@ export const SAFETY_INSTRUCTION_CONTENT = [
     masterId: "master-bav-n7",
     code: "N7",
     fullTitle: "N7 Verhalten bei einem Überfall",
+    version: "2.0",
     validityMonths: 6,
-    durationMinutes: 15,
+    durationMinutes: 6,
+    recommendedMinutes: "ca. 5–7 Min.",
+    examQuestionsPerTest: 5,
     intro:
-      "Ein Überfall gehört zu den gefährlichsten Situationen, die in einer Spielhalle auftreten können. Das wichtigste Ziel ist immer der Schutz von Menschen.",
+      "Ein Überfall ist selten – aber extrem gefährlich. Diese Unterweisung zeigt kompakt, wie Sie Menschen schützen und typische Fehler vermeiden.",
     goals: "",
     basics: [],
     practice: [],
     mistakes: "",
     example: { title: "", body: "", solution: "" },
     merksatz: "",
+    understandingQuizzes: [
+      {
+        question: "Was hat bei einem Überfall absolute Priorität?",
+        answers: [
+          "Bargeld und Automaten schützen",
+          "Eigenschutz und Schutz der Menschen",
+          "Den Täter sofort beschreiben",
+          "Videoaufnahmen starten",
+        ],
+        correct: 1,
+        explanation:
+          "Menschenleben und Gesundheit gehen vor Bargeld, Automaten und Sachwerten.",
+      },
+      {
+        question: "Was sollte bei einem bewaffneten Überfall unbedingt vermieden werden?",
+        answers: [
+          "Gegenwehr leisten",
+          "Ruhig bleiben und Anweisungen befolgen",
+          "Nach Abzug des Täters die Polizei rufen",
+          "Gäste beruhigen",
+        ],
+        correct: 0,
+        explanation:
+          "Gegenwehr, Verfolgung oder das Wegnehmen von Waffen können die Situation eskalieren lassen.",
+      },
+      {
+        question: "Nach einem Überfall sollten Beobachtungen zeitnah festgehalten werden.",
+        examType: "boolean",
+        examCorrect: true,
+        explanation:
+          "Je schneller Sie Erinnerungen dokumentieren, desto genauer sind sie – z. B. mit dem Fahndungsblatt.",
+      },
+      {
+        question:
+          "Hilfe nach einem belastenden Überfall anzunehmen, ist ein Zeichen von Schwäche.",
+        examType: "boolean",
+        examCorrect: false,
+        explanation:
+          "Psychische Belastung ist normal. Unterstützung anzunehmen ist kein Zeichen von Schwäche.",
+      },
+    ],
+    examPool: [
+      {
+        question: "Menschenleben und Gesundheit haben Vorrang vor …",
+        answers: ["Bargeld, Automaten und Sachwerten", "Hausordnung und Öffnungszeiten", "Videoüberwachung", "Kassenprotokollen"],
+        correct: 0,
+        explanation: "Eigenschutz und Menschenschutz stehen über materiellen Werten.",
+      },
+      {
+        question: "Täter in Überfallsituationen reagieren häufig berechenbar und gelassen.",
+        poolType: "boolean",
+        examCorrect: false,
+        explanation: "Täter stehen oft unter Druck und können unberechenbar reagieren.",
+      },
+      {
+        question: "Eine gezeigte Waffe kann auch unecht sein.",
+        poolType: "boolean",
+        examCorrect: true,
+        explanation: "Ob echt oder unecht – immer von einer echten Bedrohung ausgehen.",
+      },
+      {
+        question: "Was bedeutet „Ruhe bewahren“ während eines Überfalls?",
+        answers: [
+          "Laut Anweisungen geben und hektische Bewegungen vermeiden",
+          "Schnell handeln und den Täter überraschen",
+          "Gäste zur Hilfe auffordern",
+          "Sofort Alarm auslösen, auch wenn der Täter noch da ist",
+        ],
+        correct: 0,
+        explanation: "Langsam und ruhig handeln – hektische Bewegungen können provozieren.",
+      },
+      {
+        question: "Bei einem Überfall ist es sinnvoll, den flüchtenden Täter festzuhalten.",
+        poolType: "boolean",
+        examCorrect: false,
+        explanation: "Täter nicht verfolgen oder festhalten – Eskalationsgefahr.",
+      },
+      {
+        question: "Ein maskierter Täter fordert Bargeld und wirkt nervös. Wie reagieren Sie?",
+        poolType: "situation",
+        answers: [
+          "Laut diskutieren, dass wenig Wechselgeld da ist",
+          "Ruhig bleiben, Anweisungen ohne Provokation befolgen",
+          "Hinter die Theke gehen und Alarm auslösen",
+          "Gäste bitten, einzugreifen",
+        ],
+        correct: 1,
+        explanation: "Deeskalation: ruhig bleiben, Forderungen erfüllen, nicht provozieren.",
+      },
+      {
+        question: "Was ist beim Schutz der Gäste richtig?",
+        answers: [
+          "Gäste beruhigen, ohne die eigene Sicherheit zu gefährden",
+          "Gäste zwischen Täter und Kasse stellen",
+          "Gäste auffordern, den Täter zu stoppen",
+          "Gäste zuerst evakuieren, auch wenn der Täter das verbietet",
+        ],
+        correct: 0,
+        explanation: "Gäste schützen – aber niemals die eigene Sicherheit aufs Spiel setzen.",
+      },
+      {
+        question: "Während eines Überfalls soll man den Täter möglichst genau anstarren.",
+        poolType: "boolean",
+        examCorrect: false,
+        explanation: "Nicht starren, nicht provozieren, nicht auffällig beobachten.",
+      },
+      {
+        question: "Welche Beobachtung kann nach einem Überfall hilfreich sein?",
+        answers: ["Fluchtrichtung oder Fahrzeug", "Lieblingsfarbe des Täters", "Schuhgröße des Täters", "Name des Täters"],
+        correct: 0,
+        explanation: "Fluchtrichtung, Fahrzeug, Kleidung und Merkmale – wenn gefahrlos möglich.",
+      },
+      {
+        question: "Was ist nach Abzug des Täters der erste wichtige Schritt?",
+        answers: [
+          "Polizei verständigen und Bereich sichern",
+          "Tatort sofort reinigen",
+          "Kasse wieder öffnen",
+          "Social Media informieren",
+        ],
+        correct: 0,
+        explanation: "Polizei rufen, Bereich sichern, Tatort nicht verändern.",
+      },
+      {
+        question: "Den Tatort dürfen Mitarbeiter nach einem Überfall sofort reinigen.",
+        poolType: "boolean",
+        examCorrect: false,
+        explanation: "Tatort nicht verändern – Spuren und Gegenstände nicht anfassen.",
+      },
+      {
+        question: "Wozu dient das Fahndungsblatt?",
+        answers: [
+          "Beobachtungen zeitnah zu dokumentieren",
+          "Den Täter selbst zu identifizieren",
+          "Die Versicherung zu informieren",
+          "Gäste zu befragen",
+        ],
+        correct: 0,
+        explanation: "Erinnerungen strukturiert und zeitnah festhalten.",
+      },
+      {
+        question: "Psychische Belastung nach einem Überfall ist normal – Unterstützung anzunehmen ist kein Zeichen von Schwäche.",
+        poolType: "boolean",
+        examCorrect: true,
+        explanation: "Gesprächsangebote nutzen – Hilfe annehmen ist normal und richtig.",
+      },
+      {
+        question: "Der Täter hat das Gelände verlassen. Was tun Sie?",
+        poolType: "situation",
+        answers: [
+          "Dem Täter nachlaufen",
+          "Polizei rufen, Bereich sichern, Zeugen notieren, Vorgesetzte informieren",
+          "Gegenstände am Tatort säubern",
+          "Kasse sofort wieder öffnen",
+        ],
+        correct: 1,
+        explanation: "Nach dem Überfall: Polizei, Sicherung, Zeugen, Meldung, Dokumentation.",
+      },
+      {
+        question: "Welcher Fehler gefährdet besonders die eigene Sicherheit?",
+        answers: ["Diskussionen mit dem Täter", "Ruhe bewahren", "Anweisungen befolgen", "Nach dem Vorfall die Polizei informieren"],
+        correct: 0,
+        explanation: "Diskussionen, Widerstand und Provokation können eskalieren.",
+      },
+      {
+        question: "Von Mitarbeitenden wird bei einem Überfall keine Heldenrolle erwartet.",
+        poolType: "boolean",
+        examCorrect: true,
+        explanation: "Sie sind keine Sicherheitskräfte – Eigenschutz hat Vorrang.",
+      },
+    ],
     customBlocks: [
       {
         type: "text",
         body:
-          "Ein Überfall gehört zu den gefährlichsten Situationen, die in einer Spielhalle auftreten können. Auch wenn solche Ereignisse selten sind, müssen alle Mitarbeiter wissen, wie sie sich in einer Überfallsituation verhalten.\n\nZiel ist nicht, Geld oder Sachwerte zu schützen. Das wichtigste Ziel ist immer der Schutz von Menschen. Die eigene Sicherheit, die Sicherheit der Gäste und die Sicherheit der Kollegen haben oberste Priorität.",
+          "Ein Überfall gehört zu den gefährlichsten Situationen in einer Spielhalle. Auch wenn solche Ereignisse selten sind, müssen alle wissen, wie sie sich richtig verhalten.\n\nZiel ist nicht, Geld oder Automaten zu schützen. Der Schutz von Menschen – Sie selbst, Gäste und Kollegen – hat oberste Priorität.",
       },
       {
         type: "info",
         title: "Lernziele",
         body:
-          "Nach Abschluss dieser Unterweisung sollen Mitarbeiter:\n\n• einen Überfall erkennen können\n• die Gefahren einer Überfallsituation verstehen\n• richtig auf Forderungen eines Täters reagieren\n• gefährliche Fehler vermeiden\n• wichtige Beobachtungen wahrnehmen\n• die notwendigen Schritte nach einem Überfall kennen",
+          "Nach dieser Unterweisung können Sie:\n\n• die Grundregel im Überfall anwenden\n• ruhig und ohne Gegenwehr handeln\n• typische Fehler vermeiden\n• wichtige Beobachtungen wahrnehmen\n• die Schritte nach einem Überfall kennen",
+      },
+      {
+        type: "hinweis",
+        title: "Grundregel",
+        body:
+          "Menschenleben und Gesundheit haben Vorrang vor Bargeld, Automaten und Sachwerten. Kein Mitarbeiter soll sich selbst in Gefahr bringen, um Werte zu schützen.",
       },
       {
         type: "heading",
         title: "Warum Überfälle besonders gefährlich sind",
       },
       {
-        type: "text",
-        body:
-          "Täter stehen häufig unter erheblichem Druck. Oft ist nicht erkennbar, ob eine Waffe echt ist, ob weitere Täter beteiligt sind oder wie der Täter auf Widerstand reagiert. Bereits kleine Handlungen können zu einer Eskalation führen.",
-      },
-      {
-        type: "hinweis",
-        title: "Grundregel",
-        body:
-          "Menschenleben und Gesundheit sind wichtiger als Geld oder Sachwerte. Kein Mitarbeiter soll sich selbst in Gefahr bringen, um Bargeld oder Gegenstände zu schützen.",
+        type: "summary",
+        title: "Gefahren verstehen",
+        items: [
+          "Täter stehen häufig unter Druck",
+          "Täter können unberechenbar reagieren",
+          "Waffen können echt oder unecht sein",
+          "Bereits kleine Fehler können eskalieren",
+        ],
       },
       {
         type: "heading",
@@ -177,8 +401,7 @@ export const SAFETY_INSTRUCTION_CONTENT = [
       },
       {
         type: "text",
-        body:
-          "Versuchen Sie, ruhig zu bleiben. Hektische Bewegungen können den Täter verunsichern oder provozieren. Atmen Sie ruhig und konzentrieren Sie sich auf die Situation.",
+        body: "Ruhig bleiben, langsam handeln, keine hektischen Bewegungen – das reduziert das Eskalationsrisiko.",
       },
       {
         type: "heading",
@@ -195,17 +418,12 @@ export const SAFETY_INSTRUCTION_CONTENT = [
         ],
       },
       {
-        type: "text",
-        body: "Die Gefahr einer Eskalation ist zu hoch.",
-      },
-      {
         type: "heading",
         title: "Forderungen befolgen",
       },
       {
         type: "text",
-        body:
-          "Befolgen Sie die Anweisungen des Täters, soweit dies gefahrlos möglich ist. Arbeiten Sie langsam und ruhig. Vermeiden Sie Diskussionen.",
+        body: "Anweisungen möglichst befolgen, Diskussionen und Provokationen vermeiden.",
       },
       {
         type: "heading",
@@ -213,8 +431,7 @@ export const SAFETY_INSTRUCTION_CONTENT = [
       },
       {
         type: "text",
-        body:
-          "Mitarbeiter sind keine Sicherheitskräfte. Niemand erwartet, dass Sie einen Täter stoppen. Das Ziel ist, die Situation möglichst sicher zu beenden.",
+        body: "Sie sind keine Sicherheitskräfte. Niemand erwartet heldenhaftes Verhalten.",
       },
       {
         type: "heading",
@@ -222,37 +439,30 @@ export const SAFETY_INSTRUCTION_CONTENT = [
       },
       {
         type: "text",
-        body:
-          "Wenn möglich, beruhigen Sie Gäste. Bringen Sie sich dabei jedoch niemals selbst in Gefahr.",
+        body: "Gäste beruhigen – aber niemals die eigene Sicherheit gefährden.",
       },
       {
         type: "heading",
-        title: "Wichtige Beobachtungen",
+        title: "Täterbeobachtung",
       },
       {
         type: "text",
-        body:
-          "Während des Überfalls sollen Mitarbeiter nicht aktiv ermitteln. Falls es die Situation erlaubt, können jedoch wichtige Beobachtungen hilfreich sein – zum Beispiel:",
+        body: "Falls gefahrlos möglich, können Beobachtungen später helfen:",
       },
       {
         type: "summary",
-        title: "Merkmale, die helfen können",
+        title: "Merkmale notieren",
         items: [
-          "Geschlecht",
-          "ungefähres Alter",
-          "Größe",
-          "Kleidung",
-          "besondere Merkmale",
+          "Geschlecht, Alter, Größe",
+          "Kleidung und besondere Merkmale",
           "Sprache oder Dialekt",
-          "Fluchtrichtung",
-          "benutztes Fahrzeug",
+          "Fluchtrichtung und Fahrzeug",
         ],
       },
       {
         type: "hinweis",
         title: "Wichtig",
-        body:
-          "Nicht starren. Nicht provozieren. Nicht auffällig beobachten. Die eigene Sicherheit hat Vorrang.",
+        body: "Nicht auffällig beobachten. Nicht starren. Nicht provozieren.",
       },
       {
         type: "heading",
@@ -262,96 +472,52 @@ export const SAFETY_INSTRUCTION_CONTENT = [
         type: "summary",
         title: "Schritte nach dem Überfall",
         items: [
-          "Polizei verständigen – nach dem Verlassen des Täters sofort informieren",
-          "Tatort sichern – möglichst nichts verändern, Gegenstände nicht anfassen, Spuren nicht vernichten",
-          "Zeugen festhalten – Namen notieren, Zeugen möglichst bis zum Eintreffen der Polizei vor Ort halten",
-          "Vorgesetzte informieren – betriebliche Meldewege einhalten",
-          "Fahndungsblatt nutzen – Erinnerungen zeitnah dokumentieren",
+          "Polizei verständigen",
+          "Bereich sichern",
+          "Tatort nicht verändern – Gegenstände nicht anfassen",
+          "Zeugen festhalten und Namen notieren",
+          "Vorgesetzte informieren",
+          "Fahndungsblatt nutzen – Beobachtungen zeitnah dokumentieren",
         ],
+      },
+      {
+        type: "heading",
+        title: "Psychische Belastung",
       },
       {
         type: "text",
         body:
-          "Je schneller Informationen festgehalten werden, desto genauer sind sie meist.",
+          "Überfälle können psychisch belasten. Gesprächsangebote annehmen, Unterstützung nutzen – Hilfe anzunehmen ist kein Zeichen von Schwäche.",
       },
       {
         type: "fehler",
         title: "Typische Fehler",
         body:
-          "Folgende Fehler können Menschen gefährden: Diskussionen mit dem Täter, Widerstand leisten, Täter provozieren, Täter verfolgen, überstürzte Handlungen, eigenmächtige Ermittlungen. Diese Fehler sollen vermieden werden.",
+          "Diskussionen mit dem Täter · Widerstand leisten · Provokationen · Verfolgung des Täters · überstürzte Handlungen · eigenmächtige Ermittlungen",
       },
       {
         type: "praxis",
         title: "Praxisbeispiel",
         body:
-          "Ein maskierter Täter betritt die Spielhalle. Er fordert Bargeld und zeigt einen pistolenähnlichen Gegenstand.",
+          "Ein maskierter Täter betritt die Spielhalle, fordert Bargeld und wirkt nervös.",
         solution:
-          "Der Mitarbeiter bleibt ruhig, diskutiert nicht und befolgt die Anweisungen des Täters. Nach dem Verlassen des Täters informiert er die Polizei, sichert den Bereich und dokumentiert seine Beobachtungen. Dieses Verhalten schützt Mitarbeiter und Gäste und entspricht den empfohlenen Verhaltensregeln.",
+          "Der Mitarbeiter bleibt ruhig, befolgt die Anweisungen ohne Provokation und leistet keine Gegenwehr. Nach Abzug des Täters: Polizei verständigen, Bereich sichern, Beobachtungen dokumentieren.",
       },
       {
         type: "merksatz",
         body:
-          "Menschenleben gehen immer vor Sachwerten. Ruhe bewahren, keine Gegenwehr leisten, Polizei verständigen.",
+          "Menschenleben gehen immer vor Sachwerten. Ruhe bewahren. Keine Gegenwehr leisten. Polizei verständigen.",
       },
       {
         type: "summary",
         title: "Zusammenfassung",
         items: [
-          "Ein Überfall ist eine Ausnahmesituation – niemand erwartet heldenhaftes Verhalten",
-          "Eigenschutz hat oberste Priorität",
-          "Ruhe bewahren",
-          "Keine Gegenwehr leisten",
-          "Täter nicht verfolgen",
-          "Polizei informieren",
-          "Beobachtungen dokumentieren",
+          "Menschenleben vor Sachwerten",
+          "Ruhe bewahren – keine Gegenwehr",
+          "Anweisungen befolgen, nicht provozieren",
+          "Gäste schützen, ohne sich zu gefährden",
+          "Nach dem Überfall: Polizei, sichern, dokumentieren",
         ],
-      },
-    ],
-    quizzes: [
-      {
-        question: "Was ist bei einem Überfall die oberste Priorität?",
-        answers: ["Kasseninhalt retten", "Eigenschutz", "Täter identifizieren", "Video aufnehmen"],
-        correct: 1,
-        explanation: "Ihre Sicherheit geht vor Geld und Sachwerten.",
-      },
-      {
-        question: "Gegenwehr ist in der Regel die richtige Reaktion bei einem bewaffneten Überfall.",
-        examType: "boolean",
-        examCorrect: false,
-        explanation: "Gegenwehr erhöht die Gefahr erheblich – keine Heldenrolle einnehmen.",
-      },
-      {
-        question: "Was sollten Sie nach einem Überfall zuerst tun?",
-        answers: [
-          "Täter verfolgen",
-          "Polizei informieren und Bereich sichern",
-          "Kasse sofort wieder öffnen",
-          "Social Media informieren",
-        ],
-        correct: 1,
-        explanation: "Nach dem Vorfall: sichern, Polizei rufen, Beobachtungen festhalten.",
-      },
-      {
-        question: "Situation: Der Täter verlangt Geld und wird unruhig. Was ist richtig?",
-        answers: [
-          "Laut diskutieren, dass wenig Wechselgeld da ist",
-          "Ruhig bleiben und Forderungen ohne Provokation erfüllen",
-          "Hinter die Theke gehen und Alarm auslösen",
-          "Gäste bitten, einzugreifen",
-        ],
-        correct: 1,
-        explanation: "Deeskalation und Erfüllen zumutbarer Forderungen – ohne Provokation.",
-      },
-      {
-        question: "Beobachtungen zum Täter sollten Sie …",
-        answers: [
-          "dem Täter laut mitteilen",
-          "merken und nach dem Vorfall der Polizei schildern",
-          "nur auf Video warten",
-          "nicht beachten",
-        ],
-        correct: 1,
-        explanation: "Merken ja – aber den Täter während des Überfalls nicht provozieren.",
       },
     ],
   },

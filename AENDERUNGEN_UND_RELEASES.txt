@@ -1,8 +1,39 @@
 ================================================================================
 CERTIANO CAMPUS – Änderungen und Releases
 Projekt: sozialkonzept-spielhalle
-Stand: 11.06.2026 (V2.7.2)
+Stand: 11.06.2026 (V2.8.0)
 ================================================================================
+
+
+================================================================================
+RELEASE V2.8.0 – Fragenpool-System & N7 Überfall Version 2.0
+Commit: 12d9b27 | 11.06.2026
+================================================================================
+
+FRAGENPOOL-SYSTEM
+-----------------
+- Neue Tabelle question_pool (Master + betriebliche Fragen, source_type)
+- Prüfungsfragen getrennt von content_json.exam und Verständnisfragen (quiz-Blöcke)
+- Zufällige Auswahl pro Testdurchlauf; Fragetypen inkl. Situationsfragen
+- Admin-UI: Fragenpool-Übersicht, Erklärung, Deaktivieren; Master-Fragen schreibgeschützt
+- Migration: 20260624120000_question_pool.sql
+
+N7 VERHALTEN BEI EINEM ÜBERFALL (VERSION 2.0)
+---------------------------------------------
+- Fachliche Überarbeitung nach BAV: kompakt (ca. 5–7 Min.)
+- Neu: Psychische Belastung; überarbeitete Struktur (Grundregel, Täterbeobachtung, …)
+- 4 Verständnisfragen im Seminar (nicht im Prüfungspool)
+- 16 Prüfungsfragen im Fragenpool; Test: 5 Fragen, 80 % zum Bestehen
+- Migration Metadaten: 20260625120000_n7_ueberfall_revision.sql
+- Inhalte einspielen: npm run seed:safety
+
+Wichtige neue/geänderte Dateien:
+  · supabase/migrations/20260624120000_question_pool.sql
+  · supabase/migrations/20260625120000_n7_ueberfall_revision.sql
+  · src/lib/question-pool-db.ts, src/lib/question-pool.ts, src/lib/exam-question-body.ts
+  · scripts/safety-instruction-content.mjs, scripts/seed-safety-content.mjs
+  · src/app/dashboard/inhalte/ (Fragenpool-UI)
+  · src/app/api/training/exam/, src/app/api/admin/course/exam/
 
 
 ================================================================================
