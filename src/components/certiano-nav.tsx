@@ -60,7 +60,9 @@ export function getCertianoSidebarItems(companyId?: number): SidebarNavItem[] {
       href: "/certiano/master-courses",
       label: "Seminarverwaltung",
       icon: <IconSeminars />,
-      match: (p) => p.startsWith("/certiano/master-courses"),
+      match: (p) =>
+        p.startsWith("/certiano/master-courses") ||
+        p.startsWith("/dashboard/inhalte"),
     },
     {
       href: "/certiano/zertifikate",

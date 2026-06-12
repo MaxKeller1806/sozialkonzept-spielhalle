@@ -1,15 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { PageHeader } from "@/components/page-header";
+import { CourseEditorLayout } from "@/components/course-editor-layout";
 import {
   createEmptyEditorBlock,
   LessonBlockEditor,
 } from "@/components/lesson-block-editor";
 import { LessonContent } from "@/components/lesson-content";
 import { Button, Card, Input } from "@/components/ui";
+import { courseInhalteHubHref } from "@/lib/course-inhalte-url";
 import {
   editorRowsToLessonBlocks,
   lessonToEditorRows,
@@ -39,7 +39,7 @@ function LektionEditContent() {
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState<EditorBlockRow[]>([createEmptyEditorBlock("text")]);
   const [previewLesson, setPreviewLesson] = useState<Lesson | null>(null);
-  const [moduleTitle, setModuleTitle] = useState("");
+  const [courseName, setCourseName] = useState("Seminar");
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -47,11 +47,13 @@ function LektionEditContent() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch(`/api/admin/course/modules/${moduleId}${courseQuery}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.module) setModuleTitle(d.module.title);
-      });
+    if (courseId) {
+      fetch(`/api/admin/course${courseQuery}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.course?.courseName) setCourseName(d.course.courseName);
+        });
+    }
 
     if (isNew) return;
 
@@ -66,8 +68,12 @@ function LektionEditContent() {
         setBlocks(rows.length > 0 ? rows : [createEmptyEditorBlock("text")]);
         setLoading(false);
       })
-      .catch(() => router.push(`/dashboard/inhalte/modul/${moduleId}${courseQuery}`));
-  }, [moduleId, lessonParam, isNew, router, courseQuery]);
+      .catch(() =>
+        router.push(
+          courseInhalteHubHref(courseId ?? "", { bereich: "module", modul: moduleId })
+        )
+      );
+  }, [moduleId, lessonParam, isNew, router, courseQuery, courseId]);
 
   useEffect(() => {
     const contentBlocks = editorRowsToLessonBlocks(blocks);
@@ -127,26 +133,32 @@ function LektionEditContent() {
       `/api/admin/course/modules/${moduleId}/lessons/${lessonParam}${courseQuery}`,
       { method: "DELETE" }
     );
-    if (res.ok) router.push(`/dashboard/inhalte/modul/${moduleId}${courseQuery}`);
-    else setError("Löschen fehlgeschlagen.");
+    if (res.ok) {
+      router.push(
+        courseInhalteHubHref(courseId ?? "", { bereich: "module", modul: moduleId })
+      );
+    } else setError("Löschen fehlgeschlagen.");
   }
 
   if (loading && !isNew) {
     return <p className="px-4 py-8 text-sm text-slate-600">Lädt…</p>;
   }
 
-  return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <PageHeader title={isNew ? "Neuer Lerninhalt" : "Lerninhalt bearbeiten"} />
-      <p className="mb-1 text-sm text-slate-600">
-        <Link
-          href={`/dashboard/inhalte/modul/${moduleId}${courseQuery}`}
-          className="font-medium text-brand hover:underline"
-        >
-          ← Zurück zu Modul{moduleTitle ? `: ${moduleTitle}` : ""}
-        </Link>
+  if (!courseId) {
+    return (
+      <p className="px-4 py-8 text-sm text-red-700">
+        Kein Seminar ausgewählt. Bitte über die Seminarverwaltung öffnen.
       </p>
+    );
+  }
 
+  return (
+    <CourseEditorLayout
+      courseId={courseId}
+      courseName={courseName}
+      bereich="module"
+      title={isNew ? "Neuer Lerninhalt" : "Lerninhalt bearbeiten"}
+    >
         <Card className="mt-4">
           <p className="mb-4 text-sm text-slate-600">
             Strukturierte Inhaltsblöcke – dieselben Blöcke, die Mitarbeitende in der
@@ -205,6 +217,6 @@ function LektionEditContent() {
             )}
           </div>
         </Card>
-    </div>
+    </CourseEditorLayout>
   );
 }

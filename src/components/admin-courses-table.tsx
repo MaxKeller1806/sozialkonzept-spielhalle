@@ -1,7 +1,10 @@
 "use client";
 
+import { CollapsibleTopicSection } from "@/components/collapsible-topic-section";
 import Link from "next/link";
+import { courseInhalteHubHref } from "@/lib/course-inhalte-url";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button, Input } from "@/components/ui";
 import { CourseTitleDisplay } from "@/components/course-title-display";
 import { formatEstimatedDuration } from "@/lib/course-duration";
@@ -66,22 +69,16 @@ function CourseRowActions({
   return (
     <div className="flex flex-wrap gap-3 text-sm">
       <Link
-        href={`/dashboard/seminare/${encodeURIComponent(course.id)}/inhalte`}
+        href={courseInhalteHubHref(course.id)}
         className="text-brand hover:underline"
       >
-        Inhalte
+        Bearbeiten
       </Link>
       <Link
         href={`/dashboard/seminare/${encodeURIComponent(course.id)}/vorschau`}
         className="text-brand hover:underline"
       >
         Vorschau
-      </Link>
-      <Link
-        href={`/dashboard/seminare/${encodeURIComponent(course.id)}`}
-        className="text-brand hover:underline"
-      >
-        Einstellungen
       </Link>
       {(course.active
         ? course.permissions?.canArchive !== false
@@ -121,71 +118,73 @@ function TopicSection({
   onDelete: (course: CourseRow) => void;
   onReactivate: (course: CourseRow) => void;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
   const visible = group.courses.filter((c) => matchesSearch(c, search));
-  if (visible.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="font-medium text-slate-900">
-          {open ? "▾" : "▸"} {group.name}
-        </span>
-        <span className="text-sm text-slate-500">
-          {visible.length} Seminar{visible.length === 1 ? "" : "e"}
-        </span>
-      </button>
-      {open && (
-        <ul className="divide-y divide-slate-100 border-t border-slate-100">
-          {visible.map((course) => (
-            <li key={course.id} className="px-4 py-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-medium text-slate-900">
-                    <CourseTitleDisplay
-                      code={course.instructionCode}
-                      title={course.title}
-                    />
-                    {!course.active && (
-                      <span className="ml-2 text-xs text-amber-700">(archiviert)</span>
-                    )}
-                    {course.permissions?.fromMaster ? (
-                      <span className="ml-2 text-xs text-slate-500">(Master)</span>
-                    ) : null}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {course.validityLabel}
-                    {course.estimatedDurationMinutes
-                      ? ` · ${formatEstimatedDuration(course.estimatedDurationMinutes)}`
-                      : ""}
-                  </p>
-                </div>
-                <CourseRowActions
-                  course={course}
-                  onDelete={onDelete}
-                  onReactivate={onReactivate}
-                />
+    <CollapsibleTopicSection
+      title={group.name}
+      count={visible.length}
+      countLabel={(n) => `${n} Seminar${n === 1 ? "" : "e"}`}
+      defaultOpen={defaultOpen}
+    >
+      <ul className="divide-y divide-slate-100">
+        {visible.map((course) => (
+          <li key={course.id} className="px-4 py-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-medium text-slate-900">
+                  <CourseTitleDisplay
+                    code={course.instructionCode}
+                    title={course.title}
+                  />
+                  {!course.active && (
+                    <span className="ml-2 text-xs text-amber-700">(archiviert)</span>
+                  )}
+                  {course.permissions?.fromMaster ? (
+                    <span className="ml-2 text-xs text-slate-500">(Master)</span>
+                  ) : null}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {course.validityLabel}
+                  {course.estimatedDurationMinutes
+                    ? ` · ${formatEstimatedDuration(course.estimatedDurationMinutes)}`
+                    : ""}
+                </p>
               </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+              <CourseRowActions
+                course={course}
+                onDelete={onDelete}
+                onReactivate={onReactivate}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </CollapsibleTopicSection>
   );
 }
 
 function AdminCoursesTableInner({ onDelete, onReactivate, refreshKey = 0 }: Props) {
+  const searchParams = useSearchParams();
+  const initialTopicId = searchParams.get("topicId");
   const [courses, setCourses] = useState<CourseRow[]>([]);
   const [topics, setTopics] = useState<TopicOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"active" | "archived" | "all">("active");
-  const [topicId, setTopicId] = useState<number | "">("");
+  const [topicId, setTopicId] = useState<number | "">(
+    initialTopicId && Number.isFinite(Number(initialTopicId))
+      ? Number(initialTopicId)
+      : ""
+  );
+
+  useEffect(() => {
+    const fromUrl = searchParams.get("topicId");
+    if (fromUrl && Number.isFinite(Number(fromUrl))) {
+      setTopicId(Number(fromUrl));
+    }
+  }, [searchParams]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -234,6 +233,7 @@ function AdminCoursesTableInner({ onDelete, onReactivate, refreshKey = 0 }: Prop
 
   const hasSearch = search.trim().length > 0;
   const uncategorizedVisible = uncategorized.filter((c) => matchesSearch(c, search));
+  const focusTopicId = topicId !== "" ? topicId : null;
 
   const resetFilters = () => {
     setSearch("");
@@ -310,7 +310,7 @@ function AdminCoursesTableInner({ onDelete, onReactivate, refreshKey = 0 }: Prop
           <TopicSection
             key={group.topicId ?? group.name}
             group={group}
-            defaultOpen={hasSearch || topicId !== ""}
+            defaultOpen={hasSearch}
             search={search}
             onDelete={onDelete}
             onReactivate={onReactivate}
@@ -325,7 +325,7 @@ function AdminCoursesTableInner({ onDelete, onReactivate, refreshKey = 0 }: Prop
               sortOrder: 9999,
               courses: uncategorizedVisible,
             }}
-            defaultOpen={hasSearch || groups.length === 0}
+            defaultOpen={hasSearch}
             search={search}
             onDelete={onDelete}
             onReactivate={onReactivate}

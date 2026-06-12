@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useMemo } from "react";
 import { AdminPreviewBanner } from "@/components/admin-preview-banner";
+import { CourseBreadcrumb } from "@/components/course-breadcrumb";
+import { CourseHubNav } from "@/components/course-hub-tabs";
 import { PageHeader } from "@/components/page-header";
 import { ButtonLink, Card } from "@/components/ui";
+import { courseHubBreadcrumb } from "@/lib/course-editor-breadcrumbs";
+import { courseInhalteHubHref } from "@/lib/course-inhalte-url";
 import {
-  adminPreviewBasePath,
   adminPreviewExamPath,
   adminPreviewLessonPath,
 } from "@/lib/admin-course-preview";
@@ -37,7 +40,7 @@ function VorschauContent() {
           {error ?? "Seminar konnte nicht geladen werden."}
         </p>
         <ButtonLink href="/dashboard/seminare" variant="secondary" className="mt-4">
-          Zur Seminarliste
+          Zur Seminarverwaltung
         </ButtonLink>
       </div>
     );
@@ -51,30 +54,26 @@ function VorschauContent() {
         title={previewCourse.courseName}
         actions={
           <ButtonLink href="/dashboard/seminare" variant="secondary">
-            Zur Seminarliste
+            Zur Seminarverwaltung
           </ButtonLink>
         }
       />
 
-      <p className="mb-4 text-sm text-slate-600">
-        <Link href="/dashboard/seminare" className="text-brand underline">
-          ← Seminare
-        </Link>
-        {" · "}
-        <Link
-          href={`/dashboard/seminare/${encodeURIComponent(courseId)}`}
-          className="text-brand underline"
-        >
-          Einstellungen
-        </Link>
-        {" · "}
-        <Link
-          href={`/dashboard/seminare/${encodeURIComponent(courseId)}/inhalte`}
-          className="text-brand underline"
-        >
-          Inhalte
-        </Link>
-      </p>
+      <CourseBreadcrumb
+        items={[
+          ...courseHubBreadcrumb(courseId, previewCourse.courseName, "uebersicht").slice(
+            0,
+            -1
+          ),
+          { label: "Mitarbeiter-Vorschau" },
+        ]}
+      />
+
+      <CourseHubNav
+        courseId={courseId}
+        active="uebersicht"
+        showVorschauLink={false}
+      />
 
       <AdminPreviewBanner fromMaster={permissions.fromMaster} />
 
@@ -84,6 +83,20 @@ function VorschauContent() {
           Min. inkl. Test · Bestehen ab {previewCourse.passingScore} % (
           {previewCourse.minCorrectAnswers} von {perTest} Fragen)
         </p>
+        <div className="mt-4 flex flex-wrap gap-3 text-sm">
+          <Link
+            href={courseInhalteHubHref(courseId, { bereich: "module" })}
+            className="text-brand underline"
+          >
+            Module bearbeiten
+          </Link>
+          <Link
+            href={courseInhalteHubHref(courseId, { bereich: "einstellungen" })}
+            className="text-brand underline"
+          >
+            Einstellungen
+          </Link>
+        </div>
       </Card>
 
       <nav className="mb-8 space-y-3" aria-label="Vorschau-Aktionen">
@@ -94,7 +107,7 @@ function VorschauContent() {
               firstLesson.moduleId,
               firstLesson.lessonId
             )}
-            className="w-full text-lg py-4"
+            className="w-full py-4 text-lg"
           >
             Ersten Lernschritt ansehen
           </ButtonLink>
@@ -115,7 +128,7 @@ function VorschauContent() {
       </nav>
 
       <details className="rounded-2xl border border-slate-200 bg-white p-4" open>
-        <summary className="cursor-pointer font-semibold text-slate-800 min-h-[44px] flex items-center">
+        <summary className="flex min-h-[44px] cursor-pointer items-center font-semibold text-slate-800">
           Modulübersicht ({previewCourse.modules.length} Module)
         </summary>
         <ul className="mt-4 space-y-4" role="list">
@@ -123,7 +136,7 @@ function VorschauContent() {
             <li key={mod.id}>
               <p className="font-medium text-slate-900">
                 {mod.id}. {mod.title}
-                <span className="text-slate-500 font-normal">
+                <span className="font-normal text-slate-500">
                   {" "}
                   · ca. {mod.duration} Min. · {mod.lessons.length} Schritte
                 </span>
@@ -134,7 +147,7 @@ function VorschauContent() {
                     <li key={lesson.id}>
                       <Link
                         href={adminPreviewLessonPath(courseId, mod.id, lesson.id)}
-                        className="text-brand text-sm hover:underline"
+                        className="text-sm text-brand hover:underline"
                       >
                         {lesson.title}
                       </Link>

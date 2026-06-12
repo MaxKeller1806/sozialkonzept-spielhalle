@@ -70,7 +70,7 @@ export default function SeminarePage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <PageHeader
-        title="Seminare"
+        title="Seminarverwaltung"
         actions={
           <Button onClick={() => setShowForm(true)}>Neues Seminar</Button>
         }

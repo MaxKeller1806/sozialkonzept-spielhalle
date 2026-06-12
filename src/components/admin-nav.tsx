@@ -67,7 +67,7 @@ export const ADMIN_SIDEBAR_ITEMS: SidebarNavItem[] = [
   },
   {
     href: "/dashboard/seminare",
-    label: "Seminare",
+    label: "Seminarverwaltung",
     icon: <IconSeminars />,
     match: (p) =>
       p.startsWith("/dashboard/seminare") || p.startsWith("/dashboard/inhalte"),

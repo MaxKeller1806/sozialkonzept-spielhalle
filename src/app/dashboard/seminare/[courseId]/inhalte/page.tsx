@@ -3,6 +3,8 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { courseInhalteHubHref } from "@/lib/course-inhalte-url";
+
 /** Weiterleitung zur seminarbezogenen Inhaltsbearbeitung. */
 export default function SeminarInhalteRedirectPage() {
   const params = useParams();
@@ -10,7 +12,7 @@ export default function SeminarInhalteRedirectPage() {
   const courseId = decodeURIComponent(String(params.courseId));
 
   useEffect(() => {
-    router.replace(`/dashboard/inhalte?courseId=${encodeURIComponent(courseId)}`);
+    router.replace(courseInhalteHubHref(courseId));
   }, [courseId, router]);
 
   return (

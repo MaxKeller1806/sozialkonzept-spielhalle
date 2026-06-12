@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { PageHeader } from "@/components/page-header";
+import { CourseEditorLayout } from "@/components/course-editor-layout";
 import { Button, Card, Input, Select, Textarea } from "@/components/ui";
+import { courseInhalteHubHref } from "@/lib/course-inhalte-url";
 import { isMasterCourseId } from "@/lib/course-editor-id";
 import {
   buildPoolQuestionNumberMap,
@@ -29,6 +29,7 @@ export default function FrageForm() {
   const courseQuery = courseId ? `?courseId=${encodeURIComponent(courseId)}` : "";
 
   const [modules, setModules] = useState<ModuleOption[]>([]);
+  const [courseName, setCourseName] = useState("Seminar");
   const [moduleId, setModuleId] = useState(1);
   const [question, setQuestion] = useState("");
   const [type, setType] = useState<QuestionType>("single");
@@ -53,6 +54,7 @@ export default function FrageForm() {
       .then((r) => r.json())
       .then((d) => {
         if (!d.course?.modules) return;
+        if (d.course.courseName) setCourseName(d.course.courseName);
         setModules(d.course.modules);
         if (d.course.exam) {
           setPoolNumberMap(buildPoolQuestionNumberMap(d.course.exam));
@@ -92,7 +94,9 @@ export default function FrageForm() {
         }
         setLoading(false);
       })
-      .catch(() => router.push(`/dashboard/inhalte${courseQuery}`));
+      .catch(() =>
+        router.push(courseInhalteHubHref(courseId ?? "", { bereich: "fragen" }))
+      );
   }, [idParam, isNew, router, courseQuery]);
 
   function setAnswerText(index: number, value: string) {
@@ -189,7 +193,7 @@ export default function FrageForm() {
     const res = await fetch(`/api/admin/course/exam/${idParam}${courseQuery}`, {
       method: "DELETE",
     });
-    if (res.ok) router.push(`/dashboard/inhalte${courseQuery}`);
+    if (res.ok) router.push(courseInhalteHubHref(courseId ?? "", { bereich: "fragen" }));
     else setError("Löschen fehlgeschlagen.");
   }
 
@@ -209,21 +213,31 @@ export default function FrageForm() {
     return <p className="px-4 py-8 text-sm text-slate-600">Lädt…</p>;
   }
 
+  if (!courseId) {
+    return (
+      <p className="px-4 py-8 text-sm text-red-700">
+        Kein Seminar ausgewählt. Bitte über die Seminarverwaltung öffnen.
+      </p>
+    );
+  }
+
   const poolDisplayNumber = !isNew
     ? formatPoolQuestionDisplayNumber(poolNumberMap, Number(idParam), `Frage ${idParam}`)
     : null;
+  const formTitle = isNew
+    ? "Neue Frage"
+    : `${poolDisplayNumber ?? "Frage"} bearbeiten`;
+  const canManageLifecycle = !readOnly && (isMaster || sourceType !== "master");
   const internalIdHint =
     !isNew && isMaster ? formatInternalQuestionIdHint(Number(idParam), true) : null;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
-      <PageHeader
-        title={
-          isNew
-            ? "Neue Frage"
-            : `${poolDisplayNumber ?? "Frage"} bearbeiten`
-        }
-      />
+    <CourseEditorLayout
+      courseId={courseId}
+      courseName={courseName}
+      bereich="fragen"
+      title={formTitle}
+    >
       {internalIdHint && (
         <p className="mb-2 text-xs text-slate-400">{internalIdHint}</p>
       )}
@@ -239,20 +253,6 @@ export default function FrageForm() {
           <p className="text-sm text-slate-700">Diese Frage ist deaktiviert.</p>
         </Card>
       )}
-      <div className="mb-4 text-sm">
-        <Link
-          href={`/dashboard/inhalte/modul/${moduleId}${courseQuery}`}
-          className="font-medium text-brand hover:underline"
-        >
-          ← Zum Modul
-        </Link>
-        <Link
-          href={`/dashboard/inhalte${courseQuery}`}
-          className="ml-4 text-slate-500 hover:underline"
-        >
-          Kursübersicht
-        </Link>
-      </div>
 
         <Card>
           <div className="space-y-4">
@@ -417,18 +417,18 @@ export default function FrageForm() {
                 {saving ? "Speichern…" : "Speichern"}
               </Button>
             )}
-            {!isNew && !readOnly && sourceType !== "master" && (
+            {!isNew && canManageLifecycle && (
               <Button variant="secondary" onClick={toggleActive} className="flex-1">
                 {active ? "Deaktivieren" : "Reaktivieren"}
               </Button>
             )}
-            {!isNew && !readOnly && sourceType !== "master" && (
+            {!isNew && canManageLifecycle && (
               <Button variant="danger" onClick={remove} className="flex-1">
                 Löschen
               </Button>
             )}
           </div>
         </Card>
-    </div>
+    </CourseEditorLayout>
   );
 }

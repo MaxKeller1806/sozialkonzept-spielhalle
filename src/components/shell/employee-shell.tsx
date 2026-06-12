@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { EMPLOYEE_SIDEBAR_ITEMS } from "@/components/employee-nav";
 import { AppShell } from "@/components/shell/app-shell";
 import { useOperatorBrandingLogo } from "@/components/certiano-branding-loader";
@@ -8,6 +8,7 @@ import {
   TenantBrandingLoader,
   useTenantBranding,
 } from "@/components/tenant-branding-loader";
+import { useEmployeeTrainingSidebarNav } from "@/hooks/use-employee-training-sidebar-nav";
 import { APP_NAME, PORTAL_NAME_EMPLOYEE } from "@/lib/branding";
 import { fetchAuthMe } from "@/lib/auth-client";
 import { Button, LoadingStatus } from "@/components/ui";
@@ -22,6 +23,10 @@ const EMPLOYEE_ALLOWED_REDIRECT_PREFIXES = [
 function EmployeeShellInner({ children }: { children: React.ReactNode }) {
   const tenant = useTenantBranding();
   const operatorLogoUrl = useOperatorBrandingLogo();
+  const navItems = useEmployeeTrainingSidebarNav({
+    baseItems: EMPLOYEE_SIDEBAR_ITEMS,
+    trainingItemLabel: "Meine Schulungen",
+  });
   const [ready, setReady] = useState(false);
   const [serviceError, setServiceError] = useState<string | null>(null);
 
@@ -68,7 +73,7 @@ function EmployeeShellInner({ children }: { children: React.ReactNode }) {
   return (
     <AppShell
       storageKey="employee-sidebar-collapsed"
-      navItems={EMPLOYEE_SIDEBAR_ITEMS}
+      navItems={navItems}
       brand={{
         logoUrl: operatorLogoUrl,
         companyName: tenant?.companyName || APP_NAME,
@@ -87,7 +92,9 @@ function EmployeeShellInner({ children }: { children: React.ReactNode }) {
 export function EmployeeShell({ children }: { children: React.ReactNode }) {
   return (
     <TenantBrandingLoader>
-      <EmployeeShellInner>{children}</EmployeeShellInner>
+      <Suspense fallback={<LoadingStatus />}>
+        <EmployeeShellInner>{children}</EmployeeShellInner>
+      </Suspense>
     </TenantBrandingLoader>
   );
 }

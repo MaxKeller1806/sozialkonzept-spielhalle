@@ -256,6 +256,17 @@ export type EmployeeTrainingSummary = {
   nextDueAt: string | null;
 };
 
+/** Noch zu absolvieren: nicht begonnen, in Bearbeitung, nicht bestanden, abgelaufen, bald fällig. */
+export function countPendingTrainings(summary: EmployeeTrainingSummary): number {
+  return (
+    summary.notStartedCount +
+    summary.inProgressCount +
+    summary.failedCount +
+    summary.expiredCount +
+    summary.dueSoonCount
+  );
+}
+
 export function summarizeEmployeeCourses(
   statuses: CourseTrainingStatusKey[],
   nextDueDates: (string | null)[]

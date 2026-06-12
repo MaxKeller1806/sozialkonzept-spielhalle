@@ -1,8 +1,37 @@
 ================================================================================
 CERTIANO CAMPUS – Änderungen und Releases
 Projekt: sozialkonzept-spielhalle
-Stand: 11.06.2026 (V2.8.3)
+Stand: 11.06.2026 (V2.8.4)
 ================================================================================
+
+
+================================================================================
+RELEASE V2.8.4 – Seminarverwaltung-Hub, Sidebar & Schulungsstatus
+Commit: (nach Push eintragen)
+================================================================================
+
+SEMINARVERWALTUNG
+-----------------
+- Zentraler Hub /dashboard/inhalte?courseId=…&bereich= (Übersicht, Module, Fragen, Export, Einstellungen)
+- Admin und Superuser: gleiche Oberfläche; Legacy-Routen leiten um
+- Superuser: Master-Seminare, Module und Fragen löschen
+
+NAVIGATION & LISTEN
+-------------------
+- Sidebar: Listen-Link + Chevron; Kontext im Editor automatisch aufgeklappt
+- Hauptthemen auf Auswahlseiten zugeklappt (Admin, Superuser, Mitarbeiter)
+- Mitarbeiter: Kontext-Sidebar in der laufenden Schulung
+
+SCHULUNGSSTATUS
+---------------
+- Spalte „Schulungen“: Gesamt/offen (z. B. 15/6, offen in Rot)
+
+Wichtige neue/geänderte Dateien:
+  · src/app/dashboard/inhalte/page.tsx, src/lib/course-inhalte-url.ts
+  · src/components/shell/sidebar-nav.tsx, src/lib/seminar-sidebar-nav.ts
+  · src/lib/employee-sidebar-nav.ts, src/components/collapsible-topic-section.tsx
+  · src/components/training-status-table.tsx, src/lib/training-status.ts
+  · src/lib/release-notes/data.ts
 
 
 ================================================================================

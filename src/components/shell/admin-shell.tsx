@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { ADMIN_SIDEBAR_ITEMS } from "@/components/admin-nav";
 import { AppShell } from "@/components/shell/app-shell";
 import { useOperatorBrandingLogo } from "@/components/certiano-branding-loader";
@@ -8,6 +8,7 @@ import {
   TenantBrandingLoader,
   useTenantBranding,
 } from "@/components/tenant-branding-loader";
+import { useSeminarSidebarNav } from "@/hooks/use-seminar-sidebar-nav";
 import { PORTAL_NAME_ADMIN } from "@/lib/branding";
 import { fetchAuthMe } from "@/lib/auth-client";
 import { PasswordResetRequestsBanner } from "@/components/password-reset-requests-banner";
@@ -22,6 +23,10 @@ const ADMIN_ALLOWED_REDIRECT_PREFIXES = [
 function AdminShellInner({ children }: { children: React.ReactNode }) {
   const tenant = useTenantBranding();
   const operatorLogoUrl = useOperatorBrandingLogo();
+  const navItems = useSeminarSidebarNav({
+    baseItems: ADMIN_SIDEBAR_ITEMS,
+    seminarItemLabel: "Seminarverwaltung",
+  });
   const [ready, setReady] = useState(false);
   const [serviceError, setServiceError] = useState<string | null>(null);
 
@@ -68,7 +73,7 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
   return (
     <AppShell
       storageKey="admin-sidebar-collapsed"
-      navItems={ADMIN_SIDEBAR_ITEMS}
+      navItems={navItems}
       brand={{
         logoUrl: operatorLogoUrl,
         companyName,
@@ -87,7 +92,9 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
 export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <TenantBrandingLoader>
-      <AdminShellInner>{children}</AdminShellInner>
+      <Suspense fallback={<LoadingStatus />}>
+        <AdminShellInner>{children}</AdminShellInner>
+      </Suspense>
     </TenantBrandingLoader>
   );
 }

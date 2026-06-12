@@ -28,6 +28,7 @@ import {
   formatTrainingDate,
   parseEmploymentFilter,
   parseTrainingStatusFilter,
+  countPendingTrainings,
   trainingStatusBadgeClass,
   trainingStatusFilterLabel,
   type EmploymentFilter,
@@ -421,6 +422,26 @@ function TrainingStatusTableInner() {
   );
 }
 
+function CourseCountCell({ summary }: { summary: AdminTrainingStatusEmployee["summary"] }) {
+  const pending = countPendingTrainings(summary);
+  const title =
+    pending > 0
+      ? `${summary.courseCount} Schulungen gesamt, ${pending} noch zu absolvieren`
+      : `${summary.courseCount} Schulungen, alle erledigt oder gültig`;
+
+  return (
+    <span title={title}>
+      {summary.courseCount}
+      {pending > 0 ? (
+        <>
+          <span className="text-slate-400">/</span>
+          <span className="font-medium text-red-700">{pending}</span>
+        </>
+      ) : null}
+    </span>
+  );
+}
+
 function EmployeeRow({
   employee,
   expanded,
@@ -468,7 +489,9 @@ function EmployeeRow({
         <td className={tableBodyCellClass()}>
           {formatTrainingDate(employee.joinedCompanyAt)}
         </td>
-        <td className={tableBodyCellClass()}>{summary.courseCount}</td>
+        <td className={tableBodyCellClass()}>
+          <CourseCountCell summary={summary} />
+        </td>
         <td className={tableBodyCellClass()}>
           {summary.expiredCount > 0 ? (
             <span className="font-medium text-red-700">{summary.expiredCount}</span>

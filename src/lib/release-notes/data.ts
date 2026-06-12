@@ -7,6 +7,63 @@ import { sortReleasesNewestFirst } from "./version";
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "V2.8.4",
+    date: "11.06.2026",
+    summary:
+      "Seminarverwaltung als zentraler Hub mit Bereichen, einheitliche Sidebar-Navigation, Superuser-Löschen und Schulungsstatus mit offenen Pflichtschulungen.",
+    sections: [
+      {
+        title: "Seminarverwaltung",
+        category: "features",
+        visibility: ["superuser", "admin"],
+        items: [
+          {
+            text: "Ein Hub unter /dashboard/inhalte?courseId=…&bereich= (Übersicht, Module, Fragen, Export, Einstellungen) – Admin und Superuser nutzen dieselbe Oberfläche.",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Legacy-Routen leiten auf den Hub um; Modul-Editor inline im Bereich „Module“.",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Superuser kann Master-Seminare, Module und Prüfungsfragen löschen (Einstellungen bzw. Bearbeiten).",
+            visibility: ["superuser"],
+          },
+        ],
+      },
+      {
+        title: "Navigation & Listen",
+        category: "improvements",
+        visibility: ["superuser", "admin", "employee"],
+        items: [
+          {
+            text: "Sidebar: Klick auf den Bereichsnamen führt zur Liste; Chevron klappt den Kontext auf. Im Editor öffnet sich der Pfad automatisch.",
+            visibility: ["superuser", "admin", "employee"],
+          },
+          {
+            text: "Hauptthemen auf Seminar-/Schulungslisten standardmäßig zugeklappt (Admin, Superuser, Mitarbeiter).",
+            visibility: ["superuser", "admin", "employee"],
+          },
+          {
+            text: "Mitarbeiter: Kontext-Sidebar in laufender Schulung (Hauptthema → Schulung → Übersicht/Modul/Test).",
+            visibility: ["employee"],
+          },
+        ],
+      },
+      {
+        title: "Schulungsstatus",
+        category: "features",
+        visibility: ["admin"],
+        items: [
+          {
+            text: "Spalte „Schulungen“ zeigt Gesamtzahl und offene Pflichtschulungen (z. B. 15/6 – die offene Zahl in Rot).",
+            visibility: ["admin"],
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "V2.8.3",
     date: "11.06.2026",
     summary:

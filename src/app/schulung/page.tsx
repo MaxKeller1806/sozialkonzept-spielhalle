@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { CollapsibleTopicSection } from "@/components/collapsible-topic-section";
 import { PageHeader } from "@/components/page-header";
 import { CourseTitleDisplay } from "@/components/course-title-display";
 import { ButtonLink, Card, ProgressBar, StatusDot } from "@/components/ui";
@@ -21,38 +22,28 @@ interface CourseListItem extends CourseHierarchyItem {
 function TopicGroupSection({
   title,
   courses,
-  defaultOpen = true,
+  defaultOpen = false,
 }: {
   title: string;
   courses: CourseListItem[];
   defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-  if (courses.length === 0) return null;
   return (
-    <section className="rounded-xl border border-slate-200 bg-white">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="text-lg font-semibold text-slate-900">
-          {open ? "▾" : "▸"} {title}
-        </span>
-        <span className="text-sm text-slate-500">
-          {courses.length} Schulung{courses.length === 1 ? "" : "en"}
-        </span>
-      </button>
-      {open && (
-        <ul className="space-y-3 border-t border-slate-100 px-4 py-4">
-          {courses.map((c) => (
-            <li key={c.id}>
-              <CourseCard course={c} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    <CollapsibleTopicSection
+      title={title}
+      count={courses.length}
+      countLabel={(n) => `${n} Schulung${n === 1 ? "" : "en"}`}
+      defaultOpen={defaultOpen}
+      titleClassName="text-lg font-semibold text-slate-900"
+    >
+      <ul className="space-y-3 px-4 py-4">
+        {courses.map((c) => (
+          <li key={c.id}>
+            <CourseCard course={c} />
+          </li>
+        ))}
+      </ul>
+    </CollapsibleTopicSection>
   );
 }
 
@@ -191,7 +182,6 @@ function SchulungContent() {
             <TopicGroupSection
               title={UNCategorized_TOPIC_LABEL}
               courses={uncategorized as CourseListItem[]}
-              defaultOpen={groups.length === 0}
             />
           )}
         </div>
