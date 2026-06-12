@@ -33,7 +33,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       },
       {
         title: "Navigation & Listen",
-        category: "improvements",
+        category: "ui",
         visibility: ["superuser", "admin", "employee"],
         items: [
           {
