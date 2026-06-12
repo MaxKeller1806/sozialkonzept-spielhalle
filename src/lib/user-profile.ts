@@ -74,12 +74,22 @@ export function parseLeftCompanyAtForAdmin(value: unknown): string | null {
 export function formatLeftCompanyAtDisplay(
   iso: string | null | undefined
 ): string {
-  return formatCompanyDateDisplay(iso);
+  if (!iso) return "Noch im Betrieb";
+  return new Date(`${iso}T12:00:00`).toLocaleDateString("de-DE");
 }
 
 function formatCompanyDateDisplay(iso: string | null | undefined): string {
   if (!iso) return "nicht hinterlegt";
   return new Date(iso).toLocaleDateString("de-DE");
+}
+
+/** DATE-Spalte aus der DB ohne Zeitzonen-Verschiebung (YYYY-MM-DD). */
+export function parseDateOnlyFromDb(value: unknown): string | null {
+  if (value == null) return null;
+  const str = String(value).trim();
+  if (!str) return null;
+  const match = str.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : null;
 }
 
 /** Prüft, ob Austrittsdatum nicht vor Eintrittsdatum liegt. */

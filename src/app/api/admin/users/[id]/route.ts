@@ -14,6 +14,7 @@ import {
   assertCompanyEmploymentDatesValid,
   parseJoinedCompanyAtForAdmin,
   parseLeftCompanyAtForAdmin,
+  parseDateOnlyFromDb,
   syncCityFields,
 } from "@/lib/user-profile";
 import { formatCompanyLocationLabel } from "@/lib/company-locations";
@@ -149,14 +150,8 @@ export async function PATCH(
       leftCompanyAt,
     } = body;
 
-    const existingJoined =
-      existing[0].joined_company_at != null
-        ? new Date(String(existing[0].joined_company_at)).toISOString().slice(0, 10)
-        : null;
-    const existingLeft =
-      existing[0].left_company_at != null
-        ? new Date(String(existing[0].left_company_at)).toISOString().slice(0, 10)
-        : null;
+    const existingJoined = parseDateOnlyFromDb(existing[0].joined_company_at);
+    const existingLeft = parseDateOnlyFromDb(existing[0].left_company_at);
 
     const patch: Record<string, string | boolean | null | number> = {};
     if (firstName !== undefined) patch.first_name = firstName;

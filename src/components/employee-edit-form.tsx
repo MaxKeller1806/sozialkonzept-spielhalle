@@ -5,6 +5,85 @@ import {
   type AssignableCourse,
 } from "@/components/course-assignment-picker";
 import { Button, Input } from "@/components/ui";
+import { useEffect, useState } from "react";
+
+const dateInputClass =
+  "focus-brand min-w-[160px] flex-1 rounded-xl border border-slate-300 px-4 py-3 text-base";
+
+function DepartureDateField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [showDateInput, setShowDateInput] = useState(Boolean(value));
+
+  useEffect(() => {
+    setShowDateInput(Boolean(value));
+  }, [value]);
+
+  if (!showDateInput && !value) {
+    return (
+      <div className="block">
+        <span className="mb-1 block text-sm font-medium text-slate-700">
+          Austrittsdatum (optional)
+        </span>
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+          <span className="text-slate-600">Noch im Betrieb</span>
+          <button
+            type="button"
+            className="font-medium text-brand hover:underline"
+            onClick={() => setShowDateInput(true)}
+          >
+            Austrittsdatum festlegen
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="block">
+      <span className="mb-1 block text-sm font-medium text-slate-700">
+        Austrittsdatum (optional)
+      </span>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="date"
+          className={dateInputClass}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        {value ? (
+          <button
+            type="button"
+            className="text-sm font-medium text-slate-600 hover:underline"
+            onClick={() => {
+              onChange("");
+              setShowDateInput(false);
+            }}
+          >
+            Austritt entfernen
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="text-sm font-medium text-slate-600 hover:underline"
+            onClick={() => setShowDateInput(false)}
+          >
+            Abbrechen
+          </button>
+        )}
+      </div>
+      {!value ? (
+        <p className="mt-1 text-xs text-slate-500">
+          Ohne Datum gilt der Mitarbeiter als noch im Betrieb.
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 export type EmployeeFormState = {
   firstName: string;
@@ -228,13 +307,9 @@ export function EmployeeEditForm({
             onFormChange({ ...form, joinedCompanyAt: e.target.value })
           }
         />
-        <Input
-          label="Austrittsdatum (optional)"
-          type="date"
+        <DepartureDateField
           value={form.leftCompanyAt}
-          onChange={(e) =>
-            onFormChange({ ...form, leftCompanyAt: e.target.value })
-          }
+          onChange={(leftCompanyAt) => onFormChange({ ...form, leftCompanyAt })}
         />
         <label className="block text-sm sm:col-span-2">
           <span className="mb-1 block font-medium text-slate-700">

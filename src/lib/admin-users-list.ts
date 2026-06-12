@@ -1,4 +1,5 @@
 import { getSql } from "./db";
+import { parseDateOnlyFromDb } from "./user-profile";
 import {
   buildListMeta,
   buildOrderBySql,
@@ -95,12 +96,8 @@ function mapEmployeeRow(row: Record<string, unknown>): Omit<
         : null,
     employeeCategoryName:
       row.category_name != null ? String(row.category_name) : null,
-    joinedCompanyAt: row.joined_company_at
-      ? new Date(String(row.joined_company_at)).toISOString().slice(0, 10)
-      : null,
-    leftCompanyAt: row.left_company_at
-      ? new Date(String(row.left_company_at)).toISOString().slice(0, 10)
-      : null,
+    joinedCompanyAt: parseDateOnlyFromDb(row.joined_company_at),
+    leftCompanyAt: parseDateOnlyFromDb(row.left_company_at),
     lastLoginAt: row.last_login_at
       ? new Date(String(row.last_login_at)).toISOString()
       : null,

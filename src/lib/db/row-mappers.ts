@@ -6,6 +6,7 @@ import type {
   User,
 } from "../types";
 import { normalizeBranding } from "../branding-theme";
+import { parseDateOnlyFromDb } from "../user-profile";
 
 export function mapCompany(row: Record<string, unknown>): Company {
   return {
@@ -102,12 +103,8 @@ export function mapUser(row: Record<string, unknown>): User {
       row.admin_location_id != null ? Number(row.admin_location_id) : null,
     employeeCategoryId:
       row.employee_category_id != null ? Number(row.employee_category_id) : null,
-    joinedCompanyAt: row.joined_company_at
-      ? new Date(String(row.joined_company_at)).toISOString().slice(0, 10)
-      : null,
-    leftCompanyAt: row.left_company_at
-      ? new Date(String(row.left_company_at)).toISOString().slice(0, 10)
-      : null,
+    joinedCompanyAt: parseDateOnlyFromDb(row.joined_company_at),
+    leftCompanyAt: parseDateOnlyFromDb(row.left_company_at),
     active: row.active ? 1 : 0,
     mustChangePassword: row.must_change_password ? 1 : 0,
     createdAt: new Date(String(row.created_at)).toISOString(),
