@@ -7,7 +7,7 @@ Stand: 11.06.2026 (V2.8.4)
 
 ================================================================================
 RELEASE V2.8.4 – Seminarverwaltung-Hub, Sidebar & Schulungsstatus
-Commit: (nach Push eintragen)
+Commit: 887a6b4 | 11.06.2026
 ================================================================================
 
 SEMINARVERWALTUNG
