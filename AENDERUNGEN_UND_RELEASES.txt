@@ -1,8 +1,31 @@
 ================================================================================
 CERTIANO CAMPUS – Änderungen und Releases
 Projekt: sozialkonzept-spielhalle
-Stand: 11.06.2026 (V2.8.0)
+Stand: 11.06.2026 (V2.8.1)
 ================================================================================
+
+
+================================================================================
+RELEASE V2.8.1 – Superuser Master-Bearbeitung, PDF-Dateinamen, Master-Sync
+Commit: (pending) | 11.06.2026
+================================================================================
+
+SUPERUSER MASTER-BEARBEITUNG
+----------------------------
+- Fix: AdminShell leitete Superuser von /dashboard/inhalte nach /certiano um
+  (authState.redirect = /certiano, kein Firmenkontext nötig)
+- DashboardShell: Superuser + Master-courseId → CertianoShell statt AdminShell
+
+PDF-EXPORT & MASTER-SYNC
+------------------------
+- Sprechende PDF-Dateinamen (BAV-Code, Titel, Version; optional ?timestamp=1)
+- propagateMasterCourseToCompanies() beim Master-Speichern
+
+Wichtige neue/geänderte Dateien:
+  · src/components/shell/dashboard-shell.tsx
+  · src/lib/export-pdf-filename.ts, src/lib/export-pdf-context.ts
+  · src/lib/course-provisions.ts, src/lib/master-course-db.ts
+  · src/lib/release-notes/data.ts (LATEST_RELEASE_VERSION automatisch)
 
 
 ================================================================================

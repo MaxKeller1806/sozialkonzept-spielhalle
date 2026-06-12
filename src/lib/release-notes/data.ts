@@ -1,10 +1,49 @@
 import type { ReleaseNote } from "./types";
+import { sortReleasesNewestFirst } from "./version";
 
 /**
  * Structured release notes – single source of truth.
  * Filtered per role at render time via getReleaseNotesForRole().
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
+  {
+    version: "V2.8.1",
+    date: "11.06.2026",
+    summary:
+      "Superuser kann Masterseminare wieder bearbeiten; PDF-Dateinamen und Master-Sync für Admin/Mitarbeiter.",
+    sections: [
+      {
+        title: "Superuser Master-Bearbeitung",
+        category: "bugfixes",
+        visibility: ["superuser"],
+        items: [
+          {
+            text: "Behebung: Beim Bearbeiten von Master-Inhalten unter /dashboard/inhalte wurde der Superuser fälschlich zur Firmenübersicht (/certiano) umgeleitet.",
+            visibility: ["superuser"],
+          },
+          {
+            text: "Master-Inhalte werden im Certiano-Shell-Kontext bearbeitet; kein Firmenkontext (company_id) erforderlich.",
+            visibility: ["superuser"],
+          },
+        ],
+      },
+      {
+        title: "PDF-Export & Master-Sync",
+        category: "features",
+        visibility: ["superuser", "admin"],
+        items: [
+          {
+            text: "PDF-Exporte erhalten sprechende Dateinamen (BAV-Code, Seminartitel, Version, optional ?timestamp=1).",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Master-Seminar-Inhalte werden beim Speichern automatisch an alle provisionierten Firmenkopien ausgerollt.",
+            visibility: ["superuser"],
+          },
+        ],
+      },
+    ],
+  },
   {
     version: "V2.8.0",
     date: "11.06.2026",
@@ -675,4 +714,5 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   },
 ];
 
-export const LATEST_RELEASE_VERSION = "V2.4.0";
+export const LATEST_RELEASE_VERSION =
+  sortReleasesNewestFirst(RELEASE_NOTES)[0]?.version ?? "V0.0.0";
