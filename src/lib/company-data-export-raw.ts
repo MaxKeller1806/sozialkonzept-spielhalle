@@ -38,9 +38,9 @@ export type RawExportEmployee = {
     city: string | null;
   }>;
   responsibilities: Array<{
-    responsibilityTypeId: number;
+    courseId: string;
     name: string;
-    slug: string;
+    instructionCode: string | null;
     assignedAt: string;
   }>;
   createdAt: string;
@@ -273,6 +273,22 @@ export async function loadCompanyRawExportData(
     userIds.length > 0
       ? ((await sql`
           SELECT
+            cru.user_id,
+            cru.course_id,
+            cru.assigned_at,
+            c.title AS name,
+            c.instruction_code
+          FROM course_responsible_users cru
+          JOIN courses c ON c.id = cru.course_id AND c.company_id = ${companyId}
+          WHERE cru.company_id = ${companyId}
+            AND cru.user_id IN ${sql(userIds)}
+        `) as Record<string, unknown>[])
+      : [];
+
+  const legacyResponsibilityRows =
+    responsibilityRows.length === 0 && userIds.length > 0
+      ? ((await sql`
+          SELECT
             cr.user_id,
             cr.responsibility_type_id,
             cr.assigned_at,
@@ -356,9 +372,21 @@ export async function loadCompanyRawExportData(
     const userId = Number(row.user_id);
     const list = responsibilitiesByUser.get(userId) ?? [];
     list.push({
-      responsibilityTypeId: Number(row.responsibility_type_id),
+      courseId: String(row.course_id),
       name: String(row.name),
-      slug: String(row.slug),
+      instructionCode:
+        row.instruction_code != null ? String(row.instruction_code) : null,
+      assignedAt: new Date(String(row.assigned_at)).toISOString(),
+    });
+    responsibilitiesByUser.set(userId, list);
+  }
+  for (const row of legacyResponsibilityRows) {
+    const userId = Number(row.user_id);
+    const list = responsibilitiesByUser.get(userId) ?? [];
+    list.push({
+      courseId: `legacy-type-${row.responsibility_type_id}`,
+      name: String(row.name),
+      instructionCode: null,
       assignedAt: new Date(String(row.assigned_at)).toISOString(),
     });
     responsibilitiesByUser.set(userId, list);

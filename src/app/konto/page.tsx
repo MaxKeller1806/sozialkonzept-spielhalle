@@ -19,9 +19,9 @@ interface EmployeeProfile {
 }
 
 interface EmployeeResponsibility {
-  responsibilityTypeId: number;
+  courseId: string;
   name: string;
-  slug: string;
+  instructionCode: string | null;
   assignedAt: string;
 }
 
@@ -187,7 +187,7 @@ export default function KontoPage() {
           </p>
           <ul className="mt-4 list-inside list-disc space-y-1 text-sm text-slate-800">
             {responsibilities.map((item) => (
-              <li key={item.responsibilityTypeId}>{item.name}</li>
+              <li key={item.courseId}>{item.name}</li>
             ))}
           </ul>
         </Card>

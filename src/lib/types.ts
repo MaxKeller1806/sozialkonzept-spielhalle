@@ -132,9 +132,9 @@ export interface CompanyResponsibilityAssignment {
 }
 
 export interface EmployeeResponsibility {
-  responsibilityTypeId: number;
+  courseId: string;
   name: string;
-  slug: string;
+  instructionCode: string | null;
   assignedAt: string;
 }
 

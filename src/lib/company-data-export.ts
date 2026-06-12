@@ -366,6 +366,62 @@ async function loadEmployeeResponsibilities(
 ): Promise<Map<number, string>> {
   const sql = getSql();
   const rows = (await sql`
+    SELECT user_id, string_agg(course_title, ', ' ORDER BY course_title) AS names
+    FROM (
+      SELECT DISTINCT
+        cru.user_id,
+        c.title AS course_title
+      FROM course_responsible_users cru
+      JOIN course_responsibility_overrides cro
+        ON cro.company_id = cru.company_id AND cro.course_id = cru.course_id
+      JOIN courses c ON c.id = cru.course_id AND c.company_id = ${companyId}
+      WHERE cru.company_id = ${companyId}
+
+      UNION
+
+      SELECT DISTINCT
+        tru.user_id,
+        c.title AS course_title
+      FROM courses c
+      JOIN course_topic_assignments cta ON cta.course_id = c.id
+      JOIN topic_responsible_users tru
+        ON tru.topic_id = cta.topic_id AND tru.company_id = ${companyId}
+      LEFT JOIN course_responsibility_overrides cro
+        ON cro.company_id = c.company_id AND cro.course_id = c.id
+      WHERE c.company_id = ${companyId}
+        AND c.active = TRUE
+        AND cro.course_id IS NULL
+
+      UNION
+
+      SELECT DISTINCT
+        tru.user_id,
+        c.title AS course_title
+      FROM courses c
+      JOIN topic_responsible_users tru
+        ON tru.topic_id = c.topic_id AND tru.company_id = ${companyId}
+      LEFT JOIN course_responsibility_overrides cro
+        ON cro.company_id = c.company_id AND cro.course_id = c.id
+      WHERE c.company_id = ${companyId}
+        AND c.active = TRUE
+        AND c.topic_id IS NOT NULL
+        AND cro.course_id IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM course_topic_assignments cta2 WHERE cta2.course_id = c.id
+        )
+    ) AS combined
+    GROUP BY user_id
+  `) as Record<string, unknown>[];
+
+  if (rows.length > 0) {
+    const map = new Map<number, string>();
+    for (const row of rows) {
+      map.set(Number(row.user_id), String(row.names ?? ""));
+    }
+    return map;
+  }
+
+  const legacyRows = (await sql`
     SELECT cr.user_id, string_agg(rt.name, ', ' ORDER BY rt.sort_order, rt.name) AS names
     FROM company_responsibilities cr
     JOIN responsibility_types rt ON rt.id = cr.responsibility_type_id
@@ -374,7 +430,7 @@ async function loadEmployeeResponsibilities(
   `) as Record<string, unknown>[];
 
   const map = new Map<number, string>();
-  for (const row of rows) {
+  for (const row of legacyRows) {
     map.set(Number(row.user_id), String(row.names ?? ""));
   }
   return map;

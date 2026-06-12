@@ -7,7 +7,6 @@ import {
   IconDashboard,
   IconExport,
   IconIndustries,
-  IconResponsibilities,
   IconSeminars,
   IconSettings,
   IconUsers,
@@ -43,12 +42,6 @@ export function getCertianoSidebarItems(companyId?: number): SidebarNavItem[] {
       label: "Branchen",
       icon: <IconIndustries />,
       match: (p) => p.startsWith("/certiano/industries"),
-    },
-    {
-      href: "/certiano/verantwortlichkeiten",
-      label: "Verantwortlichkeiten",
-      icon: <IconResponsibilities />,
-      match: (p) => p.startsWith("/certiano/verantwortlichkeiten"),
     },
     {
       href: "/certiano/hauptthemen",

@@ -6,6 +6,13 @@ import {
   type ListMeta,
   type ListQueryState,
 } from "./list-query";
+import {
+  formatResponsibleUserNames,
+  getCompanyResponsibilityPlaceholderValuesFromCourses,
+  getCourseResponsibleUsers,
+  listEmployeeCourseResponsibilities,
+  type AssignableEmployee,
+} from "./course-responsible-users";
 import { buildResponsibilityPlaceholderMap } from "./responsibility-placeholders";
 import { listActiveResponsibilityTypes } from "./responsibility-types";
 import type {
@@ -13,19 +20,14 @@ import type {
   EmployeeResponsibility,
 } from "./types";
 
+export type { AssignableEmployee };
+
 export const COMPANY_RESPONSIBILITY_SORT_ALLOWLIST = {
   responsibilityTypeName: "rt.name",
   sortOrder: "rt.sort_order",
   userName: "u.last_name",
   assignedAt: "cr.assigned_at",
 } as const;
-
-export interface AssignableEmployee {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
 
 function mapAssignment(row: Record<string, unknown>): CompanyResponsibilityAssignment {
   return {
@@ -48,27 +50,6 @@ function mapAssignment(row: Record<string, unknown>): CompanyResponsibilityAssig
         ? new Date(String(row.assigned_at)).toISOString()
         : null,
   };
-}
-
-export async function listAssignableEmployees(
-  companyId: number
-): Promise<AssignableEmployee[]> {
-  await ensureSeeded();
-  const sql = getSql();
-  const rows = await sql`
-    SELECT id, first_name, last_name, email
-    FROM users
-    WHERE company_id = ${companyId}
-      AND role = 'employee'
-      AND active = TRUE
-    ORDER BY last_name, first_name
-  `;
-  return rows.map((r) => ({
-    id: Number(r.id),
-    firstName: String(r.first_name),
-    lastName: String(r.last_name),
-    email: String(r.email),
-  }));
 }
 
 async function assertAssignableEmployee(
@@ -282,13 +263,22 @@ export async function listEmployeeResponsibilities(
   userId: number,
   companyId: number
 ): Promise<EmployeeResponsibility[]> {
+  const rows = await listEmployeeCourseResponsibilities(userId, companyId);
+  if (rows.length > 0) {
+    return rows.map((r) => ({
+      courseId: r.courseId,
+      name: r.courseTitle,
+      instructionCode: r.instructionCode,
+      assignedAt: r.assignedAt,
+    }));
+  }
+
   await ensureSeeded();
   const sql = getSql();
-  const rows = await sql`
+  const legacyRows = await sql`
     SELECT
       rt.id AS responsibility_type_id,
       rt.name,
-      rt.slug,
       cr.assigned_at
     FROM company_responsibilities cr
     JOIN responsibility_types rt ON rt.id = cr.responsibility_type_id
@@ -297,10 +287,10 @@ export async function listEmployeeResponsibilities(
       AND rt.active = TRUE
     ORDER BY rt.sort_order, rt.name
   `;
-  return rows.map((r) => ({
-    responsibilityTypeId: Number(r.responsibility_type_id),
+  return legacyRows.map((r) => ({
+    courseId: `legacy-type-${r.responsibility_type_id}`,
     name: String(r.name),
-    slug: String(r.slug),
+    instructionCode: null,
     assignedAt: new Date(String(r.assigned_at)).toISOString(),
   }));
 }
@@ -309,6 +299,12 @@ export async function listEmployeeResponsibilities(
 export async function getCompanyResponsibilityPlaceholderValues(
   companyId: number
 ): Promise<Record<string, string>> {
+  const fromCourses =
+    await getCompanyResponsibilityPlaceholderValuesFromCourses(companyId);
+  if (Object.keys(fromCourses).length > 0) {
+    return fromCourses;
+  }
+
   await ensureSeeded();
   const sql = getSql();
   const rows = await sql`
@@ -333,13 +329,28 @@ export type CourseResponsibilityContext = {
   responsibleEmail: string;
 };
 
-/** Verantwortlichkeit passend zum Kurs-Hauptthema (Slug-Abgleich). */
+/** Verantwortliche Person(en) für Zertifikate/Nachweise eines Firmenkurses. */
 export async function getCourseResponsibilityContext(
   companyId: number,
   courseId: string
 ): Promise<CourseResponsibilityContext | null> {
   await ensureSeeded();
   const sql = getSql();
+
+  const users = await getCourseResponsibleUsers(companyId, courseId);
+  if (users.length > 0) {
+    const courseRows = await sql`
+      SELECT title FROM courses
+      WHERE id = ${courseId} AND company_id = ${companyId}
+      LIMIT 1
+    `;
+    return {
+      responsiblePerson: formatResponsibleUserNames(users),
+      responsibilityName:
+        courseRows.length > 0 ? String(courseRows[0].title) : "",
+      responsibleEmail: users[0]?.email ?? "",
+    };
+  }
 
   const topicRows = await sql`
     SELECT ct.slug
