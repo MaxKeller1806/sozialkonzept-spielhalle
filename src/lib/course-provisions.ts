@@ -493,8 +493,54 @@ export async function syncMasterToCompanyCourse(
   const cloned = masterContentAsCourseData(master, companyId, slug);
   await saveCourseData(companyId, cloned);
 
+  const masterMeta = await getMasterCourseMeta(masterCourseId);
+  if (masterMeta) {
+    const sql = getSql();
+    await sql`
+      UPDATE courses SET
+        title = ${cloned.courseName},
+        version = ${cloned.version},
+        passing_score = ${cloned.passingScore},
+        main_category = ${masterMeta.mainCategory},
+        seminar = ${masterMeta.seminar},
+        instruction_code = ${masterMeta.instructionCode},
+        instruction_title = ${masterMeta.instructionTitle},
+        sort_order = ${masterMeta.sortOrder},
+        requires_certificate = ${masterMeta.requiresCertificate},
+        requires_proof = ${masterMeta.requiresProof},
+        estimated_duration_minutes = ${masterMeta.estimatedDurationMinutes},
+        updated_at = NOW()
+      WHERE id = ${courseId} AND company_id = ${companyId}
+    `;
+  }
+}
+
+/** Master-Änderungen an alle provisionierten Firmenkopien ausrollen (Inhalte + Metadaten). */
+export async function propagateMasterCourseToCompanies(
+  masterCourseId: string
+): Promise<number> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT c.id, c.company_id
+    FROM courses c
+    INNER JOIN company_course_provisions p
+      ON p.company_id = c.company_id AND p.course_id = c.id
+    WHERE c.master_course_id = ${masterCourseId}
+      AND p.status = 'active'
+  `;
+
+  for (const row of rows) {
+    await syncMasterToCompanyCourse(
+      masterCourseId,
+      Number(row.company_id),
+      String(row.id)
+    );
+  }
+
   const { syncMasterQuestionPoolToCompanies } = await import("./question-pool-db");
   await syncMasterQuestionPoolToCompanies(masterCourseId);
+
+  return rows.length;
 }
 
 export async function assignMasterToAllCompanies(

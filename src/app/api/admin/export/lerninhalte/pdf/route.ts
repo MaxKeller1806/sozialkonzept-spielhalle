@@ -1,34 +1,42 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
-import { filterCourseForCompany } from "@/lib/content-provisions";
+import {
+  buildSeminarPdfFilename,
+  pdfAttachmentContentDisposition,
+} from "@/lib/export-pdf-filename";
+import { resolveFilteredCourseForPdfExport } from "@/lib/export-pdf-context";
 import { generateLearningContentPdf } from "@/lib/pdf-export";
-import { resolveAdminCourse, courseIdFromRequest } from "@/lib/course-context";
 import { getCompanyById } from "@/lib/tenant";
 
 export async function GET(request: Request) {
   try {
-    const user = await requireAdmin();
-    const { companyId, courseId, course } = await resolveAdminCourse(
-      user,
-      courseIdFromRequest(request)
-    );
-    const filtered = await filterCourseForCompany(companyId, course);
-    const company = await getCompanyById(user.companyId!);
-    const pdf = await generateLearningContentPdf(filtered, {
+    const includeTimestamp =
+      new URL(request.url).searchParams.get("timestamp") === "1";
+    const { course, meta, companyId } = await resolveFilteredCourseForPdfExport(request);
+    const company = companyId != null ? await getCompanyById(companyId) : null;
+    const pdf = await generateLearningContentPdf(course, {
       companyName: company?.name,
       branding: company?.branding,
+    });
+
+    const filename = buildSeminarPdfFilename({
+      instructionCode: meta.instructionCode,
+      instructionTitle: meta.instructionTitle,
+      courseName: course.courseName,
+      version: course.version,
+      documentType: "lerninhalte",
+      includeTimestamp,
     });
 
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="lerninhalte-${course.version}.pdf"`,
+        "Content-Disposition": pdfAttachmentContentDisposition(filename),
         "Cache-Control": "no-store",
       },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
-    if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
+    if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN" || msg === "COURSE_NOT_FOUND") {
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
     return NextResponse.json({ error: "PDF-Fehler." }, { status: 500 });

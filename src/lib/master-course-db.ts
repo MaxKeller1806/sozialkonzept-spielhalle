@@ -451,15 +451,17 @@ export async function getMasterCourseDetail(
     validity_interval_unit: base.validity_interval_unit ?? null,
   };
   const course = rowToData(row);
+  const { enrichCourseWithQuestionPool } = await import("./question-pool-db");
+  const enriched = await enrichCourseWithQuestionPool(course, null, null);
   const { enrichMasterCoursesWithTopics } = await import("./course-topics");
   const [meta] = await enrichMasterCoursesWithTopics([mapMeta(row)]);
-  const masterEmpty = isEmptyCourseContent(course);
+  const masterEmpty = isEmptyCourseContent(enriched);
   const source = masterEmpty
     ? await findRichestCompanyCourseForMaster(String(row.slug ?? ""))
     : null;
   return {
     meta,
-    course,
+    course: enriched,
     importHint: {
       masterEmpty,
       sourceAvailable: source != null && !isEmptyCourseContent(source.content),
@@ -511,6 +513,12 @@ export async function saveMasterCourseData(course: CourseData): Promise<CourseDa
     RETURNING id
   `;
   if (rows.length === 0) throw new Error("NOT_FOUND");
+
+  const { propagateMasterCourseToCompanies } = await import("./course-provisions");
+  await propagateMasterCourseToCompanies(normalized.courseId).catch((err) => {
+    console.error("[saveMasterCourseData] propagate failed:", err);
+  });
+
   return normalized;
 }
 

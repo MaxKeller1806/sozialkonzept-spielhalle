@@ -219,14 +219,37 @@ export async function generateExamDocumentationPdf(
     }
 
     let qNum = 0;
-    for (const mod of course.modules) {
-      const questions = course.exam
+
+    const activeQuestions = course.exam
+      .filter((q) => q.active !== false)
+      .sort((a, b) => a.id - b.id);
+
+    const questionsByModule = course.modules.flatMap((mod) => {
+      const questions = activeQuestions
         .filter((q) => q.moduleId === mod.id)
         .sort((a, b) => a.id - b.id);
+      return questions.length > 0 ? [{ mod, questions }] : [];
+    });
 
+    const unassigned = activeQuestions.filter(
+      (q) => !q.moduleId || !course.modules.some((m) => m.id === q.moduleId)
+    );
+
+    const sections =
+      questionsByModule.length > 0
+        ? questionsByModule
+        : unassigned.length > 0
+          ? [{ mod: null as null, questions: unassigned }]
+          : [{ mod: null as null, questions: activeQuestions }];
+
+    for (const { mod, questions } of sections) {
       if (questions.length === 0) continue;
 
-      doc.fontSize(14).fillColor(primary).text(`Modul ${mod.id}: ${mod.title}`);
+      if (mod) {
+        doc.fontSize(14).fillColor(primary).text(`Modul ${mod.id}: ${mod.title}`);
+      } else {
+        doc.fontSize(14).fillColor(primary).text("Fragenpool – Abschlusstest");
+      }
       doc.moveDown(0.5);
 
       for (const q of questions) {
