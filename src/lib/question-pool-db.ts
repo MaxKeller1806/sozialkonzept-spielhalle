@@ -21,12 +21,12 @@ export async function listMasterPoolQuestions(
       ? await sql`
           SELECT * FROM question_pool
           WHERE course_id = ${masterCourseId} AND source_type = 'master'
-          ORDER BY id ASC
+          ORDER BY sort_order ASC, created_at ASC, id ASC
         `
       : await sql`
           SELECT * FROM question_pool
           WHERE course_id = ${masterCourseId} AND source_type = 'master' AND active = TRUE
-          ORDER BY id ASC
+          ORDER BY sort_order ASC, created_at ASC, id ASC
         `;
     return rows.map((r) => mapPoolRow(r as Record<string, unknown>));
   } catch (err) {
@@ -48,7 +48,7 @@ export async function listCompanyPoolQuestions(
           WHERE company_id = ${companyId}
             AND course_id = ${courseId}
             AND source_type = 'company'
-          ORDER BY id ASC
+          ORDER BY sort_order ASC, created_at ASC, id ASC
         `
       : await sql`
           SELECT * FROM question_pool
@@ -56,7 +56,7 @@ export async function listCompanyPoolQuestions(
             AND course_id = ${courseId}
             AND source_type = 'company'
             AND active = TRUE
-          ORDER BY id ASC
+          ORDER BY sort_order ASC, created_at ASC, id ASC
         `;
     return rows.map((r) => mapPoolRow(r as Record<string, unknown>));
   } catch (err) {
@@ -134,6 +134,7 @@ export async function savePoolQuestion(
         difficulty = ${input.difficulty},
         module_id = ${input.moduleId},
         active = ${input.active},
+        sort_order = ${input.sortOrder ?? 0},
         updated_at = ${now}
       WHERE id = ${input.id}
       RETURNING *
@@ -142,11 +143,23 @@ export async function savePoolQuestion(
     return mapPoolRow(rows[0] as Record<string, unknown>);
   }
 
+  const maxRows = await sql`
+    SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order
+    FROM question_pool
+    WHERE course_id = ${input.courseId}
+      AND source_type = ${input.sourceType}
+      AND company_id IS NOT DISTINCT FROM ${input.companyId}
+  `;
+  const sortOrder =
+    input.sortOrder && input.sortOrder > 0
+      ? input.sortOrder
+      : Number(maxRows[0]?.next_order ?? 1);
+
   const rows = await sql`
     INSERT INTO question_pool (
       course_id, company_id, source_type, question, question_type,
       answer_a, answer_b, answer_c, answer_d, correct_answer,
-      explanation, difficulty, module_id, active, updated_at
+      explanation, difficulty, module_id, active, sort_order, updated_at
     ) VALUES (
       ${input.courseId},
       ${input.companyId},
@@ -162,6 +175,7 @@ export async function savePoolQuestion(
       ${input.difficulty},
       ${input.moduleId},
       ${input.active},
+      ${sortOrder},
       ${now}
     )
     RETURNING *

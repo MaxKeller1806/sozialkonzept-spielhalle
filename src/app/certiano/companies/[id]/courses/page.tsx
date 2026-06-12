@@ -6,7 +6,11 @@ import type { CourseAssignmentOptions } from "@/lib/course-assignment-options";
 import { CertianoShell } from "@/components/certiano-shell";
 import { CourseProvisionTopicPicker } from "@/components/course-provision-topic-picker";
 import { Button, Card } from "@/components/ui";
-import { formatPoolQuestionLabel, sortExamQuestionsForDisplay } from "@/lib/question-type-labels";
+import {
+  buildPoolQuestionNumberMap,
+  formatPoolQuestionDisplayNumber,
+  sortExamQuestionsForDisplay,
+} from "@/lib/exam-pool-display";
 
 interface CourseDetail {
   courseId: string;
@@ -382,32 +386,37 @@ export default function CompanyCoursesPage() {
                   })}
                   <h4 className="mb-2 mt-4 font-semibold">Testfragen</h4>
                   <ul className="space-y-1">
-                    {sortExamQuestionsForDisplay(p.course.exam).map((q, index) => {
-                      const qActive = p.contentStates!.questions[String(q.id)] !== false;
-                      return (
-                        <li
-                          key={q.id}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded border px-2 py-1"
-                        >
-                          <span className="min-w-0 flex-1 truncate">
-                            {formatPoolQuestionLabel(index)} (Modul {q.moduleId}): {q.question}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() =>
-                              patchContent(p.courseId, {
-                                contentType: "question",
-                                contentId: q.id,
-                                isActive: !qActive,
-                              })
-                            }
+                    {(() => {
+                      const poolMap = buildPoolQuestionNumberMap(p.course.exam);
+                      return sortExamQuestionsForDisplay(p.course.exam).map((q) => {
+                        const qActive =
+                          p.contentStates!.questions[String(q.id)] !== false;
+                        return (
+                          <li
+                            key={q.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded border px-2 py-1"
                           >
-                            {qActive ? "Aus" : "An"}
-                          </Button>
-                        </li>
-                      );
-                    })}
+                            <span className="min-w-0 flex-1 truncate">
+                              {formatPoolQuestionDisplayNumber(poolMap, q.id)} (Modul{" "}
+                              {q.moduleId}): {q.question}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() =>
+                                patchContent(p.courseId, {
+                                  contentType: "question",
+                                  contentId: q.id,
+                                  isActive: !qActive,
+                                })
+                              }
+                            >
+                              {qActive ? "Aus" : "An"}
+                            </Button>
+                          </li>
+                        );
+                      });
+                    })()}
                   </ul>
                 </div>
               )}

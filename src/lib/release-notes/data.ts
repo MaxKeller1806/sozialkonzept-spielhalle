@@ -7,6 +7,33 @@ import { sortReleasesNewestFirst } from "./version";
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "V2.8.3",
+    date: "11.06.2026",
+    summary:
+      "Fragenpool-Nummerierung einheitlich 1…n in allen Ansichten; sort_order in der Datenbank.",
+    sections: [
+      {
+        title: "Fragennummerierung",
+        category: "features",
+        visibility: ["superuser", "admin"],
+        items: [
+          {
+            text: "Fortlaufende Pool-Nummern (Frage 1 … n) in Übersicht, Bearbeitung, Vorschau und PDF – keine sichtbaren DB-IDs mehr für Admin/Mitarbeiter.",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Superuser sehen optional „Interne ID“ als kleine Debug-Zeile.",
+            visibility: ["superuser"],
+          },
+          {
+            text: "Sortierung: sort_order → created_at → id; Migration 20260626120000_question_pool_sort_order.sql.",
+            visibility: ["superuser"],
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "V2.8.2",
     date: "11.06.2026",
     summary:

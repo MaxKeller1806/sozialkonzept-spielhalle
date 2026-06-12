@@ -58,6 +58,8 @@ export function poolItemToExamQuestion(item: QuestionPoolItem): ExamQuestion {
     poolQuestionType: item.questionType,
     difficulty: item.difficulty ?? undefined,
     active: item.active,
+    sortOrder: item.sortOrder,
+    createdAt: item.createdAt,
   };
 }
 
@@ -96,6 +98,7 @@ export function examQuestionToPoolInput(
     difficulty: (question.difficulty as QuestionPoolItem["difficulty"]) ?? null,
     moduleId: question.moduleId > 0 ? question.moduleId : null,
     active: question.active ?? true,
+    sortOrder: question.sortOrder ?? 0,
   };
 }
 
@@ -119,6 +122,7 @@ export function mapPoolRow(row: Record<string, unknown>): QuestionPoolItem {
         : null,
     moduleId: row.module_id != null ? Number(row.module_id) : null,
     active: Boolean(row.active ?? true),
+    sortOrder: Number(row.sort_order ?? 0),
     createdAt: new Date(String(row.created_at ?? Date.now())).toISOString(),
     updatedAt: new Date(String(row.updated_at ?? Date.now())).toISOString(),
   };

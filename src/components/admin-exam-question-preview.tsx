@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui";
+import { getQuestionTypeLabel } from "@/lib/exam-pool-display";
 import { formatExamCorrectAnswerLabel } from "@/lib/exam";
 import type { ExamQuestion } from "@/lib/types";
 
@@ -30,7 +31,7 @@ export function AdminExamQuestionPreview({
   return (
     <Card>
       <p className="text-xs font-medium uppercase text-slate-400">
-        Frage {number} · {question.type}
+        Frage {number} · {getQuestionTypeLabel(question.poolQuestionType ?? question.type)}
       </p>
       <h3 className="mt-1 text-base font-semibold text-slate-900">
         {question.question}

@@ -7,10 +7,12 @@ import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui";
 import { isMasterCourseId } from "@/lib/course-editor-id";
 import {
-  formatPoolQuestionLabel,
+  buildPoolQuestionNumberMap,
+  formatInternalQuestionIdHint,
+  formatPoolQuestionDisplayNumber,
   getQuestionTypeLabel,
   sortExamQuestionsForDisplay,
-} from "@/lib/question-type-labels";
+} from "@/lib/exam-pool-display";
 
 interface CourseOverview {
   courseId: string;
@@ -153,6 +155,9 @@ function InhalteEditor({ courseId }: { courseId: string }) {
   }, [load]);
 
   const poolSize = course?.examPoolSize ?? course?.exam.filter((q) => q.active !== false).length ?? 0;
+  const poolNumberMap = course
+    ? buildPoolQuestionNumberMap(course.exam)
+    : new Map<number, number>();
 
   const hasContent =
     course &&
@@ -425,11 +430,13 @@ function InhalteEditor({ courseId }: { courseId: string }) {
                 </p>
               ) : (
                 <ul className="divide-y divide-slate-100">
-                  {sortExamQuestionsForDisplay(course.exam).map((q, index) => {
+                  {sortExamQuestionsForDisplay(course.exam).map((q) => {
                       const questionActive =
                         contentStates?.questions[String(q.id)] !== false && q.active !== false;
                       const isMasterQuestion = q.sourceType === "master";
                       const typeLabel = getQuestionTypeLabel(q.poolQuestionType ?? q.type);
+                      const displayNumber = formatPoolQuestionDisplayNumber(poolNumberMap, q.id);
+                      const internalIdHint = formatInternalQuestionIdHint(q.id, isMaster);
                       return (
                         <li
                           key={q.id}
@@ -437,12 +444,7 @@ function InhalteEditor({ courseId }: { courseId: string }) {
                         >
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-medium uppercase text-slate-400">
-                              {formatPoolQuestionLabel(index)} · {typeLabel}
-                              {isMaster && (
-                                <span className="ml-2 normal-case text-slate-400">
-                                  (ID {q.id})
-                                </span>
-                              )}
+                              {displayNumber} · {typeLabel}
                               {isMasterQuestion && (
                                 <span className="ml-2 normal-case text-brand">Master</span>
                               )}
@@ -453,6 +455,9 @@ function InhalteEditor({ courseId }: { courseId: string }) {
                               )}
                               {!questionActive && <DeactivatedBadge />}
                             </p>
+                            {internalIdHint && (
+                              <p className="text-xs text-slate-400">{internalIdHint}</p>
+                            )}
                             <p className="font-medium">{q.question}</p>
                           </div>
                           {permissions.canEditTests && !isMasterQuestion ? (

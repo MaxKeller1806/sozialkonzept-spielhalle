@@ -1,8 +1,27 @@
 ================================================================================
 CERTIANO CAMPUS – Änderungen und Releases
 Projekt: sozialkonzept-spielhalle
-Stand: 11.06.2026 (V2.8.2)
+Stand: 11.06.2026 (V2.8.3)
 ================================================================================
+
+
+================================================================================
+RELEASE V2.8.3 – Fragenpool-Nummerierung 1…n
+Commit: (pending) | 11.06.2026
+================================================================================
+
+FRAGENNUMMERIERUNG
+------------------
+- Einheitliche Pool-Nummern (Frage 1 … n) in Übersicht, Bearbeitung, Vorschau, PDF
+- Keine DB-IDs für Admin/Mitarbeiter; Superuser optional „Interne ID“
+- Sortierung: sort_order → created_at → id
+- Migration: 20260626120000_question_pool_sort_order.sql
+
+Wichtige neue/geänderte Dateien:
+  · src/lib/exam-pool-display.ts
+  · supabase/migrations/20260626120000_question_pool_sort_order.sql
+  · src/lib/question-pool-db.ts, src/lib/pdf-export.ts
+  · src/app/dashboard/inhalte/ (page, frage-form, modul)
 
 
 ================================================================================

@@ -1,5 +1,10 @@
 import PDFDocument from "pdfkit";
 import { blockToPlainText } from "./lesson-text";
+import {
+  buildPoolQuestionNumberMap,
+  getQuestionTypeLabel,
+  sortExamQuestionsForDisplay,
+} from "./exam-pool-display";
 import type { CompanyBranding, ContentBlock, CourseData, ExamQuestion } from "./types";
 
 function createPdfBuffer(
@@ -218,16 +223,13 @@ export async function generateExamDocumentationPdf(
       doc.moveDown(1);
     }
 
-    let qNum = 0;
-
-    const activeQuestions = course.exam
-      .filter((q) => q.active !== false)
-      .sort((a, b) => a.id - b.id);
+    const activeQuestions = sortExamQuestionsForDisplay(
+      course.exam.filter((q) => q.active !== false)
+    );
+    const poolNumberMap = buildPoolQuestionNumberMap(activeQuestions);
 
     const questionsByModule = course.modules.flatMap((mod) => {
-      const questions = activeQuestions
-        .filter((q) => q.moduleId === mod.id)
-        .sort((a, b) => a.id - b.id);
+      const questions = activeQuestions.filter((q) => q.moduleId === mod.id);
       return questions.length > 0 ? [{ mod, questions }] : [];
     });
 
@@ -253,9 +255,11 @@ export async function generateExamDocumentationPdf(
       doc.moveDown(0.5);
 
       for (const q of questions) {
-        qNum += 1;
+        const poolNum = poolNumberMap.get(q.id) ?? 0;
         doc.fontSize(11).fillColor("#000").font("Helvetica-Bold");
-        doc.text(`Frage ${qNum} (${q.type})`);
+        doc.text(
+          `Frage ${poolNum} (${getQuestionTypeLabel(q.poolQuestionType ?? q.type)})`
+        );
         doc.font("Helvetica").text(q.question);
         doc.moveDown(0.3);
 

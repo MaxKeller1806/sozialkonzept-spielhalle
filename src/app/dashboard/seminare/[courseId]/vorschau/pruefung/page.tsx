@@ -8,6 +8,10 @@ import { AdminPreviewBanner } from "@/components/admin-preview-banner";
 import { PageHeader } from "@/components/page-header";
 import { ButtonLink, Card } from "@/components/ui";
 import { adminPreviewBasePath } from "@/lib/admin-course-preview";
+import {
+  buildPoolQuestionNumberMap,
+  sortExamQuestionsForDisplay,
+} from "@/lib/exam-pool-display";
 import { useAdminCoursePreview } from "@/hooks/use-admin-course-preview";
 
 function PruefungVorschauContent() {
@@ -16,21 +20,27 @@ function PruefungVorschauContent() {
   const { previewCourse, permissions, loading, error } =
     useAdminCoursePreview(courseId);
 
+  const poolNumberMap = useMemo(
+    () => (previewCourse ? buildPoolQuestionNumberMap(previewCourse.exam) : new Map()),
+    [previewCourse]
+  );
+
   const sections = useMemo(() => {
     if (!previewCourse) return [];
+    const sorted = sortExamQuestionsForDisplay(previewCourse.exam);
     return previewCourse.modules.map((mod) => ({
       moduleId: mod.id,
       moduleTitle: `${mod.id}. ${mod.title}`,
-      questions: previewCourse.exam
-        .filter((q) => q.moduleId === mod.id)
-        .sort((a, b) => a.id - b.id),
+      questions: sorted.filter((q) => q.moduleId === mod.id),
     }));
   }, [previewCourse]);
 
   const unassigned = useMemo(() => {
     if (!previewCourse) return [];
     const moduleIds = new Set(previewCourse.modules.map((m) => m.id));
-    return previewCourse.exam.filter((q) => !moduleIds.has(q.moduleId));
+    return sortExamQuestionsForDisplay(previewCourse.exam).filter(
+      (q) => !moduleIds.has(q.moduleId)
+    );
   }, [previewCourse]);
 
   const totalQuestions = previewCourse?.exam.length ?? 0;
@@ -60,8 +70,6 @@ function PruefungVorschauContent() {
       </div>
     );
   }
-
-  let questionNum = 0;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -108,16 +116,13 @@ function PruefungVorschauContent() {
                 </p>
               ) : (
                 <div className="space-y-6">
-                  {section.questions.map((q) => {
-                    questionNum += 1;
-                    return (
+                  {section.questions.map((q) => (
                       <AdminExamQuestionPreview
                         key={q.id}
                         question={q}
-                        number={questionNum}
+                        number={poolNumberMap.get(q.id) ?? 0}
                       />
-                    );
-                  })}
+                    ))}
                 </div>
               )}
             </section>
@@ -129,16 +134,13 @@ function PruefungVorschauContent() {
                 Ohne Modulzuordnung
               </h2>
               <div className="space-y-6">
-                {unassigned.map((q) => {
-                  questionNum += 1;
-                  return (
-                    <AdminExamQuestionPreview
-                      key={q.id}
-                      question={q}
-                      number={questionNum}
-                    />
-                  );
-                })}
+                {unassigned.map((q) => (
+                  <AdminExamQuestionPreview
+                    key={q.id}
+                    question={q}
+                    number={poolNumberMap.get(q.id) ?? 0}
+                  />
+                ))}
               </div>
             </section>
           )}

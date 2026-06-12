@@ -238,6 +238,8 @@ export interface ExamQuestion {
   poolQuestionType?: PoolQuestionType;
   difficulty?: string;
   active?: boolean;
+  sortOrder?: number;
+  createdAt?: string;
 }
 
 export type QuestionSourceType = "master" | "company";
@@ -260,6 +262,7 @@ export interface QuestionPoolItem {
   difficulty: "easy" | "medium" | "hard" | null;
   moduleId: number | null;
   active: boolean;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }

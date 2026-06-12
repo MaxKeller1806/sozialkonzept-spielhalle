@@ -6,6 +6,11 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card, Input, Select, Textarea } from "@/components/ui";
 import { isMasterCourseId } from "@/lib/course-editor-id";
+import {
+  buildPoolQuestionNumberMap,
+  formatInternalQuestionIdHint,
+  formatPoolQuestionDisplayNumber,
+} from "@/lib/exam-pool-display";
 
 type QuestionType = "single" | "multiple" | "boolean" | "situation";
 
@@ -36,6 +41,8 @@ export default function FrageForm() {
   const [readOnly, setReadOnly] = useState(false);
   const [active, setActive] = useState(true);
   const [sourceType, setSourceType] = useState<string | null>(null);
+  const isMaster = isMasterCourseId(courseId ?? "");
+  const [poolNumberMap, setPoolNumberMap] = useState<Map<number, number>>(new Map());
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -47,6 +54,9 @@ export default function FrageForm() {
       .then((d) => {
         if (!d.course?.modules) return;
         setModules(d.course.modules);
+        if (d.course.exam) {
+          setPoolNumberMap(buildPoolQuestionNumberMap(d.course.exam));
+        }
         const fromUrl = Number(searchParams.get("module"));
         if (fromUrl && d.course.modules.some((m: ModuleOption) => m.id === fromUrl)) {
           setModuleId(fromUrl);
@@ -199,9 +209,24 @@ export default function FrageForm() {
     return <p className="px-4 py-8 text-sm text-slate-600">Lädt…</p>;
   }
 
+  const poolDisplayNumber = !isNew
+    ? formatPoolQuestionDisplayNumber(poolNumberMap, Number(idParam), `Frage ${idParam}`)
+    : null;
+  const internalIdHint =
+    !isNew && isMaster ? formatInternalQuestionIdHint(Number(idParam), true) : null;
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <PageHeader title={isNew ? "Neue Frage" : `Frage ${idParam} bearbeiten`} />
+      <PageHeader
+        title={
+          isNew
+            ? "Neue Frage"
+            : `${poolDisplayNumber ?? "Frage"} bearbeiten`
+        }
+      />
+      {internalIdHint && (
+        <p className="mb-2 text-xs text-slate-400">{internalIdHint}</p>
+      )}
       {readOnly && (
         <Card className="mb-4 border-amber-200 bg-amber-50">
           <p className="text-sm text-amber-900">

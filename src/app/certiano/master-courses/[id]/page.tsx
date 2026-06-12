@@ -8,10 +8,12 @@ import { Button, Card, Input } from "@/components/ui";
 import { ValidityRuleForm, type ValidityRuleFormValue } from "@/components/validity-rule-form";
 import type { ValidityType } from "@/lib/course-validity";
 import {
-  formatPoolQuestionLabel,
+  buildPoolQuestionNumberMap,
+  formatInternalQuestionIdHint,
+  formatPoolQuestionDisplayNumber,
   getQuestionTypeLabel,
   sortExamQuestionsForDisplay,
-} from "@/lib/question-type-labels";
+} from "@/lib/exam-pool-display";
 
 interface CourseOverview {
   courseName: string;
@@ -349,6 +351,8 @@ function MasterCourseEditContent({ courseId }: { courseId: string }) {
 
   const modules = course?.modules ?? [];
   const exam = course?.exam ?? [];
+  const poolNumberMap = buildPoolQuestionNumberMap(exam);
+  const sortedExam = sortExamQuestionsForDisplay(exam);
   const showImportHint =
     importHint?.masterEmpty &&
     importHint.sourceAvailable &&
@@ -525,16 +529,20 @@ function MasterCourseEditContent({ courseId }: { courseId: string }) {
               <p className="text-sm text-slate-600">Noch keine Prüfungsfragen vorhanden.</p>
             ) : (
               <ul className="divide-y divide-slate-100">
-                {sortExamQuestionsForDisplay(exam).map((q, index) => (
+                {sortedExam.map((q) => (
                   <li key={q.id} className="py-3 text-sm">
                     <span className="text-slate-500">
-                      {formatPoolQuestionLabel(index)} ·{" "}
+                      {formatPoolQuestionDisplayNumber(poolNumberMap, q.id)} ·{" "}
                       {getQuestionTypeLabel(q.type)}
                       {q.moduleId > 0 ? ` · Modul ${q.moduleId}` : ""}
                       {" · "}
                     </span>
                     {q.question}
-                    <span className="ml-2 text-xs text-slate-400">(ID {q.id})</span>
+                    {formatInternalQuestionIdHint(q.id, true) && (
+                      <span className="ml-2 text-xs text-slate-400">
+                        {formatInternalQuestionIdHint(q.id, true)}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

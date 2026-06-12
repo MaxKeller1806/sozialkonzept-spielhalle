@@ -6,10 +6,11 @@ import { Suspense, useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card, Input } from "@/components/ui";
 import {
-  formatPoolQuestionLabel,
+  buildPoolQuestionNumberMap,
+  formatPoolQuestionDisplayNumber,
   getQuestionTypeLabel,
   sortExamQuestionsForDisplay,
-} from "@/lib/question-type-labels";
+} from "@/lib/exam-pool-display";
 
 interface LessonItem {
   id: number;
@@ -43,6 +44,7 @@ function ModulEditContent() {
   const [duration, setDuration] = useState(5);
   const [lessons, setLessons] = useState<LessonItem[]>([]);
   const [examQuestions, setExamQuestions] = useState<ExamItem[]>([]);
+  const [poolNumberMap, setPoolNumberMap] = useState<Map<number, number>>(new Map());
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -68,10 +70,12 @@ function ModulEditContent() {
         .then((r) => r.json())
         .then((d) => {
           const modId = Number(idParam);
-          const qs = (d.course?.exam ?? []).filter(
+          const allExam = d.course?.exam ?? [];
+          setPoolNumberMap(buildPoolQuestionNumberMap(allExam));
+          const qs = allExam.filter(
             (q: ExamItem & { moduleId: number }) => q.moduleId === modId
           );
-          setExamQuestions(qs);
+          setExamQuestions(sortExamQuestionsForDisplay(qs));
         });
     }
   }, [idParam, isNew, router, courseQuery]);
@@ -234,14 +238,15 @@ function ModulEditContent() {
               </p>
             ) : (
               <ul className="divide-y divide-slate-100">
-                {sortExamQuestionsForDisplay(examQuestions).map((q, index) => (
+                {examQuestions.map((q) => (
                   <li
                     key={q.id}
                     className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-xs text-slate-400">
-                        {formatPoolQuestionLabel(index)} · {getQuestionTypeLabel(q.type)}
+                        {formatPoolQuestionDisplayNumber(poolNumberMap, q.id)} ·{" "}
+                        {getQuestionTypeLabel(q.type)}
                       </p>
                       <p className="font-medium">{q.question}</p>
                     </div>
