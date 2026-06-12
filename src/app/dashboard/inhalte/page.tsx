@@ -6,6 +6,11 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card } from "@/components/ui";
 import { isMasterCourseId } from "@/lib/course-editor-id";
+import {
+  formatPoolQuestionLabel,
+  getQuestionTypeLabel,
+  sortExamQuestionsForDisplay,
+} from "@/lib/question-type-labels";
 
 interface CourseOverview {
   courseId: string;
@@ -380,7 +385,7 @@ function InhalteEditor({ courseId }: { courseId: string }) {
                         </div>
                         {permissions.canEditContent ? (
                           <Link href={`/dashboard/inhalte/modul/${m.id}${courseQuery}`}>
-                            <Button variant="secondary">Bearbeiten</Button>
+                            <Button variant="secondary">Modul bearbeiten</Button>
                           </Link>
                         ) : (
                           <span className="text-sm text-slate-400">Nur Ansicht</span>
@@ -420,14 +425,11 @@ function InhalteEditor({ courseId }: { courseId: string }) {
                 </p>
               ) : (
                 <ul className="divide-y divide-slate-100">
-                  {course.exam
-                    .slice()
-                    .sort((a, b) => a.id - b.id)
-                    .map((q) => {
+                  {sortExamQuestionsForDisplay(course.exam).map((q, index) => {
                       const questionActive =
                         contentStates?.questions[String(q.id)] !== false && q.active !== false;
                       const isMasterQuestion = q.sourceType === "master";
-                      const typeLabel = q.poolQuestionType ?? q.type;
+                      const typeLabel = getQuestionTypeLabel(q.poolQuestionType ?? q.type);
                       return (
                         <li
                           key={q.id}
@@ -435,7 +437,12 @@ function InhalteEditor({ courseId }: { courseId: string }) {
                         >
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-medium uppercase text-slate-400">
-                              Frage {q.id} · {typeLabel}
+                              {formatPoolQuestionLabel(index)} · {typeLabel}
+                              {isMaster && (
+                                <span className="ml-2 normal-case text-slate-400">
+                                  (ID {q.id})
+                                </span>
+                              )}
                               {isMasterQuestion && (
                                 <span className="ml-2 normal-case text-brand">Master</span>
                               )}

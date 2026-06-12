@@ -6,6 +6,7 @@ import type { CourseAssignmentOptions } from "@/lib/course-assignment-options";
 import { CertianoShell } from "@/components/certiano-shell";
 import { CourseProvisionTopicPicker } from "@/components/course-provision-topic-picker";
 import { Button, Card } from "@/components/ui";
+import { formatPoolQuestionLabel, sortExamQuestionsForDisplay } from "@/lib/question-type-labels";
 
 interface CourseDetail {
   courseId: string;
@@ -381,7 +382,7 @@ export default function CompanyCoursesPage() {
                   })}
                   <h4 className="mb-2 mt-4 font-semibold">Testfragen</h4>
                   <ul className="space-y-1">
-                    {p.course.exam.map((q) => {
+                    {sortExamQuestionsForDisplay(p.course.exam).map((q, index) => {
                       const qActive = p.contentStates!.questions[String(q.id)] !== false;
                       return (
                         <li
@@ -389,7 +390,7 @@ export default function CompanyCoursesPage() {
                           className="flex flex-wrap items-center justify-between gap-2 rounded border px-2 py-1"
                         >
                           <span className="min-w-0 flex-1 truncate">
-                            #{q.id} (Modul {q.moduleId}): {q.question}
+                            {formatPoolQuestionLabel(index)} (Modul {q.moduleId}): {q.question}
                           </span>
                           <Button
                             type="button"

@@ -7,6 +7,40 @@ import { sortReleasesNewestFirst } from "./version";
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "V2.8.2",
+    date: "11.06.2026",
+    summary:
+      "Fragenübersicht und Master-Bearbeitung: deutsche Fragetypen, einheitlicher Bearbeitungsweg, fortlaufende Fragennummern.",
+    sections: [
+      {
+        title: "Fragenübersicht",
+        category: "features",
+        visibility: ["superuser", "admin"],
+        items: [
+          {
+            text: "Fragetypen werden in der Übersicht auf Deutsch angezeigt (Einfachauswahl, Mehrfachauswahl, Richtig/Falsch, Situationsfrage).",
+            visibility: ["superuser", "admin"],
+          },
+          {
+            text: "Fragen im Pool werden fortlaufend nummeriert (Frage 1, 2, …) statt mit globaler Datenbank-ID.",
+            visibility: ["superuser", "admin"],
+          },
+        ],
+      },
+      {
+        title: "Bearbeitungswege",
+        category: "bugfixes",
+        visibility: ["superuser"],
+        items: [
+          {
+            text: "Master-Seminar: nur noch ein zentraler Weg „Inhalte bearbeiten“ – doppelte Modul-Buttons entfernt.",
+            visibility: ["superuser"],
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "V2.8.1",
     date: "11.06.2026",
     summary:

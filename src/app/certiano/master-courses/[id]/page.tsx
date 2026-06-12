@@ -7,6 +7,11 @@ import { CertianoShell } from "@/components/certiano-shell";
 import { Button, Card, Input } from "@/components/ui";
 import { ValidityRuleForm, type ValidityRuleFormValue } from "@/components/validity-rule-form";
 import type { ValidityType } from "@/lib/course-validity";
+import {
+  formatPoolQuestionLabel,
+  getQuestionTypeLabel,
+  sortExamQuestionsForDisplay,
+} from "@/lib/question-type-labels";
 
 interface CourseOverview {
   courseName: string;
@@ -479,33 +484,26 @@ function MasterCourseEditContent({ courseId }: { courseId: string }) {
               <h2 className="text-lg font-bold">Module ({modules.length})</h2>
               <div className="flex flex-wrap gap-2">
                 <Link href={`/dashboard/inhalte?courseId=${encodeURIComponent(courseId)}`}>
-                  <Button type="button" variant="secondary">
-                    Inhalte bearbeiten
-                  </Button>
+                  <Button type="button">Inhalte bearbeiten</Button>
                 </Link>
                 <Button type="button" onClick={addModule}>
                   + Modul
                 </Button>
               </div>
             </div>
+            <p className="mb-4 text-sm text-slate-600">
+              Lerninhalte, Verständnisfragen und Prüfungsfragen bearbeiten Sie zentral über
+              „Inhalte bearbeiten“.
+            </p>
             {modules.length === 0 ? (
               <p className="text-sm text-slate-600">Noch keine Module vorhanden.</p>
             ) : (
               <ul className="divide-y divide-slate-100">
                 {modules.map((m) => (
                   <li key={m.id} className="py-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="font-semibold">
-                        {m.id}. {m.title} · {(m.lessons ?? []).length} Lektionen
-                      </p>
-                      <Link
-                        href={`/dashboard/inhalte/modul/${m.id}?courseId=${encodeURIComponent(courseId)}`}
-                      >
-                        <Button type="button" variant="secondary">
-                          Bearbeiten
-                        </Button>
-                      </Link>
-                    </div>
+                    <p className="font-semibold">
+                      {m.id}. {m.title} · {(m.lessons ?? []).length} Lektionen
+                    </p>
                   </li>
                 ))}
               </ul>
@@ -513,17 +511,30 @@ function MasterCourseEditContent({ courseId }: { courseId: string }) {
           </Card>
 
           <Card>
-            <h2 className="mb-4 text-lg font-bold">
-              Prüfungsfragen ({exam.length})
-            </h2>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-bold">
+                Prüfungsfragen ({exam.length})
+              </h2>
+              <Link href={`/dashboard/inhalte?courseId=${encodeURIComponent(courseId)}`}>
+                <Button type="button" variant="secondary">
+                  Fragenpool bearbeiten
+                </Button>
+              </Link>
+            </div>
             {exam.length === 0 ? (
               <p className="text-sm text-slate-600">Noch keine Prüfungsfragen vorhanden.</p>
             ) : (
               <ul className="divide-y divide-slate-100">
-                {exam.map((q) => (
+                {sortExamQuestionsForDisplay(exam).map((q, index) => (
                   <li key={q.id} className="py-3 text-sm">
-                    <span className="text-slate-500">#{q.id} Modul {q.moduleId} · </span>
+                    <span className="text-slate-500">
+                      {formatPoolQuestionLabel(index)} ·{" "}
+                      {getQuestionTypeLabel(q.type)}
+                      {q.moduleId > 0 ? ` · Modul ${q.moduleId}` : ""}
+                      {" · "}
+                    </span>
                     {q.question}
+                    <span className="ml-2 text-xs text-slate-400">(ID {q.id})</span>
                   </li>
                 ))}
               </ul>

@@ -5,6 +5,11 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button, Card, Input } from "@/components/ui";
+import {
+  formatPoolQuestionLabel,
+  getQuestionTypeLabel,
+  sortExamQuestionsForDisplay,
+} from "@/lib/question-type-labels";
 
 interface LessonItem {
   id: number;
@@ -229,13 +234,15 @@ function ModulEditContent() {
               </p>
             ) : (
               <ul className="divide-y divide-slate-100">
-                {examQuestions.map((q) => (
+                {sortExamQuestionsForDisplay(examQuestions).map((q, index) => (
                   <li
                     key={q.id}
                     className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs text-slate-400">{q.type}</p>
+                      <p className="text-xs text-slate-400">
+                        {formatPoolQuestionLabel(index)} · {getQuestionTypeLabel(q.type)}
+                      </p>
                       <p className="font-medium">{q.question}</p>
                     </div>
                     <Link href={`/dashboard/inhalte/frage/${q.id}${courseQuery}`}>

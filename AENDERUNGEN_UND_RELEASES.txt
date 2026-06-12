@@ -1,13 +1,34 @@
 ================================================================================
 CERTIANO CAMPUS – Änderungen und Releases
 Projekt: sozialkonzept-spielhalle
-Stand: 11.06.2026 (V2.8.1)
+Stand: 11.06.2026 (V2.8.2)
 ================================================================================
+
+
+================================================================================
+RELEASE V2.8.2 – Fragen-UI & einheitliche Bearbeitung
+Commit: (pending) | 11.06.2026
+================================================================================
+
+FRAGENÜBERSICHT
+---------------
+- Deutsche Fragetyp-Labels (single → Einfachauswahl, multiple → Mehrfachauswahl, …)
+- Fortlaufende Nummerierung im Fragenpool (Frage 1 … n), DB-ID nur optional für Superuser
+
+BEARBEITUNGSWEGE
+----------------
+- Master-Seminar: doppelter Modul-Button „Bearbeiten“ entfernt
+- Zentraler Weg: „Inhalte bearbeiten“ → /dashboard/inhalte
+
+Wichtige neue/geänderte Dateien:
+  · src/lib/question-type-labels.ts
+  · src/app/dashboard/inhalte/page.tsx
+  · src/app/certiano/master-courses/[id]/page.tsx
 
 
 ================================================================================
 RELEASE V2.8.1 – Superuser Master-Bearbeitung, PDF-Dateinamen, Master-Sync
-Commit: (pending) | 11.06.2026
+Commit: 8c9fdf1 | 11.06.2026
 ================================================================================
 
 SUPERUSER MASTER-BEARBEITUNG
